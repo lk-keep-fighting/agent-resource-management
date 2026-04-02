@@ -3,9 +3,9 @@
   "configVersion": 1,
   "workspaces": {
     "": {
-      "name": "agent-skill-cli",
+      "name": "agent-development-kit",
       "dependencies": {
-        "agent-skill-cli": ".",
+        "agent-development-kit": ".",
         "undici": "^6.13.0",
       },
       "devDependencies": {
@@ -19,7 +19,7 @@
 
     "@types/node": ["@types/node@25.5.0", "", { "dependencies": { "undici-types": "~7.18.0" } }, "sha512-jp2P3tQMSxWugkCUKLRPVUpGaL5MVFwF8RDuSRztfwgN1wmqJeMSbKlnEtQqU8UrhTmzEmZdu2I6v2dpp7XIxw=="],
 
-    "agent-skill-cli": ["agent-skill-cli@root:", {}],
+    "agent-development-kit": ["agent-development-kit@root:", {}],
 
     "bun-types": ["bun-types@1.3.11", "", { "dependencies": { "@types/node": "*" } }, "sha512-1KGPpoxQWl9f6wcZh57LvrPIInQMn2TQ7jsgxqpRzg+l0QPOFvJVH7HmvHo/AiPgwXy+/Thf6Ov3EdVn1vOabg=="],
 
