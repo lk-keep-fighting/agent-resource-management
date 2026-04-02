@@ -15,7 +15,7 @@
 |------|------|
 | Framework | Next.js 14 (App Router) |
 | UI | React 18 + shadcn/ui + Tailwind CSS |
-| Database | MySQL |
+| Database | MySQL + Prisma ORM |
 | File Storage | 本地文件系统 (`data/skills/`) |
 | Validation | Zod |
 
@@ -23,6 +23,8 @@
 
 ```
 backend/
+├── prisma/
+│   └── schema.prisma           # Prisma 数据模型
 ├── src/
 │   ├── app/
 │   │   ├── (auth)/              # 认证页面
@@ -38,7 +40,7 @@ backend/
 │   ├── components/ui/           # UI 组件
 │   └── lib/
 │       ├── auth.ts              # 认证中间件
-│       ├── db.ts                # 数据库连接
+│       ├── db.ts                # Prisma Client
 │       ├── api-response.ts       # API 响应封装
 │       ├── types.ts             # 类型定义
 │       └── validation.ts         # 验证函数
@@ -66,53 +68,35 @@ DB_PORT=3306
 DB_USER=root
 DB_PASSWORD=your_password
 DB_NAME=agent_skill_system
+DATABASE_URL="mysql://root:your_password@localhost:3306/agent_skill_system"
 ```
 
-**注意**: 如果密码包含特殊字符 `#` 或 `$`，需要使用双引号包裹并转义：
-```env
-DB_PASSWORD="your#password"
-```
+**注意**: 如果密码包含特殊字符 `#` 或 `$`，需要 URL 编码：
+- `#` -> `%23`
+- `$` -> `%24`
 
 ### 3. 数据库初始化
 
-```sql
-CREATE DATABASE agent_skill_system;
-USE agent_skill_system;
+使用 Prisma 迁移初始化数据库：
 
-CREATE TABLE users (
-  id VARCHAR(36) PRIMARY KEY,
-  name VARCHAR(255) NOT NULL,
-  email VARCHAR(255) UNIQUE NOT NULL,
-  api_key_hash VARCHAR(128) NOT NULL,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
+```bash
+# 安装依赖
+pnpm install
 
-CREATE TABLE skills (
-  id VARCHAR(36) PRIMARY KEY,
-  name VARCHAR(64) UNIQUE NOT NULL,
-  description TEXT NOT NULL,
-  license VARCHAR(255),
-  compatibility VARCHAR(500),
-  metadata JSON,
-  allowed_tools TEXT,
-  file_size BIGINT NOT NULL DEFAULT 0,
-  file_hash VARCHAR(128) NOT NULL,
-  published_by VARCHAR(36) NOT NULL,
-  published_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  status ENUM('active', 'draft', 'deleted') DEFAULT 'active',
-  download_count INT DEFAULT 0,
-  INDEX idx_name (name),
-  INDEX idx_status (status),
-  INDEX idx_published_by (published_by),
-  FOREIGN KEY (published_by) REFERENCES users(id)
-);
+# 生成 Prisma Client
+pnpm prisma generate
+
+# 推送 schema 到数据库（开发环境）
+pnpm prisma db push
+
+# 或创建并应用迁移
+pnpm prisma migrate dev
 ```
 
 ### 4. 安装依赖
 
 ```bash
-npm install
+pnpm install
 ```
 
 ### 5. 启动服务
@@ -227,7 +211,7 @@ Duration: 0.39s
 ### 创建测试用户
 
 ```bash
-node scripts/create-user.ts
+pnpm exec tsx scripts/create-user.ts
 ```
 
 ## 创建管理员账号
@@ -235,7 +219,7 @@ node scripts/create-user.ts
 系统没有预设管理员账号，需要手动创建：
 
 ```bash
-node scripts/create-user.ts
+pnpm exec tsx scripts/create-user.ts
 ```
 
 脚本会生成新的 API Key，请妥善保存。
@@ -272,12 +256,15 @@ src/app/api/v1/example/route.ts
 
 ### 数据库连接
 
-使用 `src/lib/db.ts` 中的 `query` 函数：
+使用 `src/lib/db.ts` 中导出的 Prisma Client：
 
 ```typescript
-import { query } from '@/lib/db';
+import prisma from '@/lib/db';
 
-const users = await query<User[]>('SELECT * FROM users WHERE id = ?', [id]);
+const users = await prisma.user.findMany();
+const user = await prisma.user.findUnique({
+  where: { id: userId },
+});
 ```
 
 ### API 响应

@@ -1,8 +1,7 @@
 import { NextRequest } from 'next/server';
 import { authenticate } from '@/lib/auth';
 import { successResponse, errorResponse } from '@/lib/api-response';
-import { query } from '@/lib/db';
-import type { Skill } from '@/lib/types';
+import prisma from '@/lib/db';
 
 export async function GET(request: NextRequest) {
   try {
@@ -11,12 +10,41 @@ export async function GET(request: NextRequest) {
       return errorResponse('未授权', 401);
     }
 
-    const skills = await query<Skill[]>(
-      'SELECT id, name, description, license, compatibility, metadata, allowed_tools as allowedTools, file_size as fileSize, file_hash as fileHash, published_at as publishedAt, published_by as publishedBy, updated_at as updatedAt, download_count as downloadCount, status FROM skills WHERE published_by = ? ORDER BY published_at DESC',
-      [user.id]
-    );
+    const skills = await prisma.skill.findMany({
+      where: {
+        publishedBy: user.id,
+      },
+      orderBy: { publishedAt: 'desc' },
+      select: {
+        id: true,
+        name: true,
+        description: true,
+        license: true,
+        compatibility: true,
+        metadata: true,
+        allowedTools: true,
+        fileSize: true,
+        fileHash: true,
+        publishedAt: true,
+        publishedBy: true,
+        updatedAt: true,
+        downloadCount: true,
+        status: true,
+      },
+    });
 
-    return successResponse(skills, '获取成功');
+    const skillsFormatted = skills.map((skill) => ({
+      ...skill,
+      publishedAt: skill.publishedAt.toISOString(),
+      updatedAt: skill.updatedAt.toISOString(),
+      license: skill.license ?? undefined,
+      compatibility: skill.compatibility ?? undefined,
+      fileSize: Number(skill.fileSize),
+      metadata: skill.metadata as Record<string, string> | undefined,
+      allowedTools: skill.allowedTools as string[] | undefined,
+    }));
+
+    return successResponse(skillsFormatted, '获取成功');
   } catch (err) {
     console.error('Get my skills error:', err);
     return errorResponse('获取失败');

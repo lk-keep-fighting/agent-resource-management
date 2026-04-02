@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server';
 import crypto from 'crypto';
-import { query } from './db';
+import prisma from './db';
 import { errorResponse } from './api-response';
 import type { User } from '@/lib/types';
 
@@ -19,16 +19,27 @@ export async function authenticate(
   const token = authHeader.slice(7);
   const apiKeyHash = hashApiKey(token);
 
-  const users = await query<User[]>(
-    'SELECT id, name, email, api_key_hash as apiKey, created_at as createdAt FROM users WHERE api_key_hash = ?',
-    [apiKeyHash]
-  );
+  const user = await prisma.user.findUnique({
+    where: { apiKeyHash },
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      createdAt: true,
+    },
+  });
 
-  if (users.length === 0) {
+  if (!user) {
     return null;
   }
 
-  return users[0];
+  return {
+    id: user.id,
+    name: user.name,
+    email: user.email,
+    apiKey: apiKeyHash,
+    createdAt: user.createdAt.toISOString(),
+  };
 }
 
 export async function requireAuth(

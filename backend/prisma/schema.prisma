@@ -1,0 +1,53 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id         String   @id
+  name       String
+  email      String   @unique
+  apiKeyHash String   @unique @map("api_key_hash")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  skills Skill[]
+
+  @@index([email], name: "idx_email")
+  @@index([apiKeyHash], name: "idx_api_key_hash")
+  @@map("users")
+}
+
+model Skill {
+  id            String   @id
+  name          String   @unique
+  description   String
+  license       String?
+  compatibility String?
+  metadata      Json?
+  allowedTools  Json?    @map("allowed_tools")
+  fileSize      BigInt   @map("file_size")
+  fileHash      String   @map("file_hash")
+  publishedAt   DateTime @map("published_at")
+  publishedBy   String   @map("published_by")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+  downloadCount Int      @default(0) @map("download_count")
+  status        SkillStatus @default(active)
+
+  publisher User @relation(fields: [publishedBy], references: [id], onDelete: Cascade)
+
+  @@index([name], name: "idx_name")
+  @@index([status], name: "idx_status")
+  @@index([publishedBy], name: "idx_published_by")
+  @@index([publishedAt], name: "idx_published_at")
+  @@map("skills")
+}
+
+enum SkillStatus {
+  active
+  draft
+  deleted
+}

@@ -1,14 +1,12 @@
 import { NextRequest } from 'next/server';
 import { authenticate } from '@/lib/auth';
 import { successResponse, errorResponse } from '@/lib/api-response';
-import { query } from '@/lib/db';
+import prisma from '@/lib/db';
 import { v4 as uuidv4 } from 'uuid';
 import path from 'path';
 import fs from 'fs/promises';
 import crypto from 'crypto';
-import type { Skill, SkillListResponse } from '@/lib/types';
-
-const skillColumns = 'id, name, description, license, compatibility, metadata, allowed_tools as allowedTools, file_size as fileSize, file_hash as fileHash, published_at as publishedAt, published_by as publishedBy, updated_at as updatedAt, download_count as downloadCount, status';
+import type { SkillListResponse } from '@/lib/types';
 
 const DATA_DIR = process.env.DATA_DIR || path.join(process.cwd(), 'data');
 
@@ -20,32 +18,59 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const keyword = searchParams.get('keyword') || '';
-    const page = Number(searchParams.get('page')) || 1;
     const pageSize = parseInt(searchParams.get('pageSize') || '20', 10);
     const pageNum = parseInt(searchParams.get('page') || '1', 10);
     const offset = (pageNum - 1) * pageSize;
 
-    let sql = `SELECT ${skillColumns} FROM skills WHERE status = ?`;
-    let countSql = 'SELECT COUNT(*) as total FROM skills WHERE status = ?';
-    const params: (string | number)[] = ['active'];
+    const where = {
+      status: 'active' as const,
+      ...(keyword ? {
+        OR: [
+          { name: { contains: keyword } },
+          { description: { contains: keyword } },
+        ],
+      } : {}),
+    };
 
-    if (keyword) {
-      sql += ' AND (name LIKE ? OR description LIKE ?)';
-      countSql += ' AND (name LIKE ? OR description LIKE ?)';
-      params.push(`%${keyword}%`, `%${keyword}%`);
-    }
+    const [skills, total] = await Promise.all([
+      prisma.skill.findMany({
+        where,
+        skip: offset,
+        take: pageSize,
+        orderBy: { publishedAt: 'desc' },
+        select: {
+          id: true,
+          name: true,
+          description: true,
+          license: true,
+          compatibility: true,
+          metadata: true,
+          allowedTools: true,
+          fileSize: true,
+          fileHash: true,
+          publishedAt: true,
+          publishedBy: true,
+          updatedAt: true,
+          downloadCount: true,
+          status: true,
+        },
+      }),
+      prisma.skill.count({ where }),
+    ]);
 
-    sql += ' ORDER BY published_at DESC LIMIT ? OFFSET ?';
-    params.push(pageSize, offset);
-
-    const skills = await query<Skill[]>(sql, params);
-
-    const countParams = keyword ? ['active', `%${keyword}%`, `%${keyword}%`] : ['active'];
-    const countResult = await query<{ total: number }[]>(countSql, countParams);
-    const total = countResult[0]?.total || 0;
+    const skillsFormatted = skills.map((skill) => ({
+      ...skill,
+      publishedAt: skill.publishedAt.toISOString(),
+      updatedAt: skill.updatedAt.toISOString(),
+      license: skill.license ?? undefined,
+      compatibility: skill.compatibility ?? undefined,
+      fileSize: Number(skill.fileSize),
+      metadata: skill.metadata as Record<string, string> | undefined,
+      allowedTools: skill.allowedTools as string[] | undefined,
+    }));
 
     const response: SkillListResponse = {
-      skills,
+      skills: skillsFormatted,
       total,
       page: pageNum,
       pageSize,
@@ -88,7 +113,14 @@ export async function POST(request: NextRequest) {
     const skillDir = path.join(extractDir, file.name.replace('.zip', ''));
     const skillMdPath = path.join(skillDir, 'SKILL.md');
 
-    let skillMetadata: Partial<Skill> = {};
+    let skillMetadata: {
+      name?: string;
+      description?: string;
+      license?: string;
+      compatibility?: string;
+      allowedTools?: string[];
+      metadata?: Record<string, string>;
+    } = {};
     try {
       const skillMdContent = await fs.readFile(skillMdPath, 'utf-8');
       const frontmatterMatch = skillMdContent.match(/^---\n([\s\S]*?)\n---/);
@@ -125,55 +157,91 @@ export async function POST(request: NextRequest) {
     const zipDestPath = path.join(DATA_DIR, 'skills', `${skillName}.zip`);
     await fs.writeFile(zipDestPath, buffer);
 
-    const existingSkills = await query<Skill[]>(
-      `SELECT ${skillColumns} FROM skills WHERE name = ?`,
-      [skillName]
-    );
+    const existingSkill = await prisma.skill.findUnique({
+      where: { name: skillName },
+    });
 
-    if (existingSkills.length > 0) {
-      await query(
-        `UPDATE skills SET description = ?, license = ?, compatibility = ?, 
-         metadata = ?, allowed_tools = ?, file_size = ?, file_hash = ?,
-         updated_at = NOW(), published_at = COALESCE(published_at, NOW()), status = 'active'
-         WHERE name = ?`,
-        [
-          skillMetadata.description || '',
-          skillMetadata.license || null,
-          skillMetadata.compatibility || null,
-          JSON.stringify(skillMetadata.metadata || {}),
-          JSON.stringify(skillMetadata.allowedTools || []),
-          fileSize,
-          fileHash,
-          skillName,
-        ]
-      );
+    let skill;
+    if (existingSkill) {
+      skill = await prisma.skill.update({
+        where: { name: skillName },
+        data: {
+          description: skillMetadata.description || '',
+          license: skillMetadata.license,
+          compatibility: skillMetadata.compatibility,
+          metadata: skillMetadata.metadata || {},
+          allowedTools: skillMetadata.allowedTools || [],
+          fileSize: fileSize,
+          fileHash: fileHash,
+          publishedAt: existingSkill.publishedAt || new Date(),
+          status: 'active',
+        },
+        select: {
+          id: true,
+          name: true,
+          description: true,
+          license: true,
+          compatibility: true,
+          metadata: true,
+          allowedTools: true,
+          fileSize: true,
+          fileHash: true,
+          publishedAt: true,
+          publishedBy: true,
+          updatedAt: true,
+          downloadCount: true,
+          status: true,
+        },
+      });
     } else {
       const id = uuidv4();
-      await query(
-        `INSERT INTO skills (id, name, description, license, compatibility, metadata, allowed_tools,
-         file_size, file_hash, published_at, published_by, status, download_count)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), ?, 'active', 0)`,
-        [
+      skill = await prisma.skill.create({
+        data: {
           id,
-          skillName,
-          skillMetadata.description || '',
-          skillMetadata.license || null,
-          skillMetadata.compatibility || null,
-          JSON.stringify(skillMetadata.metadata || {}),
-          JSON.stringify(skillMetadata.allowedTools || []),
-          fileSize,
-          fileHash,
-          user.id,
-        ]
-      );
+          name: skillName,
+          description: skillMetadata.description || '',
+          license: skillMetadata.license,
+          compatibility: skillMetadata.compatibility,
+          metadata: skillMetadata.metadata || {},
+          allowedTools: skillMetadata.allowedTools || [],
+          fileSize: fileSize,
+          fileHash: fileHash,
+          publishedAt: new Date(),
+          publishedBy: user.id,
+          status: 'active',
+          downloadCount: 0,
+        },
+        select: {
+          id: true,
+          name: true,
+          description: true,
+          license: true,
+          compatibility: true,
+          metadata: true,
+          allowedTools: true,
+          fileSize: true,
+          fileHash: true,
+          publishedAt: true,
+          publishedBy: true,
+          updatedAt: true,
+          downloadCount: true,
+          status: true,
+        },
+      });
     }
 
-    const skills = await query<Skill[]>(
-      `SELECT ${skillColumns} FROM skills WHERE name = ?`,
-      [skillName]
-    );
+    const skillFormatted = {
+      ...skill,
+      publishedAt: skill.publishedAt.toISOString(),
+      updatedAt: skill.updatedAt.toISOString(),
+      license: skill.license ?? undefined,
+      compatibility: skill.compatibility ?? undefined,
+      fileSize: Number(skill.fileSize),
+      metadata: skill.metadata as Record<string, string> | undefined,
+      allowedTools: skill.allowedTools as string[] | undefined,
+    };
 
-    return successResponse(skills[0], '上传成功');
+    return successResponse(skillFormatted, '上传成功');
   } catch (err) {
     console.error('Upload skill error:', err);
     return errorResponse('上传失败');

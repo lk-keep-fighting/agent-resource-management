@@ -1,8 +1,7 @@
 import { NextRequest } from 'next/server';
-import { query } from '@/lib/db';
+import prisma from '@/lib/db';
 import { authenticate } from '@/lib/auth';
 import { successResponse, errorResponse } from '@/lib/api-response';
-import type { Skill } from '@/lib/types';
 import path from 'path';
 import fs from 'fs/promises';
 
@@ -15,16 +14,17 @@ export async function GET(
   try {
     const { name } = await params;
 
-    const skills = await query<Skill[]>(
-      'SELECT id, name, description, license, compatibility, metadata, allowed_tools as allowedTools, file_size as fileSize, file_hash as fileHash, published_at as publishedAt, published_by as publishedBy, updated_at as updatedAt, download_count as downloadCount, status FROM skills WHERE name = ? AND status = ?',
-      [name, 'active']
-    );
+    const skill = await prisma.skill.findFirst({
+      where: {
+        name,
+        status: 'active',
+      },
+    });
 
-    if (skills.length === 0) {
+    if (!skill) {
       return errorResponse('Skill 不存在', 404);
     }
 
-    const skill = skills[0];
     const filePath = path.join(DATA_DIR, 'skills', `${name}.zip`);
 
     try {
@@ -33,10 +33,10 @@ export async function GET(
       return errorResponse('Skill 文件不存在', 404);
     }
 
-    await query(
-      'UPDATE skills SET download_count = download_count + 1 WHERE id = ?',
-      [skill.id]
-    );
+    await prisma.skill.update({
+      where: { id: skill.id },
+      data: { downloadCount: { increment: 1 } },
+    });
 
     const fileBuffer = await fs.readFile(filePath);
     const fileHash = Buffer.from(await crypto.subtle.digest('SHA-256', fileBuffer)).toString('hex');

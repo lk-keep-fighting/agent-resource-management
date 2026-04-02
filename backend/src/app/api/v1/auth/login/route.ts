@@ -1,8 +1,8 @@
 import { NextRequest } from 'next/server';
-import { query } from '@/lib/db';
+import prisma from '@/lib/db';
 import { hashApiKey } from '@/lib/auth';
 import { successResponse, errorResponse } from '@/lib/api-response';
-import type { User, LoginResponse } from '@/lib/types';
+import type { LoginResponse } from '@/lib/types';
 
 export async function POST(request: NextRequest) {
   try {
@@ -14,18 +14,28 @@ export async function POST(request: NextRequest) {
     }
 
     const apiKeyHash = hashApiKey(apiKey);
-    const users = await query<User[]>(
-      'SELECT id, name, email, api_key_hash as apiKey, created_at as createdAt FROM users WHERE api_key_hash = ?',
-      [apiKeyHash]
-    );
+    const user = await prisma.user.findUnique({
+      where: { apiKeyHash },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        createdAt: true,
+      },
+    });
 
-    if (users.length === 0) {
+    if (!user) {
       return errorResponse('无效的 API Key', 401);
     }
 
-    const user = users[0];
     const response: LoginResponse = {
-      user,
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        apiKey: apiKeyHash,
+        createdAt: user.createdAt.toISOString(),
+      },
       token: apiKey,
     };
 

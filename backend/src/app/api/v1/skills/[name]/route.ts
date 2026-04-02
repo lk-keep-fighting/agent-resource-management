@@ -1,8 +1,7 @@
 import { NextRequest } from 'next/server';
 import { authenticate } from '@/lib/auth';
 import { successResponse, errorResponse } from '@/lib/api-response';
-import { query } from '@/lib/db';
-import type { Skill } from '@/lib/types';
+import prisma from '@/lib/db';
 
 export async function GET(
   request: NextRequest,
@@ -11,36 +10,52 @@ export async function GET(
   try {
     const { name } = await params;
 
-    const skills = await query<any[]>(
-      `SELECT s.id, s.name, s.description, s.license, s.compatibility, s.metadata, 
-       s.allowed_tools as allowedTools, s.file_size as fileSize, s.file_hash as fileHash, 
-       s.published_at as publishedAt, s.published_by as publishedBy, s.updated_at as updatedAt, 
-       s.download_count as downloadCount, s.status,
-       u.id as publisherId, u.name as publisherName
-       FROM skills s
-       LEFT JOIN users u ON s.published_by = u.id
-       WHERE s.name = ? AND s.status = ?`,
-      [name, 'active']
-    );
+    const skill = await prisma.skill.findFirst({
+      where: {
+        name,
+        status: 'active',
+      },
+      select: {
+        id: true,
+        name: true,
+        description: true,
+        license: true,
+        compatibility: true,
+        metadata: true,
+        allowedTools: true,
+        fileSize: true,
+        fileHash: true,
+        publishedAt: true,
+        publishedBy: true,
+        updatedAt: true,
+        downloadCount: true,
+        status: true,
+        publisher: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+      },
+    });
 
-    if (skills.length === 0) {
+    if (!skill) {
       return errorResponse('Skill 不存在', 404);
     }
 
-    const skill = skills[0];
     const response = {
       id: skill.id,
       name: skill.name,
       description: skill.description,
-      license: skill.license,
-      compatibility: skill.compatibility,
-      metadata: skill.metadata,
-      allowedTools: skill.allowedTools,
-      fileSize: skill.fileSize,
+      license: skill.license ?? undefined,
+      compatibility: skill.compatibility ?? undefined,
+      metadata: skill.metadata as Record<string, string> | undefined,
+      allowedTools: skill.allowedTools as string[] | undefined,
+      fileSize: Number(skill.fileSize),
       fileHash: skill.fileHash,
-      publishedAt: skill.publishedAt,
-      publishedBy: { id: skill.publisherId, name: skill.publisherName },
-      updatedAt: skill.updatedAt,
+      publishedAt: skill.publishedAt.toISOString(),
+      publishedBy: { id: skill.publisher.id, name: skill.publisher.name },
+      updatedAt: skill.updatedAt.toISOString(),
       downloadCount: skill.downloadCount,
       status: skill.status,
     };
@@ -64,24 +79,25 @@ export async function DELETE(
 
     const { name } = await params;
 
-    const skills = await query<Skill[]>(
-      'SELECT id, name, description, license, compatibility, metadata, allowed_tools, file_size as fileSize, file_hash as fileHash, published_at as publishedAt, published_by as publishedBy, updated_at as updatedAt, download_count as downloadCount, status FROM skills WHERE name = ? AND status = ?',
-      [name, 'active']
-    );
+    const skill = await prisma.skill.findFirst({
+      where: {
+        name,
+        status: 'active',
+      },
+    });
 
-    if (skills.length === 0) {
+    if (!skill) {
       return errorResponse('Skill 不存在', 404);
     }
 
-    const skill = skills[0];
     if (skill.publishedBy !== user.id) {
       return errorResponse('无权限删除此 Skill', 403);
     }
 
-    await query(
-      'UPDATE skills SET status = ? WHERE id = ?',
-      ['deleted', skill.id]
-    );
+    await prisma.skill.update({
+      where: { id: skill.id },
+      data: { status: 'deleted' },
+    });
 
     return successResponse(null, '删除成功');
   } catch (err) {

@@ -1,16 +1,14 @@
-import mysql from 'mysql2/promise';
+import 'dotenv/config';
 import crypto from 'crypto';
 import { v4 as uuidv4 } from 'uuid';
+import { PrismaClient } from '@prisma/client';
 
-const pool = mysql.createPool({
-  host: 'localhost',
-  port: 3306,
-  user: 'root',
-  password: '12#$qwER',
-  database: 'agent_skill_system',
-  waitForConnections: true,
-  connectionLimit: 10,
-  queueLimit: 0,
+const prisma = new PrismaClient({
+  datasources: {
+    db: {
+      url: `mysql://${process.env.DB_USER || 'root'}:${(process.env.DB_PASSWORD || '').replace('#', '%23').replace('$', '%24')}@${process.env.DB_HOST || 'localhost'}:${process.env.DB_PORT || 3306}/${process.env.DB_NAME || 'agent_skill_system'}`,
+    },
+  },
 });
 
 function hashApiKey(apiKey: string): string {
@@ -22,24 +20,23 @@ async function createUser(name: string, email: string) {
   const apiKeyHash = hashApiKey(apiKey);
   const id = uuidv4();
 
-  const connection = await pool.getConnection();
-  try {
-    await connection.execute(
-      'INSERT INTO users (id, name, email, api_key_hash, created_at) VALUES (?, ?, ?, ?, NOW())',
-      [id, name, email, apiKeyHash]
-    );
-    console.log('User created successfully!');
-    console.log('---');
-    console.log(`ID: ${id}`);
-    console.log(`Name: ${name}`);
-    console.log(`Email: ${email}`);
-    console.log(`API Key: ${apiKey}`);
-    console.log('---');
-    console.log('保存好 API Key，它不会再次显示！');
-  } finally {
-    connection.release();
-  }
-  await pool.end();
+  await prisma.user.create({
+    data: {
+      id,
+      name,
+      email,
+      apiKeyHash,
+    },
+  });
+
+  console.log('User created successfully!');
+  console.log('---');
+  console.log(`ID: ${id}`);
+  console.log(`Name: ${name}`);
+  console.log(`Email: ${email}`);
+  console.log(`API Key: ${apiKey}`);
+  console.log('---');
+  console.log('保存好 API Key，它不会再次显示！');
 }
 
 createUser('admin', 'admin@example.com');
