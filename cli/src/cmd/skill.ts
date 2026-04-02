@@ -108,7 +108,8 @@ export async function uploadSkill(filePath: string): Promise<void> {
     process.exit(1);
   }
 
-  const validation = validateSkillDir(filePath);
+  const isZip = filePath.toLowerCase().endsWith('.zip');
+  const validation = isZip ? validateZip(filePath) : validateSkillDir(filePath);
   if (!validation.valid) {
     error(`上传失败: ${validation.errors.join(', ')}`);
     process.exit(1);
@@ -119,13 +120,18 @@ export async function uploadSkill(filePath: string): Promise<void> {
   const zipPath = join(tempDir, `${skillName}.zip`);
 
   try {
-    execSync(`cd "${dirname(filePath)}" && zip -r "${zipPath}" "${basename(filePath)}" -x ".*"`, { stdio: 'pipe' });
+    if (isZip) {
+      execSync(`cp "${filePath}" "${zipPath}"`, { stdio: 'pipe' });
+    } else {
+      execSync(`cd "${dirname(filePath)}" && zip -r "${zipPath}" "${basename(filePath)}" -x ".*"`, { stdio: 'pipe' });
+    }
 
     const client = new ApiClient(config.serverUrl, config.token);
     info(`正在上传 ${filePath}...`);
     const skill = await client.uploadSkill(zipPath);
     success(`上传成功! Skill: ${skill.name}`);
   } catch (err) {
+    console.error('DEBUG upload error:', err);
     error(`上传失败: ${err instanceof Error ? err.message : '未知错误'}`);
     process.exit(1);
   } finally {

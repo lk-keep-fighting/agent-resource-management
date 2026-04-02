@@ -1,5 +1,5 @@
 const API_BASE = 'http://localhost:3000/api/v1';
-const ADMIN_API_KEY = '4567c9e607564e91b3898c46d89cb68dc4e40ec4a52b456699b695cf800fd446';
+const ADMIN_API_KEY = 'admin-api-key-1775132551672';
 
 let passed = 0;
 let failed = 0;

@@ -6,6 +6,8 @@ import type { Skill } from '@/lib/types';
 import path from 'path';
 import fs from 'fs/promises';
 
+const DATA_DIR = process.env.DATA_DIR || path.join(process.cwd(), 'data');
+
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ name: string }> }
@@ -23,7 +25,7 @@ export async function GET(
     }
 
     const skill = skills[0];
-    const filePath = path.join(process.cwd(), 'data', 'skills', `${name}.zip`);
+    const filePath = path.join(DATA_DIR, 'skills', `${name}.zip`);
 
     try {
       await fs.access(filePath);

@@ -10,6 +10,8 @@ import type { Skill, SkillListResponse } from '@/lib/types';
 
 const skillColumns = 'id, name, description, license, compatibility, metadata, allowed_tools as allowedTools, file_size as fileSize, file_hash as fileHash, published_at as publishedAt, published_by as publishedBy, updated_at as updatedAt, download_count as downloadCount, status';
 
+const DATA_DIR = process.env.DATA_DIR || path.join(process.cwd(), 'data');
+
 function hashFile(buffer: Buffer): string {
   return crypto.createHash('sha256').update(buffer).digest('hex');
 }
@@ -74,7 +76,7 @@ export async function POST(request: NextRequest) {
     const fileHash = hashFile(buffer);
     const fileSize = buffer.length;
 
-    const tempDir = path.join(process.cwd(), 'data', 'temp');
+    const tempDir = path.join(DATA_DIR, 'temp');
     await fs.mkdir(tempDir, { recursive: true });
     const tempFilePath = path.join(tempDir, `${uuidv4()}.zip`);
     await fs.writeFile(tempFilePath, buffer);
@@ -113,14 +115,14 @@ export async function POST(request: NextRequest) {
     }
 
     const skillName = skillMetadata.name || file.name.replace('.zip', '');
-    const destDir = path.join(process.cwd(), 'data', 'skills', skillName);
+    const destDir = path.join(DATA_DIR, 'skills', skillName);
     await fs.mkdir(destDir, { recursive: true });
     await fs.cp(skillDir, destDir, { recursive: true });
 
     await fs.rm(extractDir, { recursive: true, force: true });
     await fs.rm(tempFilePath);
 
-    const zipDestPath = path.join(process.cwd(), 'data', 'skills', `${skillName}.zip`);
+    const zipDestPath = path.join(DATA_DIR, 'skills', `${skillName}.zip`);
     await fs.writeFile(zipDestPath, buffer);
 
     const existingSkills = await query<Skill[]>(
