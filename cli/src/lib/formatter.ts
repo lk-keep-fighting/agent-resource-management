@@ -55,3 +55,73 @@ export function error(msg: string): void {
 export function info(msg: string): void {
   console.log(`\x1b[34mℹ ${msg}\x1b[0m`);
 }
+
+export function formatAgent(agent: {
+  name: string;
+  version: string;
+  description: string;
+  status: string;
+  skillsCount?: number;
+  knowledgesCount?: number;
+}): string {
+  const lines = [
+    `\x1b[1m${agent.name}\x1b[0m`,
+    `  ${agent.description}`,
+    `  版本: ${agent.version} | 状态: ${agent.status}${agent.skillsCount !== undefined ? ` | Skills: ${agent.skillsCount}` : ''}${agent.knowledgesCount !== undefined ? ` | Knowledges: ${agent.knowledgesCount}` : ''}`,
+  ];
+  return lines.join('\n');
+}
+
+export function formatAgentDetail(agent: {
+  name: string;
+  version: string;
+  description: string;
+  status: string;
+  prompt: string;
+  createdAt: string;
+  updatedAt: string;
+  skills?: Array<{
+    skill: { name: string };
+    config?: Record<string, unknown>;
+  }>;
+  knowledges?: Array<{
+    knowledgeId: string;
+    retrievalConfig?: { topK?: number; similarityThreshold?: number };
+  }>;
+}): string {
+  const lines = [
+    `\x1b[1m${agent.name}\x1b[0m`,
+    '',
+    `版本: ${agent.version}`,
+    `描述: ${agent.description}`,
+    `状态: ${agent.status}`,
+    `创建时间: ${agent.createdAt}`,
+    `更新时间: ${agent.updatedAt}`,
+  ];
+
+  if (agent.skills && agent.skills.length > 0) {
+    lines.push('');
+    lines.push('Skills:');
+    for (const s of agent.skills) {
+      lines.push(`  - ${s.skill.name}${s.config ? ` (config: ${JSON.stringify(s.config)})` : ''}`);
+    }
+  }
+
+  if (agent.knowledges && agent.knowledges.length > 0) {
+    lines.push('');
+    lines.push('Knowledges:');
+    for (const k of agent.knowledges) {
+      lines.push(`  - ${k.knowledgeId}${k.retrievalConfig ? ` (topK: ${k.retrievalConfig.topK})` : ''}`);
+    }
+  }
+
+  if (agent.prompt) {
+    lines.push('');
+    lines.push('System Prompt:');
+    lines.push('---');
+    lines.push(agent.prompt);
+    lines.push('---');
+  }
+
+  return lines.join('\n');
+}

@@ -83,6 +83,7 @@ model Agent {
   description String   @db.VarChar(512)
   prompt      String   @db.Text
   avatar      String?
+  version     String   @default("1.0.0") @map("version")
   status      AgentStatus @default(active)
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
@@ -94,6 +95,7 @@ model Agent {
 
   @@index([name], name: "idx_agent_name")
   @@index([createdBy], name: "idx_agent_created_by")
+  @@index([version], name: "idx_agent_version")
   @@map("agents")
 }
 

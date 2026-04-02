@@ -1,5 +1,6 @@
 import { login, logout, getCurrentUser } from './cmd/auth';
 import { listSkills, searchSkills, infoSkill, downloadSkill, uploadSkill, mySkills, deleteSkill, validateSkill } from './cmd/skill';
+import { listAgents, searchAgents, infoAgent, downloadAgent } from './cmd/agent';
 import { showServer, setServer } from './cmd/server';
 
 const args = process.argv.slice(2);
@@ -101,6 +102,43 @@ async function main() {
       await getCurrentUser();
       break;
 
+    case 'agent':
+      switch (subCommand) {
+        case 'ls':
+          await listAgents();
+          break;
+        case 'search':
+          if (!args[2]) {
+            console.error('用法: adk agent search <keyword>');
+            process.exit(1);
+          }
+          await searchAgents(args[2]);
+          break;
+        case 'info':
+          if (!args[2]) {
+            console.error('用法: adk agent info <name>');
+            process.exit(1);
+          }
+          await infoAgent(args[2]);
+          break;
+        case 'download':
+          if (!args[2]) {
+            console.error('用法: adk agent download <name> [output-dir]');
+            process.exit(1);
+          }
+          await downloadAgent(args[2], args[3]);
+          break;
+        default:
+          console.log(`
+可用命令:
+  adk agent ls                        列出所有 Agent
+  adk agent search <keyword>          搜索 Agent
+  adk agent info <name>               查看 Agent 详情
+  adk agent download <name> [dir]     下载 Agent
+`);
+      }
+      break;
+
     default:
       console.log(`
 Agent Skill CLI (adk)
@@ -115,6 +153,10 @@ Agent Skill CLI (adk)
   adk skill upload <path>             上传 Skill
   adk skill my                        我的发布
   adk skill delete <name>             删除 Skill
+  adk agent ls                        列出所有 Agent
+  adk agent search <keyword>          搜索 Agent
+  adk agent info <name>               查看 Agent 详情
+  adk agent download <name> [dir]     下载 Agent
   adk server                          显示当前服务端
   adk server set <url>                设置服务端
 `);

@@ -1,4 +1,4 @@
-import type { User, Skill, SkillListResponse, ApiResponse, LoginResponse } from '@pkg/types/skill';
+import type { User, Skill, SkillListResponse, ApiResponse, LoginResponse, Agent, AgentListResponse } from '@pkg/types/skill';
 
 export class ApiClient {
   private token: string | null = null;
@@ -141,5 +141,49 @@ export class ApiClient {
     }
 
     return res.arrayBuffer();
+  }
+
+  async listAgents(keyword?: string, page = 1, pageSize = 20): Promise<AgentListResponse> {
+    let path = `/agents?page=${page}&pageSize=${pageSize}`;
+    if (keyword) {
+      path += `&keyword=${encodeURIComponent(keyword)}`;
+    }
+    const res = await this.request<AgentListResponse>(path);
+    if (!res.ok) {
+      throw new Error(res.msg);
+    }
+    return res.data;
+  }
+
+  async getAgent(id: string): Promise<Agent> {
+    const res = await this.request<Agent>(`/agents/${id}`);
+    if (!res.ok) {
+      throw new Error(res.msg);
+    }
+    return res.data;
+  }
+
+  async downloadAgent(id: string): Promise<{ buffer: ArrayBuffer; version: string }> {
+    const headers: Record<string, string> = {};
+    if (this.token) {
+      headers['Authorization'] = `Bearer ${this.token}`;
+    }
+
+    const res = await fetch(`${this.serverUrl}/api/v1/agents/${id}/download`, {
+      headers,
+    });
+
+    if (!res.ok) {
+      if (res.status === 404) {
+        throw new Error('Agent 不存在');
+      }
+      throw new Error('下载失败');
+    }
+
+    const version = res.headers.get('X-Version') || 'unknown';
+    return {
+      buffer: await res.arrayBuffer(),
+      version,
+    };
   }
 }

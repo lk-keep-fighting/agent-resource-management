@@ -78,7 +78,7 @@ export async function fetchKnowledgeById(id: string): Promise<Knowledge | null> 
     throw new Error('MARKET_SERVICE_URL is not configured');
   }
 
-  const params = new URLSearchParams({ api_key: MARKET_API_KEY, search: id, limit: '1' });
+  const params = new URLSearchParams({ api_key: MARKET_API_KEY, id });
 
   const response = await fetch(`${MARKET_SERVICE_URL}/api/market/knowledge?${params.toString()}`, {
     headers: {
@@ -92,7 +92,16 @@ export async function fetchKnowledgeById(id: string): Promise<Knowledge | null> 
   }
 
   const data = await response.json();
-  const knowledges = Array.isArray(data) ? data : data.knowledge || data.documents || [];
-
-  return knowledges.find((k: any) => k.id === id || k.name === id || k.title === id) || null;
+  if (data.knowledge) {
+    return {
+      id: data.knowledge.id,
+      name: data.knowledge.name || data.knowledge.title || '未知知识',
+      title: data.knowledge.title,
+      description: data.knowledge.description || '',
+      content: data.knowledge.content,
+      createdAt: data.knowledge.createdAt,
+      updatedAt: data.knowledge.updatedAt,
+    };
+  }
+  return null;
 }

@@ -61,6 +61,7 @@ export interface Agent {
   description: string;
   prompt: string;
   avatar?: string;
+  version: string;
   status: 'active' | 'draft';
   createdAt: string;
   updatedAt: string;

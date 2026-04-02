@@ -31,6 +31,7 @@ export async function GET(
       description: agent.description,
       prompt: agent.prompt,
       avatar: agent.avatar ?? undefined,
+      version: agent.version,
       status: agent.status,
       createdAt: agent.createdAt.toISOString(),
       updatedAt: agent.updatedAt.toISOString(),
