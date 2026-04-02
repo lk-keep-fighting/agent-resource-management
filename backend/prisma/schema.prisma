@@ -15,6 +15,7 @@ model User {
   createdAt  DateTime @default(now()) @map("created_at")
 
   skills Skill[]
+  agents Agent[]
 
   @@index([email], name: "idx_email")
   @@index([apiKeyHash], name: "idx_api_key_hash")
@@ -40,6 +41,7 @@ model Skill {
 
   publisher User @relation(fields: [publishedBy], references: [id], onDelete: Cascade)
   skillTags SkillTag[]
+  agentSkills AgentSkill[]
 
   @@index([name], name: "idx_name")
   @@index([status], name: "idx_status")
@@ -73,4 +75,53 @@ enum SkillStatus {
   active
   draft
   deleted
+}
+
+model Agent {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  description String   @db.VarChar(512)
+  prompt      String   @db.Text
+  avatar      String?
+  status      AgentStatus @default(active)
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  createdBy   String   @map("created_by")
+
+  creator         User            @relation(fields: [createdBy], references: [id], onDelete: Cascade)
+  agentSkills    AgentSkill[]
+  agentKnowledges AgentKnowledge[]
+
+  @@index([name], name: "idx_agent_name")
+  @@index([createdBy], name: "idx_agent_created_by")
+  @@map("agents")
+}
+
+enum AgentStatus {
+  active
+  draft
+}
+
+model AgentSkill {
+  agentId   String
+  skillId   String
+  config    Json?
+
+  agent Agent @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  skill Skill @relation(fields: [skillId], references: [id], onDelete: Cascade)
+
+  @@id([agentId, skillId])
+  @@map("agent_skills")
+}
+
+model AgentKnowledge {
+  agentId         String
+  knowledgeId     String   @map("knowledge_id")
+  retrievalConfig Json?    @map("retrieval_config")
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  agent Agent @relation(fields: [agentId], references: [id], onDelete: Cascade)
+
+  @@id([agentId, knowledgeId])
+  @@map("agent_knowledges")
 }

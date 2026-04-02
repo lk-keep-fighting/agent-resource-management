@@ -1,11 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
-import { Package, User, Settings, LogOut } from "lucide-react";
+import { Package, User, Settings, LogOut, Bot } from "lucide-react";
 
 const navItems = [
+  { href: "/agents", label: "Agent 管理", icon: Bot },
   { href: "/skills", label: "Skill 市场", icon: Package },
   { href: "/my-skills", label: "我的发布", icon: User },
   { href: "/settings", label: "设置", icon: Settings },
@@ -17,12 +19,33 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
+  const router = useRouter();
+  const [isChecking, setIsChecking] = useState(true);
+
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    console.log("Dashboard - Token from localStorage:", token);
+    if (!token) {
+      console.log("No token, redirecting to login");
+      router.push("/login");
+    } else {
+      setIsChecking(false);
+    }
+  }, [router]);
 
   const handleLogout = () => {
     localStorage.removeItem("token");
     localStorage.removeItem("user");
-    window.location.href = "/login";
+    router.push("/login");
   };
+
+  if (isChecking) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <p>检查登录状态...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex">
