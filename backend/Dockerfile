@@ -1,11 +1,13 @@
 FROM node:20-alpine AS base
 
 FROM base AS deps
+RUN npm install -g pnpm
 WORKDIR /app
 COPY backend/package.json backend/pnpm-lock.yaml* ./
-RUN npm install -g pnpm && pnpm install --frozen-lockfile
+RUN pnpm install --frozen-lockfile
 
 FROM base AS builder
+RUN npm install -g pnpm
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY backend/ ./
