@@ -25,6 +25,7 @@ export async function GET(
         allowedTools: true,
         fileSize: true,
         fileHash: true,
+        content: true,
         publishedAt: true,
         publishedBy: true,
         updatedAt: true,
@@ -35,6 +36,9 @@ export async function GET(
             id: true,
             name: true,
           },
+        },
+        skillTags: {
+          include: { tag: true },
         },
       },
     });
@@ -53,11 +57,13 @@ export async function GET(
       allowedTools: skill.allowedTools as string[] | undefined,
       fileSize: Number(skill.fileSize),
       fileHash: skill.fileHash,
+      content: skill.content ?? null,
       publishedAt: skill.publishedAt.toISOString(),
       publishedBy: { id: skill.publisher.id, name: skill.publisher.name },
       updatedAt: skill.updatedAt.toISOString(),
       downloadCount: skill.downloadCount,
       status: skill.status,
+      tags: skill.skillTags.map((st) => st.tag.name),
     };
 
     return successResponse(response, '获取成功');

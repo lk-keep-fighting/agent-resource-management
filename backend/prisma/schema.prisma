@@ -24,13 +24,14 @@ model User {
 model Skill {
   id            String   @id
   name          String   @unique
-  description   String
+  description   String   @db.VarChar(1024)
   license       String?
   compatibility String?
   metadata      Json?
   allowedTools  Json?    @map("allowed_tools")
   fileSize      BigInt   @map("file_size")
   fileHash      String   @map("file_hash")
+  content       String?  @db.Text
   publishedAt   DateTime @map("published_at")
   publishedBy   String   @map("published_by")
   updatedAt     DateTime @updatedAt @map("updated_at")
@@ -38,12 +39,34 @@ model Skill {
   status        SkillStatus @default(active)
 
   publisher User @relation(fields: [publishedBy], references: [id], onDelete: Cascade)
+  skillTags SkillTag[]
 
   @@index([name], name: "idx_name")
   @@index([status], name: "idx_status")
   @@index([publishedBy], name: "idx_published_by")
   @@index([publishedAt], name: "idx_published_at")
   @@map("skills")
+}
+
+model Tag {
+  id        String   @id @default(uuid())
+  name      String   @unique
+  createdAt DateTime @default(now())
+
+  skillTags SkillTag[]
+
+  @@map("tags")
+}
+
+model SkillTag {
+  skillId String
+  tagId   String
+
+  skill Skill @relation(fields: [skillId], references: [id], onDelete: Cascade)
+  tag   Tag   @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([skillId, tagId])
+  @@map("skill_tags")
 }
 
 enum SkillStatus {

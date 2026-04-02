@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Download, ArrowLeft } from "lucide-react";
 import Link from "next/link";
+import ReactMarkdown from "react-markdown";
 
 interface Skill {
   id: string;
@@ -18,6 +19,8 @@ interface Skill {
   fileSize: number;
   downloadCount: number;
   publishedAt: string;
+  content: string | null;
+  tags: string[];
 }
 
 export default function SkillDetailPage() {
@@ -128,12 +131,41 @@ export default function SkillDetailPage() {
             </div>
           )}
 
+          {skill.tags && skill.tags.length > 0 && (
+            <div>
+              <span className="text-sm text-gray-500">标签:</span>
+              <div className="flex flex-wrap gap-2 mt-2">
+                {skill.tags.map((tag) => (
+                  <span
+                    key={tag}
+                    className="px-2 py-1 bg-blue-50 text-blue-600 rounded-full text-xs"
+                  >
+                    {tag}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
           <Button className="w-full" onClick={handleDownload}>
             <Download className="h-4 w-4 mr-2" />
             下载 Skill
           </Button>
         </CardContent>
       </Card>
+
+      {skill.content && (
+        <Card>
+          <CardHeader>
+            <CardTitle>能力说明</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="prose prose-sm max-w-none">
+              <ReactMarkdown>{skill.content}</ReactMarkdown>
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }
