@@ -9,6 +9,8 @@ import fs from 'fs/promises';
 import crypto from 'crypto';
 import type { SkillListResponse } from '@/lib/types';
 
+export const dynamic = 'force-dynamic';
+
 const DATA_DIR = process.env.DATA_DIR || path.join(process.cwd(), 'data');
 
 function hashFile(buffer: Buffer): string {

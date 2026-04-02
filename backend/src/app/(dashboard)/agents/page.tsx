@@ -40,6 +40,8 @@ interface Agent {
   createdBy: string;
   skills?: AgentSkill[];
   knowledges?: AgentKnowledge[];
+  skillsCount?: number;
+  knowledgesCount?: number;
 }
 
 interface Skill {
@@ -220,7 +222,16 @@ export default function AgentsPage() {
         status: detail.status,
       });
       setBoundSkills(detail.skills || []);
-      setBoundKnowledges(detail.knowledges || []);
+      
+      const enrichedKnowledges = (detail.knowledges || []).map((ak: AgentKnowledge) => {
+        const knowledgeInfo = knowledges.find(k => k.id === ak.knowledgeId);
+        return {
+          ...ak,
+          name: knowledgeInfo?.name || ak.knowledgeId,
+          description: knowledgeInfo?.description,
+        };
+      });
+      setBoundKnowledges(enrichedKnowledges);
       setIsEditing(false);
       setIsCreating(false);
     }
@@ -495,8 +506,18 @@ export default function AgentsPage() {
                         {agent.status === "active" ? "启用" : "停用"}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-center text-sm text-gray-500">-</td>
-                    <td className="px-4 py-3 text-center text-sm text-gray-500">-</td>
+                    <td className="px-4 py-3 text-center">
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-50 text-blue-600 text-xs rounded-full">
+                          <Wrench className="h-3 w-3" />
+                          {agent.skillsCount || 0}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-green-50 text-green-600 text-xs rounded-full">
+                          <BookOpen className="h-3 w-3" />
+                          {agent.knowledgesCount || 0}
+                        </span>
+                      </td>
                   </tr>
                 ))
               )}

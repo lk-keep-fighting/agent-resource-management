@@ -65,6 +65,20 @@ export interface Agent {
   createdAt: string;
   updatedAt: string;
   createdBy: string;
+  skillsCount?: number;
+  knowledgesCount?: number;
+  skills?: Array<{
+    skillId: string;
+    skill: Skill;
+    config?: Record<string, unknown>;
+  }>;
+  knowledges?: Array<{
+    knowledgeId: string;
+    retrievalConfig?: {
+      topK?: number;
+      similarityThreshold?: number;
+    };
+  }>;
 }
 
 export interface AgentSkill {

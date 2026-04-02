@@ -5,6 +5,8 @@ import prisma from '@/lib/db';
 import { Prisma } from '@prisma/client';
 import type { AgentListResponse, CreateAgentRequest } from '@/lib/types';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
@@ -30,6 +32,10 @@ export async function GET(request: NextRequest) {
         skip: offset,
         take: pageSize,
         orderBy: { createdAt: 'desc' },
+        include: {
+          agentSkills: true,
+          agentKnowledges: true,
+        },
       }),
       prisma.agent.count({ where }),
     ]);
@@ -45,6 +51,8 @@ export async function GET(request: NextRequest) {
         createdAt: agent.createdAt.toISOString(),
         updatedAt: agent.updatedAt.toISOString(),
         createdBy: agent.createdBy,
+        skillsCount: agent.agentSkills.length,
+        knowledgesCount: agent.agentKnowledges.length,
       })),
       total,
       page: pageNum,

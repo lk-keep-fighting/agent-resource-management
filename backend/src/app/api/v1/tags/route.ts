@@ -1,6 +1,8 @@
 import { successResponse } from '@/lib/api-response';
 import prisma from '@/lib/db';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET() {
   try {
     const tags = await prisma.tag.findMany({

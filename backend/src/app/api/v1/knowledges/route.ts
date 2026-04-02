@@ -3,6 +3,8 @@ import { successResponse } from '@/lib/api-response';
 import { fetchKnowledges } from '@/lib/knowledge';
 import type { KnowledgeListResponse } from '@/lib/types';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
