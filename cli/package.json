@@ -1,7 +1,6 @@
 {
   "name": "agent-development-kit",
   "version": "1.0.0",
-  "private": true,
   "type": "module",
   "bin": {
     "adk": "./dist/main.js"
