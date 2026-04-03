@@ -51,7 +51,7 @@ cd docs/tests
 - [x] 登录后可正常操作
 - [x] `adk agent download` 下载
 - [x] 文件夹结构正确
-- [x] AGENTS.md 包含必要字段
+- [x] AGENT.MD 包含必要字段
 - [x] 无效Agent显示错误
 
 ## 调试

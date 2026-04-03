@@ -131,11 +131,11 @@ if [ -n "$AGENT_ID" ]; then
     fail
   fi
   
-  if [ -f "$TEST_DIR/$AGENT_NAME/AGENTS.md" ]; then
-    echo "✓ PASS: AGENTS.md exists"
+  if [ -f "$TEST_DIR/$AGENT_NAME/AGENT.MD" ]; then
+    echo "✓ PASS: AGENT.MD exists"
     pass
   else
-    echo "✗ FAIL: AGENTS.md not found"
+    echo "✗ FAIL: AGENT.MD not found"
     fail
   fi
   
@@ -156,28 +156,28 @@ if [ -n "$AGENT_ID" ]; then
   fi
   
   echo ""
-  echo "--- Test 8: AGENTS.md content check ---"
-  if grep -q "name: $AGENT_NAME" "$TEST_DIR/$AGENT_NAME/AGENTS.md"; then
-    echo "✓ PASS: AGENTS.md contains correct name"
+  echo "--- Test 8: AGENT.MD content check ---"
+  if grep -q "name: $AGENT_NAME" "$TEST_DIR/$AGENT_NAME/AGENT.MD"; then
+    echo "✓ PASS: AGENT.MD contains correct name"
     pass
   else
-    echo "✗ FAIL: AGENTS.md missing correct name"
+    echo "✗ FAIL: AGENT.MD missing correct name"
     fail
   fi
   
-  if grep -q "version:" "$TEST_DIR/$AGENT_NAME/AGENTS.md"; then
-    echo "✓ PASS: AGENTS.md contains version"
+  if grep -q "version:" "$TEST_DIR/$AGENT_NAME/AGENT.MD"; then
+    echo "✓ PASS: AGENT.MD contains version"
     pass
   else
-    echo "✗ FAIL: AGENTS.md missing version"
+    echo "✗ FAIL: AGENT.MD missing version"
     fail
   fi
   
-  if grep -q "System Prompt" "$TEST_DIR/$AGENT_NAME/AGENTS.md"; then
-    echo "✓ PASS: AGENTS.md contains System Prompt"
+  if grep -q "System Prompt" "$TEST_DIR/$AGENT_NAME/AGENT.MD"; then
+    echo "✓ PASS: AGENT.MD contains System Prompt"
     pass
   else
-    echo "✗ FAIL: AGENTS.md missing System Prompt"
+    echo "✗ FAIL: AGENT.MD missing System Prompt"
     fail
   fi
   
