@@ -124,7 +124,7 @@ ${knowledgesInfo.map(k => `  - ${k.filename}`).join('\n')}
 ${agent.prompt}
 `;
 
-    await fs.writeFile(path.join(extractDir, 'AGENTS.md'), agentsMdContent, 'utf-8');
+    await fs.writeFile(path.join(extractDir, 'AGENT.md'), agentsMdContent, 'utf-8');
 
     const zipFileName = `agent-${Date.now()}.zip`;
     const zipPath = path.join(tempDir, zipFileName);
