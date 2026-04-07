@@ -152,5 +152,5 @@ export function createAdminRoute<T>(
 
 export function parseTokenFromCallback(request: NextRequest): string | null {
   const { searchParams } = new URL(request.url)
-  return searchParams.get('sso_token')
+  return searchParams.get('sso_token') || searchParams.get('token') || request.cookies.get('auth_token')?.value || null
 }

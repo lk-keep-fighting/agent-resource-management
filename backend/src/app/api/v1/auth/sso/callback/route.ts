@@ -57,18 +57,25 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    const response: LoginResponse = {
+    const response = successResponse({
       user: {
         id: localUser.id,
         name: localUser.name,
         email: localUser.email,
-        apiKey: localUser.ssoUserId || '',
+        ssoUserId: localUser.ssoUserId,
         createdAt: localUser.createdAt.toISOString(),
       },
-      token,
-    };
+    }, '登录成功');
 
-    return successResponse(response, '登录成功');
+    response.cookies.set('auth_token', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 60 * 60 * 24 * 7,
+      path: '/',
+    });
+
+    return response;
   } catch (err) {
     console.error('SSO callback error:', err);
     return errorResponse('登录失败', 500);

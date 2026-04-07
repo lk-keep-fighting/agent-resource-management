@@ -15,9 +15,8 @@ export interface SSOUser {
 export function createSSOClient(ssoUrl: string) {
   async function getSession(): Promise<SSOUser | null> {
     try {
-      const response = await fetch(`${ssoUrl}/api/auth/session`, {
-        credentials: 'include',
-      })
+      const response = await fetch('/api/auth/session')
+      if (!response.ok) return null
       const data = await response.json()
       return data.user
     } catch {
@@ -27,7 +26,7 @@ export function createSSOClient(ssoUrl: string) {
 
   async function getUserInfo(token: string): Promise<{ valid: boolean; user: SSOUser | null }> {
     try {
-      const response = await fetch(`${ssoUrl}/api/auth/userinfo`, {
+      const response = await fetch('/api/auth/userinfo', {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -43,9 +42,8 @@ export function createSSOClient(ssoUrl: string) {
   }
 
   async function logout(): Promise<void> {
-    await fetch(`${ssoUrl}/api/auth/logout`, {
+    await fetch('/api/auth/logout', {
       method: 'POST',
-      credentials: 'include',
     })
   }
 
