@@ -8,17 +8,22 @@ datasource db {
 }
 
 model User {
-  id         String   @id
-  name       String
-  email      String   @unique
-  apiKeyHash String   @unique @map("api_key_hash")
-  createdAt  DateTime @default(now()) @map("created_at")
+  id            String   @id
+  ssoUserId     String?  @unique @map("sso_user_id")
+  feishuUnionId String?  @unique @map("feishu_union_id")
+  name          String
+  email         String   @unique
+  apiKeyHash    String?  @unique @map("api_key_hash")
+  role          String   @default("USER")
+  avatarUrl     String?  @map("avatar_url")
+  createdAt     DateTime @default(now()) @map("created_at")
 
   skills Skill[]
   agents Agent[]
 
   @@index([email], name: "idx_email")
   @@index([apiKeyHash], name: "idx_api_key_hash")
+  @@index([ssoUserId], name: "idx_sso_user_id")
   @@map("users")
 }
 

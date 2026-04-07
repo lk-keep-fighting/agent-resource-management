@@ -12,7 +12,13 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const router = useRouter();
 
-  const handleLogin = async (e: React.FormEvent) => {
+  const handleSSOLogin = () => {
+    const ssoUrl = process.env.NEXT_PUBLIC_SSO_URL;
+    const redirectUri = `${window.location.origin}/auth/callback`;
+    window.location.href = `${ssoUrl}/api/auth/feishu?redirect_uri=${encodeURIComponent(redirectUri)}`;
+  };
+
+  const handleApiKeyLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError("");
@@ -44,20 +50,30 @@ export default function LoginPage() {
       <Card className="w-[400px]">
         <CardHeader>
           <CardTitle>Agent Skill System</CardTitle>
-          <CardDescription>输入 API Key 登录</CardDescription>
+          <CardDescription>选择登录方式</CardDescription>
         </CardHeader>
-        <CardContent>
-          <form onSubmit={handleLogin} className="space-y-4">
+        <CardContent className="space-y-4">
+          <Button onClick={handleSSOLogin} className="w-full" variant="default">
+            飞书登录
+          </Button>
+          <div className="relative">
+            <div className="absolute inset-0 flex items-center">
+              <span className="w-full border-t" />
+            </div>
+            <div className="relative flex justify-center text-xs uppercase">
+              <span className="bg-background px-2 text-muted-foreground">或</span>
+            </div>
+          </div>
+          <form onSubmit={handleApiKeyLogin} className="space-y-4">
             <Input
               type="password"
               placeholder="API Key"
               value={apiKey}
               onChange={(e) => setApiKey(e.target.value)}
-              required
             />
             {error && <p className="text-sm text-red-500">{error}</p>}
             <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? "登录中..." : "登录"}
+              {loading ? "登录中..." : "API Key 登录"}
             </Button>
           </form>
         </CardContent>

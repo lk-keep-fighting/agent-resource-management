@@ -2,15 +2,43 @@ import { NextRequest } from 'next/server';
 import crypto from 'crypto';
 import prisma from './db';
 import { errorResponse } from './api-response';
+import { extractToken, verifyToken, getUserInfo } from './sso-client';
 import type { User } from '@/lib/types';
 
 export function hashApiKey(apiKey: string): string {
   return crypto.createHash('sha256').update(apiKey).digest('hex');
 }
 
-export async function authenticate(
-  request: NextRequest
-): Promise<User | null> {
+async function authenticateBySSO(request: NextRequest): Promise<User | null> {
+  const token = extractToken(request);
+  if (!token) return null;
+
+  const { valid, user: ssoUser } = await getUserInfo(token);
+  if (!valid || !ssoUser) return null;
+
+  const localUser = await prisma.user.findUnique({
+    where: { ssoUserId: ssoUser.id },
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      ssoUserId: true,
+      createdAt: true,
+    },
+  });
+
+  if (!localUser) return null;
+
+  return {
+    id: localUser.id,
+    name: localUser.name,
+    email: localUser.email,
+    apiKey: localUser.ssoUserId || '',
+    createdAt: localUser.createdAt.toISOString(),
+  };
+}
+
+async function authenticateByApiKey(request: NextRequest): Promise<User | null> {
   const authHeader = request.headers.get('Authorization');
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
     return null;
@@ -40,6 +68,16 @@ export async function authenticate(
     apiKey: apiKeyHash,
     createdAt: user.createdAt.toISOString(),
   };
+}
+
+export async function authenticate(
+  request: NextRequest
+): Promise<User | null> {
+  let user = await authenticateBySSO(request);
+  if (user) return user;
+
+  user = await authenticateByApiKey(request);
+  return user;
 }
 
 export async function requireAuth(
