@@ -12,7 +12,7 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const router = useRouter();
-  const { loginWithSSO, loading: ssoLoading } = useSSO(process.env.SSO_URL || '');
+  const { loginWithSSO, loading: ssoLoading } = useSSO(process.env.NEXT_PUBLIC_SSO_URL || '');
 
   const handleSSOLogin = () => {
     const redirectUri = `${window.location.origin}/auth/callback`;
