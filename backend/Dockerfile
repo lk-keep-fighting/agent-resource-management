@@ -11,7 +11,8 @@ RUN npm install -g pnpm
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY backend/ ./
-ENV NEXT_PUBLIC_SSO_URL=http://sso.xuanwu-prod.dev.aimstek.cn
+ARG NEXT_PUBLIC_SSO_URL
+ENV NEXT_PUBLIC_SSO_URL=$NEXT_PUBLIC_SSO_URL
 RUN pnpm prisma generate
 RUN pnpm build
 
