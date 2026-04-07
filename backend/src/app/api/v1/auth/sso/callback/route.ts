@@ -5,6 +5,8 @@ import prisma from '@/lib/db';
 import { successResponse, errorResponse } from '@/lib/api-response';
 import type { User, LoginResponse } from '@/lib/types';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(request: NextRequest) {
   try {
     const token = parseTokenFromCallback(request);
