@@ -151,6 +151,10 @@ export function createAdminRoute<T>(
 }
 
 export function parseTokenFromCallback(request: NextRequest): string | null {
+  const authHeader = request.headers.get('authorization');
+  if (authHeader?.startsWith('Bearer ')) {
+    return authHeader.slice(7);
+  }
   const { searchParams } = new URL(request.url)
   return searchParams.get('sso_token') || searchParams.get('token') || request.cookies.get('auth_token')?.value || null
 }
