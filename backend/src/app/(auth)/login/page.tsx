@@ -13,7 +13,7 @@ export default function LoginPage() {
   const router = useRouter();
 
   const handleSSOLogin = () => {
-    const ssoUrl = process.env.NEXT_PUBLIC_SSO_URL;
+    const ssoUrl = process.env.SSO_URL;
     const redirectUri = `${window.location.origin}/auth/callback`;
     window.location.href = `${ssoUrl}/api/auth/feishu?redirect_uri=${encodeURIComponent(redirectUri)}`;
   };
