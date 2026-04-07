@@ -2,8 +2,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { LoginForm } from "./login-form";
 
 export default async function LoginPage() {
-  const ssoUrl = process.env.SSO_URL || '';
-
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
       <Card className="w-[400px]">
@@ -12,7 +10,7 @@ export default async function LoginPage() {
           <CardDescription>选择登录方式</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <LoginForm ssoUrl={ssoUrl} />
+          <LoginForm />
         </CardContent>
       </Card>
     </div>

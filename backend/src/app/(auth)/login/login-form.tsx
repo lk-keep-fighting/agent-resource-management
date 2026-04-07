@@ -1,21 +1,27 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useSSO } from "@/lib/sso-client-react";
 
-interface LoginFormProps {
-  ssoUrl: string;
-}
-
-export function LoginForm({ ssoUrl }: LoginFormProps) {
+export function LoginForm() {
   const [apiKey, setApiKey] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [ssoUrl, setSsoUrl] = useState("");
+  const [configLoading, setConfigLoading] = useState(true);
   const router = useRouter();
   const { loginWithSSO, loading: ssoLoading } = useSSO(ssoUrl);
+
+  useEffect(() => {
+    fetch("/api/config/sso")
+      .then((res) => res.json())
+      .then((data) => setSsoUrl(data.ssoUrl || ""))
+      .catch(() => setSsoUrl(""))
+      .finally(() => setConfigLoading(false));
+  }, []);
 
   const handleSSOLogin = () => {
     const redirectUri = `${window.location.origin}/auth/callback`;
@@ -49,7 +55,7 @@ export function LoginForm({ ssoUrl }: LoginFormProps) {
     }
   };
 
-  if (ssoLoading) {
+  if (configLoading || ssoLoading) {
     return <p>加载中...</p>;
   }
 
