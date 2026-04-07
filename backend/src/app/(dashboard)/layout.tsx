@@ -4,10 +4,11 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
-import { Package, User, Settings, LogOut, Bot } from "lucide-react";
+import { Package, User, Settings, LogOut, Bot, BookOpen } from "lucide-react";
 
 const navItems = [
   { href: "/agents", label: "Agent 管理", icon: Bot },
+  { href: "/knowledges", label: "知识 市场", icon: BookOpen },
   { href: "/skills", label: "Skill 市场", icon: Package },
   { href: "/my-skills", label: "我的发布", icon: User },
   { href: "/settings", label: "设置", icon: Settings },
