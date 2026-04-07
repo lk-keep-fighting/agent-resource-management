@@ -37,20 +37,17 @@ function getConfig(): SSOConfig {
   return { ssoUrl, jwtSecret }
 }
 
-export function getFeishuAuthUrl(redirectUri?: string): string {
-  const { ssoUrl } = getConfig()
-  const params = new URLSearchParams({
-    redirect_uri: redirectUri || `${ssoUrl}/dashboard`,
-  })
-  return `${ssoUrl}/api/auth/feishu?${params.toString()}`
-}
-
 export function extractToken(request: NextRequest): string | null {
   const authHeader = request.headers.get('authorization')
   if (authHeader?.startsWith('Bearer ')) {
     return authHeader.slice(7)
   }
-  return request.cookies.get('auth_token')?.value || null
+  const cookies = request.cookies.get('auth_token')
+  if (cookies?.value) {
+    return cookies.value
+  }
+  const url = new URL(request.url)
+  return url.searchParams.get('sso_token')
 }
 
 export function verifyToken(token: string): TokenPayload | null {
@@ -155,5 +152,5 @@ export function createAdminRoute<T>(
 
 export function parseTokenFromCallback(request: NextRequest): string | null {
   const { searchParams } = new URL(request.url)
-  return searchParams.get('token')
+  return searchParams.get('sso_token')
 }

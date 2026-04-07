@@ -12,14 +12,7 @@ export interface SSOUser {
   createdAt: string | null
 }
 
-export interface UseSSOOptions {
-  ssoUrl: string
-  autoFetch?: boolean
-}
-
-export function createSSOClient(options: UseSSOOptions) {
-  const { ssoUrl } = options
-
+export function createSSOClient(ssoUrl: string) {
   async function getSession(): Promise<SSOUser | null> {
     try {
       const response = await fetch(`${ssoUrl}/api/auth/session`, {
@@ -45,11 +38,8 @@ export function createSSOClient(options: UseSSOOptions) {
     }
   }
 
-  function getFeishuAuthUrl(redirectUri?: string): string {
-    const params = new URLSearchParams({
-      redirect_uri: redirectUri || `${ssoUrl}/dashboard`,
-    })
-    return `${ssoUrl}/api/auth/feishu?${params.toString()}`
+  function getSSOLoginUrl(redirectUri: string): string {
+    return `${ssoUrl}/login?redirect_uri=${encodeURIComponent(redirectUri)}`
   }
 
   async function logout(): Promise<void> {
@@ -62,7 +52,7 @@ export function createSSOClient(options: UseSSOOptions) {
   return {
     getSession,
     getUserInfo,
-    getFeishuAuthUrl,
+    getSSOLoginUrl,
     logout,
   }
 }
@@ -71,7 +61,7 @@ export function useSSO(ssoUrl: string, autoFetch = true) {
   const [user, setUser] = useState<SSOUser | null>(null)
   const [loading, setLoading] = useState(true)
 
-  const client = createSSOClient({ ssoUrl })
+  const client = createSSOClient(ssoUrl)
 
   const fetchUser = useCallback(async () => {
     setLoading(true)
@@ -86,8 +76,8 @@ export function useSSO(ssoUrl: string, autoFetch = true) {
     }
   }, [autoFetch, fetchUser])
 
-  const loginWithFeishu = useCallback((redirectUri?: string) => {
-    const url = client.getFeishuAuthUrl(redirectUri)
+  const loginWithSSO = useCallback((redirectUri: string) => {
+    const url = client.getSSOLoginUrl(redirectUri)
     window.location.href = url
   }, [client])
 
@@ -103,7 +93,7 @@ export function useSSO(ssoUrl: string, autoFetch = true) {
   return {
     user,
     loading,
-    loginWithFeishu,
+    loginWithSSO,
     logout,
     refresh,
     isAuthenticated: !!user,

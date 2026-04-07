@@ -5,17 +5,18 @@ import { useRouter } from "next/navigation";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useSSO } from "@/lib/sso-client-react";
 
 export default function LoginPage() {
   const [apiKey, setApiKey] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const router = useRouter();
+  const { loginWithSSO, loading: ssoLoading } = useSSO(process.env.NEXT_PUBLIC_SSO_URL || '');
 
   const handleSSOLogin = () => {
-    const ssoUrl = process.env.SSO_URL;
     const redirectUri = `${window.location.origin}/auth/callback`;
-    window.location.href = `${ssoUrl}/api/auth/feishu?redirect_uri=${encodeURIComponent(redirectUri)}`;
+    loginWithSSO(redirectUri);
   };
 
   const handleApiKeyLogin = async (e: React.FormEvent) => {
@@ -44,6 +45,14 @@ export default function LoginPage() {
       setLoading(false);
     }
   };
+
+  if (ssoLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <p>加载中...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50">

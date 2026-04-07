@@ -8,7 +8,7 @@ export default function CallbackPage() {
 
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
-    const token = urlParams.get("token");
+    const token = urlParams.get("sso_token");
 
     if (token) {
       localStorage.setItem("token", token);
