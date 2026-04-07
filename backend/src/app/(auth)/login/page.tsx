@@ -54,7 +54,7 @@ export default function LoginPage() {
         </CardHeader>
         <CardContent className="space-y-4">
           <Button onClick={handleSSOLogin} className="w-full" variant="default">
-            飞书登录
+            单点登录
           </Button>
           <div className="relative">
             <div className="absolute inset-0 flex items-center">
