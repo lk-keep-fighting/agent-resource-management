@@ -160,6 +160,7 @@ export interface UpdateAgentRequest {
   prompt?: string;
   avatar?: string;
   status?: 'active' | 'draft';
+  version?: string;
 }
 
 export interface BindSkillRequest {

@@ -86,6 +86,7 @@ export async function PUT(
         ...(body.prompt !== undefined && { prompt: body.prompt }),
         ...(body.avatar !== undefined && { avatar: body.avatar }),
         ...(body.status !== undefined && { status: body.status }),
+        ...(body.version !== undefined && { version: body.version }),
       },
     });
 

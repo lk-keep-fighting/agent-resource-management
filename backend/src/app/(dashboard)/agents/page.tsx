@@ -35,6 +35,7 @@ interface Agent {
   description: string;
   prompt: string;
   avatar?: string;
+  version: string;
   status: "active" | "draft";
   createdAt: string;
   updatedAt: string;
@@ -83,6 +84,7 @@ export default function AgentsPage() {
     description: "",
     prompt: "",
     status: "active" as "active" | "draft",
+    version: "1.0.0",
   });
 
   const [boundSkills, setBoundSkills] = useState<AgentSkill[]>([]);
@@ -249,6 +251,7 @@ export default function AgentsPage() {
         description: detail.description,
         prompt: detail.prompt,
         status: detail.status,
+        version: detail.version,
       });
       setBoundSkills(detail.skills || []);
       
@@ -270,7 +273,7 @@ export default function AgentsPage() {
     setSelectedAgent(null);
     setIsCreating(true);
     setIsEditing(true);
-    setFormData({ name: "", description: "", prompt: "", status: "active" });
+    setFormData({ name: "", description: "", prompt: "", status: "active", version: "1.0.0" });
     setBoundSkills([]);
     setBoundKnowledges([]);
   };
@@ -612,6 +615,14 @@ export default function AgentsPage() {
                   />
                 </div>
                 <div className="space-y-2">
+                  <label className="text-sm font-medium">版本</label>
+                  <Input
+                    value={formData.version}
+                    onChange={(e) => setFormData({ ...formData, version: e.target.value })}
+                    placeholder="1.0.0"
+                  />
+                </div>
+                <div className="space-y-2">
                   <label className="text-sm font-medium">状态</label>
                   <div className="flex gap-4">
                     <label className="flex items-center gap-2">
@@ -740,6 +751,11 @@ export default function AgentsPage() {
                   >
                     {selectedAgent?.status === "active" ? "启用" : "停用"}
                   </span>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">版本</label>
+                  <span className="text-sm text-gray-700">{selectedAgent?.version}</span>
                 </div>
 
                 <div className="space-y-2">
