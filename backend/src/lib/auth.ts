@@ -23,6 +23,7 @@ async function authenticateBySSO(request: NextRequest): Promise<User | null> {
       name: true,
       email: true,
       ssoUserId: true,
+      role: true,
       createdAt: true,
     },
   });
@@ -34,6 +35,7 @@ async function authenticateBySSO(request: NextRequest): Promise<User | null> {
     name: localUser.name,
     email: localUser.email,
     apiKey: localUser.ssoUserId || '',
+    role: localUser.role,
     createdAt: localUser.createdAt.toISOString(),
   };
 }
@@ -53,6 +55,7 @@ async function authenticateByApiKey(request: NextRequest): Promise<User | null> 
       id: true,
       name: true,
       email: true,
+      role: true,
       createdAt: true,
     },
   });
@@ -66,6 +69,7 @@ async function authenticateByApiKey(request: NextRequest): Promise<User | null> 
     name: user.name,
     email: user.email,
     apiKey: apiKeyHash,
+    role: user.role,
     createdAt: user.createdAt.toISOString(),
   };
 }

@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { X, Plus, Search, Pencil, Trash2, Bot, BookOpen, Wrench } from "lucide-react";
+import ReactMarkdown from "react-markdown";
 
 interface AgentSkill {
   skillId: string;
@@ -54,6 +55,7 @@ interface Knowledge {
   id: string;
   name: string;
   description?: string;
+  content?: string;
 }
 
 export default function AgentsPage() {
@@ -71,6 +73,9 @@ export default function AgentsPage() {
   const [filteredSkills, setFilteredSkills] = useState<Skill[]>([]);
   const [knowledgeSearch, setKnowledgeSearch] = useState("");
   const [filteredKnowledges, setFilteredKnowledges] = useState<Knowledge[]>([]);
+  const [previewKnowledge, setPreviewKnowledge] = useState<Knowledge | null>(null);
+  const [knowledgeDetailCache, setKnowledgeDetailCache] = useState<Record<string, Knowledge>>({});
+  const [previewLoading, setPreviewLoading] = useState(false);
   const router = useRouter();
 
   const [formData, setFormData] = useState({
@@ -182,6 +187,30 @@ export default function AgentsPage() {
       );
       setFilteredKnowledges(filtered);
     }
+  };
+
+  const fetchKnowledgeDetail = async (id: string) => {
+    if (knowledgeDetailCache[id]) {
+      return knowledgeDetailCache[id];
+    }
+    setPreviewLoading(true);
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch(`/api/v1/knowledges/${id}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      if (data.ok && data.data) {
+        const detail = data.data;
+        setKnowledgeDetailCache(prev => ({ ...prev, [id]: detail }));
+        return detail;
+      }
+    } catch {
+      console.error("Failed to fetch knowledge detail");
+    } finally {
+      setPreviewLoading(false);
+    }
+    return null;
   };
 
   const fetchAgentDetail = async (id: string) => {
@@ -401,6 +430,17 @@ export default function AgentsPage() {
   const handleCloseKnowledgeSelector = () => {
     setShowKnowledgeSelector(false);
     setKnowledgeSearch("");
+    setPreviewKnowledge(null);
+  };
+
+  const handlePreviewKnowledge = async (knowledge: Knowledge) => {
+    setPreviewKnowledge(knowledge);
+    if (!knowledge.content) {
+      const detail = await fetchKnowledgeDetail(knowledge.id);
+      if (detail) {
+        setPreviewKnowledge(detail);
+      }
+    }
   };
 
   const handleRemoveKnowledge = (knowledgeId: string) => {
@@ -836,57 +876,94 @@ export default function AgentsPage() {
       {/* Knowledge Selector Modal */}
       {showKnowledgeSelector && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={handleCloseKnowledgeSelector}>
-          <div className="bg-white rounded-lg w-[480px] max-h-[600px] flex flex-col" onClick={(e) => e.stopPropagation()}>
+          <div className="bg-white rounded-lg w-[900px] h-[700px] flex flex-col" onClick={(e) => e.stopPropagation()}>
             <div className="p-4 border-b flex items-center justify-between">
               <h3 className="font-medium">选择知识 ({boundKnowledges.length} 已选)</h3>
               <Button size="sm" variant="ghost" onClick={handleCloseKnowledgeSelector}>
                 <X className="h-4 w-4" />
               </Button>
             </div>
-            <div className="p-4 border-b">
-              <Input
-                placeholder="搜索知识..."
-                value={knowledgeSearch}
-                onChange={(e) => searchKnowledges(e.target.value)}
-                autoFocus
-              />
-            </div>
-            <div className="flex-1 overflow-auto p-4">
-              {filteredKnowledges.length === 0 ? (
-                <p className="text-center text-gray-500 py-4">暂无可用知识</p>
-              ) : (
-                <div className="space-y-2">
-                  {filteredKnowledges.map((knowledge) => (
-                    <div
-                      key={knowledge.id}
-                      className={`p-3 border rounded cursor-pointer transition-colors flex items-start gap-3 ${
-                        boundKnowledges.some(k => k.knowledgeId === knowledge.id)
-                          ? 'bg-blue-50 border-blue-200'
-                          : 'hover:bg-gray-50'
-                      }`}
-                      onClick={() => handleToggleKnowledge(knowledge)}
-                    >
-                      <div className={`w-5 h-5 rounded border flex items-center justify-center flex-shrink-0 mt-0.5 ${
-                        boundKnowledges.some(k => k.knowledgeId === knowledge.id)
-                          ? 'bg-blue-500 border-blue-500'
-                          : 'border-gray-300'
-                      }`}>
-                        {boundKnowledges.some(k => k.knowledgeId === knowledge.id) && (
-                          <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" />
-                          </svg>
-                        )}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="font-medium text-sm">{knowledge.name}</div>
-                        {knowledge.description && (
-                          <div className="text-xs text-gray-500 mt-1 truncate">{knowledge.description}</div>
-                        )}
-                      </div>
-                    </div>
-                  ))}
+            <div className="flex-1 flex overflow-hidden">
+              <div className="w-[350px] border-r flex flex-col">
+                <div className="p-4 border-b">
+                  <Input
+                    placeholder="搜索知识..."
+                    value={knowledgeSearch}
+                    onChange={(e) => searchKnowledges(e.target.value)}
+                  />
                 </div>
-              )}
+                <div className="flex-1 overflow-auto p-4">
+                  {filteredKnowledges.length === 0 ? (
+                    <p className="text-center text-gray-500 py-4">暂无可用知识</p>
+                  ) : (
+                    <div className="space-y-2">
+                      {filteredKnowledges.map((knowledge) => (
+                        <div
+                          key={knowledge.id}
+                          className={`p-3 border rounded cursor-pointer transition-colors flex items-start gap-3 ${
+                            boundKnowledges.some(k => k.knowledgeId === knowledge.id)
+                              ? 'bg-blue-50 border-blue-200'
+                              : previewKnowledge?.id === knowledge.id
+                                ? 'bg-green-50 border-green-200'
+                                : 'hover:bg-gray-50'
+                          }`}
+                          onClick={() => {
+                            handleToggleKnowledge(knowledge);
+                            handlePreviewKnowledge(knowledge);
+                          }}
+                        >
+                          <div className={`w-5 h-5 rounded border flex items-center justify-center flex-shrink-0 mt-0.5 ${
+                            boundKnowledges.some(k => k.knowledgeId === knowledge.id)
+                              ? 'bg-blue-500 border-blue-500'
+                              : 'border-gray-300'
+                          }`}>
+                            {boundKnowledges.some(k => k.knowledgeId === knowledge.id) && (
+                              <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" />
+                              </svg>
+                            )}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="font-medium text-sm">{knowledge.name}</div>
+                            {knowledge.description && (
+                              <div className="text-xs text-gray-500 mt-1 truncate">{knowledge.description}</div>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+              <div className="flex-1 flex flex-col overflow-hidden">
+                <div className="flex-1 overflow-auto p-4">
+                  {previewLoading ? (
+                    <div className="flex items-center justify-center h-full">
+                      <p className="text-gray-500">加载中...</p>
+                    </div>
+                  ) : previewKnowledge ? (
+                    <div className="space-y-3">
+                      <div>
+                        <h4 className="font-medium text-lg">{previewKnowledge.name}</h4>
+                        {previewKnowledge.description && (
+                          <p className="text-sm text-gray-500 mt-1">{previewKnowledge.description}</p>
+                        )}
+                      </div>
+                      {previewKnowledge.content ? (
+                        <div className="text-sm prose prose-sm max-w-none border-t pt-3">
+                          <ReactMarkdown>{previewKnowledge.content}</ReactMarkdown>
+                        </div>
+                      ) : (
+                        <div className="text-sm text-gray-400 italic">暂无预览内容</div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-center h-full">
+                      <p className="text-gray-400">点击左侧知识查看预览</p>
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
             <div className="p-4 border-t">
               <Button className="w-full" onClick={handleCloseKnowledgeSelector}>

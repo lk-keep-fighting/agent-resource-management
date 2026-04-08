@@ -8,6 +8,7 @@ interface User {
   id: string;
   name: string;
   email: string;
+  role: string;
   createdAt: string;
 }
 
@@ -43,6 +44,12 @@ export default function SettingsPage() {
           <div className="flex justify-between">
             <span className="text-gray-500">邮箱:</span>
             <span>{user?.email}</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-gray-500">角色:</span>
+            <span className={user?.role === "ADMIN" ? "text-red-600 font-medium" : ""}>
+              {user?.role === "ADMIN" ? "管理员" : "普通用户"}
+            </span>
           </div>
           <div className="flex justify-between">
             <span className="text-gray-500">创建时间:</span>

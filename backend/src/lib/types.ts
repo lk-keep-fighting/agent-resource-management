@@ -24,6 +24,7 @@ export interface User {
   name: string;
   email: string;
   apiKey: string;
+  role: string;
   createdAt: string;
 }
 

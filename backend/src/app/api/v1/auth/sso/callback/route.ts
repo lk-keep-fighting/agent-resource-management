@@ -62,7 +62,7 @@ export async function GET(request: NextRequest) {
         id: localUser.id,
         name: localUser.name,
         email: localUser.email,
-        ssoUserId: localUser.ssoUserId,
+        role: localUser.role,
         createdAt: localUser.createdAt.toISOString(),
       },
     }, '登录成功');

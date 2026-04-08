@@ -20,6 +20,7 @@ model User {
 
   skills Skill[]
   agents Agent[]
+  knowledges Knowledge[]
 
   @@index([email], name: "idx_email")
   @@index([apiKeyHash], name: "idx_api_key_hash")
@@ -131,4 +132,19 @@ model AgentKnowledge {
 
   @@id([agentId, knowledgeId])
   @@map("agent_knowledges")
+}
+
+model Knowledge {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  description String?  @db.VarChar(1024)
+  content     String?  @db.LongText
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  createdBy   String   @map("created_by")
+
+  creator User @relation(fields: [createdBy], references: [id], onDelete: Cascade)
+
+  @@index([name], name: "idx_knowledge_name")
+  @@map("knowledges")
 }

@@ -11,7 +11,26 @@ import type { SkillListResponse } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
 
-const DATA_DIR = process.env.DATA_DIR || path.join(process.cwd(), 'data');
+function getDataDir(): string {
+  const envDir = process.env.DATA_DIR;
+  if (envDir) {
+    const absolutePath = path.isAbsolute(envDir) ? envDir : path.join(process.cwd(), envDir);
+    return absolutePath;
+  }
+  return path.join(process.cwd(), 'data');
+}
+
+const DATA_DIR = getDataDir();
+
+async function ensureDir(dirPath: string): Promise<void> {
+  try {
+    await fs.mkdir(dirPath, { recursive: true });
+  } catch (err: any) {
+    if (err.code !== 'EEXIST') {
+      throw err;
+    }
+  }
+}
 
 function hashFile(buffer: Buffer): string {
   return crypto.createHash('sha256').update(buffer).digest('hex');
@@ -109,7 +128,7 @@ export async function POST(request: NextRequest) {
     const fileSize = buffer.length;
 
     const tempDir = path.join(DATA_DIR, 'temp');
-    await fs.mkdir(tempDir, { recursive: true });
+    await ensureDir(tempDir);
     const tempFilePath = path.join(tempDir, `${uuidv4()}.zip`);
     await fs.writeFile(tempFilePath, buffer);
 
@@ -118,7 +137,44 @@ export async function POST(request: NextRequest) {
     execSync(`unzip -o ${tempFilePath} -d ${extractDir}`);
 
     const skillDir = path.join(extractDir, file.name.replace('.zip', ''));
-    const skillMdPath = path.join(skillDir, 'SKILL.md');
+    let skillMdPath = path.join(skillDir, 'SKILL.md');
+    
+    let skillExists = false;
+    let actualExtractDir = extractDir;
+    try {
+      await fs.access(skillMdPath);
+      skillExists = true;
+    } catch {
+      try {
+        const entries = await fs.readdir(extractDir, { withFileTypes: true });
+        const subDir = entries.find(e => e.isDirectory());
+        if (subDir) {
+          actualExtractDir = path.join(extractDir, subDir.name);
+          skillMdPath = path.join(actualExtractDir, 'SKILL.md');
+          try {
+            await fs.access(skillMdPath);
+            skillExists = true;
+          } catch {
+          }
+        }
+        if (!skillExists) {
+          const rootMdPath = path.join(extractDir, 'SKILL.md');
+          try {
+            await fs.access(rootMdPath);
+            skillMdPath = rootMdPath;
+            skillExists = true;
+          } catch {
+          }
+        }
+      } catch {
+      }
+    }
+
+    if (!skillExists) {
+      await fs.rm(extractDir, { recursive: true, force: true });
+      await fs.rm(tempFilePath);
+      return errorResponse('无效的 Skill 格式：缺少 SKILL.md 文件');
+    }
 
     let skillMetadata: {
       name?: string;
@@ -162,8 +218,8 @@ export async function POST(request: NextRequest) {
 
     const skillName = skillMetadata.name || file.name.replace('.zip', '');
     const destDir = path.join(DATA_DIR, 'skills', skillName);
-    await fs.mkdir(destDir, { recursive: true });
-    await fs.cp(skillDir, destDir, { recursive: true });
+    await ensureDir(destDir);
+    await fs.cp(actualExtractDir, destDir, { recursive: true });
 
     await fs.rm(extractDir, { recursive: true, force: true });
     await fs.rm(tempFilePath);

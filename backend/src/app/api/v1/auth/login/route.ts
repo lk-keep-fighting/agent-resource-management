@@ -20,6 +20,7 @@ export async function POST(request: NextRequest) {
         id: true,
         name: true,
         email: true,
+        role: true,
         createdAt: true,
       },
     });
@@ -34,6 +35,7 @@ export async function POST(request: NextRequest) {
         name: user.name,
         email: user.email,
         apiKey: apiKeyHash,
+        role: user.role,
         createdAt: user.createdAt.toISOString(),
       },
       token: apiKey,

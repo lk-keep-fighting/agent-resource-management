@@ -105,3 +105,67 @@ export async function fetchKnowledgeById(id: string): Promise<Knowledge | null> 
   }
   return null;
 }
+
+export async function fetchLocalKnowledges(query: { keyword?: string } = {}): Promise<{ knowledges: Knowledge[]; total: number }> {
+  const prisma = require('@/lib/db').default;
+  
+  const where = query.keyword
+    ? {
+        OR: [
+          { name: { contains: query.keyword } },
+          { description: { contains: query.keyword } },
+        ],
+      }
+    : {};
+
+  const [knowledges, total] = await Promise.all([
+    prisma.knowledge.findMany({
+      where,
+      orderBy: { createdAt: 'desc' },
+    }),
+    prisma.knowledge.count({ where }),
+  ]);
+
+  return {
+    knowledges: knowledges.map((k: any) => ({
+      id: k.id,
+      name: k.name,
+      description: k.description || '',
+      content: k.content,
+      createdAt: k.createdAt.toISOString(),
+      updatedAt: k.updatedAt.toISOString(),
+    })),
+    total,
+  };
+}
+
+export async function fetchUserKnowledges(userId: string): Promise<Knowledge[]> {
+  const prisma = require('@/lib/db').default;
+  
+  const knowledges = await prisma.knowledge.findMany({
+    where: { createdBy: userId },
+    orderBy: { createdAt: 'desc' },
+  });
+
+  return knowledges.map((k: any) => ({
+    id: k.id,
+    name: k.name,
+    description: k.description || '',
+    content: k.content,
+    createdAt: k.createdAt.toISOString(),
+    updatedAt: k.updatedAt.toISOString(),
+  }));
+}
+
+export async function deleteKnowledge(id: string): Promise<boolean> {
+  const prisma = require('@/lib/db').default;
+  
+  try {
+    await prisma.knowledge.delete({
+      where: { id },
+    });
+    return true;
+  } catch {
+    return false;
+  }
+}

@@ -4,8 +4,10 @@ import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Download, Trash2, X } from "lucide-react";
+import { Download, Trash2, X, Package, BookOpen } from "lucide-react";
 import ReactMarkdown from "react-markdown";
+
+type TabType = "skill" | "knowledge";
 
 interface Skill {
   id: string;
@@ -26,16 +28,32 @@ interface SkillDetail extends Skill {
   content: string | null;
 }
 
+interface Knowledge {
+  id: string;
+  name: string;
+  description?: string;
+  content?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export default function MySkillsPage() {
+  const [activeTab, setActiveTab] = useState<TabType>("skill");
+
   const [skills, setSkills] = useState<Skill[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [skillsLoading, setSkillsLoading] = useState(true);
   const [selectedSkillName, setSelectedSkillName] = useState<string | null>(null);
   const [skillDetailCache, setSkillDetailCache] = useState<Record<string, SkillDetail>>({});
-  const [detailLoading, setDetailLoading] = useState(false);
+  const [skillDetailLoading, setSkillDetailLoading] = useState(false);
+
+  const [knowledges, setKnowledges] = useState<Knowledge[]>([]);
+  const [knowledgesLoading, setKnowledgesLoading] = useState(true);
+  const [selectedKnowledgeId, setSelectedKnowledgeId] = useState<string | null>(null);
+
   const router = useRouter();
 
   const fetchSkills = useCallback(async () => {
-    setLoading(true);
+    setSkillsLoading(true);
     try {
       const token = localStorage.getItem("token");
       if (!token) {
@@ -53,7 +71,30 @@ export default function MySkillsPage() {
     } catch {
       console.error("Failed to fetch skills");
     } finally {
-      setLoading(false);
+      setSkillsLoading(false);
+    }
+  }, [router]);
+
+  const fetchKnowledges = useCallback(async () => {
+    setKnowledgesLoading(true);
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) {
+        router.push("/login");
+        return;
+      }
+
+      const res = await fetch("/api/v1/users/me/knowledges", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      if (data.ok) {
+        setKnowledges(data.data);
+      }
+    } catch {
+      console.error("Failed to fetch knowledges");
+    } finally {
+      setKnowledgesLoading(false);
     }
   }, [router]);
 
@@ -61,7 +102,7 @@ export default function MySkillsPage() {
     if (skillDetailCache[name]) {
       return;
     }
-    setDetailLoading(true);
+    setSkillDetailLoading(true);
     try {
       const token = localStorage.getItem("token");
       const res = await fetch(`/api/v1/skills/${name}`, {
@@ -74,7 +115,7 @@ export default function MySkillsPage() {
     } catch {
       console.error("Failed to fetch skill detail");
     } finally {
-      setDetailLoading(false);
+      setSkillDetailLoading(false);
     }
   }, [skillDetailCache]);
 
@@ -83,12 +124,16 @@ export default function MySkillsPage() {
   }, [fetchSkills]);
 
   useEffect(() => {
+    fetchKnowledges();
+  }, [fetchKnowledges]);
+
+  useEffect(() => {
     if (selectedSkillName) {
       fetchSkillDetail(selectedSkillName);
     }
   }, [selectedSkillName, fetchSkillDetail]);
 
-  const handleDelete = async (name: string) => {
+  const handleDeleteSkill = async (name: string) => {
     if (!confirm(`确定要删除 ${name} 吗？`)) return;
 
     try {
@@ -111,7 +156,30 @@ export default function MySkillsPage() {
     }
   };
 
-  const handleDownload = async (name: string) => {
+  const handleDeleteKnowledge = async (id: string) => {
+    if (!confirm("确定要删除这个知识吗？")) return;
+
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch(`/api/v1/knowledges/${id}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      if (data.ok) {
+        if (selectedKnowledgeId === id) {
+          setSelectedKnowledgeId(null);
+        }
+        fetchKnowledges();
+      } else {
+        alert(data.msg || "删除失败");
+      }
+    } catch {
+      alert("删除失败");
+    }
+  };
+
+  const handleDownloadSkill = async (name: string) => {
     try {
       const token = localStorage.getItem("token");
       const res = await fetch(`/api/v1/skills/${name}/download`, {
@@ -128,23 +196,87 @@ export default function MySkillsPage() {
     }
   };
 
-  const handleSkillClick = (skill: Skill) => {
-    if (selectedSkillName === skill.name) {
-      setSelectedSkillName(null);
-    } else {
-      setSelectedSkillName(skill.name);
-    }
-  };
-
   const selectedSkill = selectedSkillName ? skillDetailCache[selectedSkillName] : null;
 
   return (
-    <div className="flex gap-6 h-[calc(100vh-120px)]">
-      <div className="flex-1 flex flex-col space-y-4 overflow-hidden">
-        <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold">我的发布</h1>
-        </div>
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-bold">我的发布</h1>
+      </div>
 
+      <div className="flex gap-1 border-b">
+        <button
+          onClick={() => setActiveTab("skill")}
+          className={`flex items-center gap-2 px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+            activeTab === "skill"
+              ? "border-blue-500 text-blue-600"
+              : "border-transparent text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          <Package className="h-4 w-4" />
+          Skills
+        </button>
+        <button
+          onClick={() => setActiveTab("knowledge")}
+          className={`flex items-center gap-2 px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+            activeTab === "knowledge"
+              ? "border-blue-500 text-blue-600"
+              : "border-transparent text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          <BookOpen className="h-4 w-4" />
+          知识
+        </button>
+      </div>
+
+      {activeTab === "skill" && (
+        <SkillTab
+          skills={skills}
+          loading={skillsLoading}
+          selectedSkillName={selectedSkillName}
+          selectedSkill={selectedSkill}
+          skillDetailLoading={skillDetailLoading}
+          onSelect={setSelectedSkillName}
+          onDelete={handleDeleteSkill}
+          onDownload={handleDownloadSkill}
+        />
+      )}
+
+      {activeTab === "knowledge" && (
+        <KnowledgeTab
+          knowledges={knowledges}
+          loading={knowledgesLoading}
+          selectedKnowledgeId={selectedKnowledgeId}
+          onSelect={setSelectedKnowledgeId}
+          onDelete={handleDeleteKnowledge}
+        />
+      )}
+    </div>
+  );
+}
+
+function SkillTab({
+  skills,
+  loading,
+  selectedSkillName,
+  selectedSkill,
+  skillDetailLoading,
+  onSelect,
+  onDelete,
+  onDownload,
+}: {
+  skills: Skill[];
+  loading: boolean;
+  selectedSkillName: string | null;
+  selectedSkill: SkillDetail | null;
+  skillDetailLoading: boolean;
+  onSelect: (name: string | null) => void;
+  onDelete: (name: string) => void;
+  onDownload: (name: string) => void;
+}) {
+  return (
+    <div className="flex gap-6 h-[calc(100vh-220px)]">
+      <div className="flex-1 flex flex-col space-y-4 overflow-hidden">
         <div className="flex-1 overflow-auto border rounded-lg bg-white">
           <table className="w-full">
             <thead className="bg-gray-50 border-b sticky top-0">
@@ -174,7 +306,7 @@ export default function MySkillsPage() {
                   <tr
                     key={skill.id}
                     className={`hover:bg-gray-50 cursor-pointer transition-colors ${selectedSkillName === skill.name ? 'bg-blue-50' : ''}`}
-                    onClick={() => handleSkillClick(skill)}
+                    onClick={() => onSelect(selectedSkillName === skill.name ? null : skill.name)}
                   >
                     <td className="px-4 py-3">
                       <span className="font-medium text-blue-600">{skill.name}</span>
@@ -220,14 +352,14 @@ export default function MySkillsPage() {
               <Button
                 size="sm"
                 variant="ghost"
-                onClick={() => setSelectedSkillName(null)}
+                onClick={() => onSelect(null)}
               >
                 <X className="h-4 w-4" />
               </Button>
             </div>
           </CardHeader>
           <CardContent className="space-y-4">
-            {detailLoading && !selectedSkill ? (
+            {skillDetailLoading && !selectedSkill ? (
               <div className="flex items-center justify-center h-32">
                 <p className="text-gray-500">加载中...</p>
               </div>
@@ -295,7 +427,7 @@ export default function MySkillsPage() {
                 <div className="flex gap-2">
                   <Button
                     className="flex-1"
-                    onClick={() => handleDownload(selectedSkill.name)}
+                    onClick={() => onDownload(selectedSkill.name)}
                   >
                     <Download className="h-4 w-4 mr-2" />
                     下载
@@ -303,7 +435,7 @@ export default function MySkillsPage() {
                   <Button
                     className="flex-1"
                     variant="destructive"
-                    onClick={() => handleDelete(selectedSkill.name)}
+                    onClick={() => onDelete(selectedSkill.name)}
                   >
                     <Trash2 className="h-4 w-4 mr-2" />
                     删除
@@ -311,6 +443,120 @@ export default function MySkillsPage() {
                 </div>
               </>
             ) : null}
+          </CardContent>
+        </Card>
+      )}
+    </div>
+  );
+}
+
+function KnowledgeTab({
+  knowledges,
+  loading,
+  selectedKnowledgeId,
+  onSelect,
+  onDelete,
+}: {
+  knowledges: Knowledge[];
+  loading: boolean;
+  selectedKnowledgeId: string | null;
+  onSelect: (id: string | null) => void;
+  onDelete: (id: string) => void;
+}) {
+  const selectedKnowledge = knowledges.find(k => k.id === selectedKnowledgeId);
+
+  return (
+    <div className="flex gap-6 h-[calc(100vh-220px)]">
+      <div className="flex-1 flex flex-col space-y-4 overflow-hidden">
+        <div className="flex-1 overflow-auto border rounded-lg bg-white">
+          <table className="w-full">
+            <thead className="bg-gray-50 border-b sticky top-0">
+              <tr>
+                <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">名称</th>
+                <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">描述</th>
+                <th className="px-4 py-3 text-right text-sm font-medium text-gray-500">创建时间</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y">
+              {loading && knowledges.length === 0 ? (
+                <tr>
+                  <td colSpan={3} className="px-4 py-8 text-center text-gray-500">
+                    加载中...
+                  </td>
+                </tr>
+              ) : knowledges.length === 0 ? (
+                <tr>
+                  <td colSpan={3} className="px-4 py-8 text-center text-gray-500">
+                    暂无创建的知识
+                  </td>
+                </tr>
+              ) : (
+                knowledges.map((knowledge) => (
+                  <tr
+                    key={knowledge.id}
+                    className={`hover:bg-gray-50 cursor-pointer transition-colors ${selectedKnowledgeId === knowledge.id ? 'bg-blue-50' : ''}`}
+                    onClick={() => onSelect(selectedKnowledgeId === knowledge.id ? null : knowledge.id)}
+                  >
+                    <td className="px-4 py-3">
+                      <span className="font-medium text-blue-600">{knowledge.name}</span>
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="text-sm text-gray-500 max-w-xs truncate">{knowledge.description || '-'}</div>
+                    </td>
+                    <td className="px-4 py-3 text-right text-sm text-gray-500">
+                      {new Date(knowledge.createdAt).toLocaleDateString()}
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {selectedKnowledgeId && selectedKnowledge && (
+        <Card className="w-96 flex-shrink-0 overflow-auto">
+          <CardHeader className="pb-2">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-lg">{selectedKnowledge.name}</CardTitle>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => onSelect(null)}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {selectedKnowledge.description && (
+              <p className="text-sm text-gray-500">{selectedKnowledge.description}</p>
+            )}
+
+            <div className="grid grid-cols-2 gap-2 text-sm">
+              <div className="text-gray-500">创建时间:</div>
+              <div>{new Date(selectedKnowledge.createdAt).toLocaleDateString()}</div>
+              <div className="text-gray-500">更新时间:</div>
+              <div>{new Date(selectedKnowledge.updatedAt).toLocaleDateString()}</div>
+            </div>
+
+            {selectedKnowledge.content && (
+              <div>
+                <div className="text-sm font-medium mb-2">内容:</div>
+                <div className="text-sm prose prose-sm max-w-none border-t pt-2 max-h-64 overflow-auto">
+                  <ReactMarkdown>{selectedKnowledge.content}</ReactMarkdown>
+                </div>
+              </div>
+            )}
+
+            <Button
+              className="w-full"
+              variant="destructive"
+              onClick={() => onDelete(selectedKnowledge.id)}
+            >
+              <Trash2 className="h-4 w-4 mr-2" />
+              删除
+            </Button>
           </CardContent>
         </Card>
       )}
