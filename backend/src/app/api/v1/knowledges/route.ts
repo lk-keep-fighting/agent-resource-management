@@ -10,7 +10,7 @@ export const dynamic = 'force-dynamic';
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-    const keyword = searchParams.get('keyword') || '';
+    const keyword = searchParams.get('search') || '';
     const pageSize = parseInt(searchParams.get('pageSize') || '20', 10);
     const pageNum = parseInt(searchParams.get('page') || '1', 10);
 
