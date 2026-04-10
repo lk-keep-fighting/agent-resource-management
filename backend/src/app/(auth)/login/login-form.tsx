@@ -5,33 +5,28 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { OAuth2Client } from "xuanwu-sso-sdk";
+import { sha256 } from 'js-sha256';
 
 function generateCodeVerifier(): string {
   const array = new Uint8Array(32);
-  crypto.getRandomValues(array);
+  if (typeof crypto !== 'undefined' && crypto.getRandomValues) {
+    crypto.getRandomValues(array);
+  } else {
+    for (let i = 0; i < array.length; i++) {
+      array[i] = Math.floor(Math.random() * 256);
+    }
+  }
   return Array.from(array, (byte) => byte.toString(16).padStart(2, "0")).join("");
 }
 
-async function generateCodeChallenge(verifier: string): Promise<string> {
-  const encoder = new TextEncoder();
-  const data = encoder.encode(verifier);
-  
-  let hash: ArrayBuffer;
-  if (typeof crypto !== 'undefined' && crypto.subtle) {
-    hash = await crypto.subtle.digest("SHA-256", data);
-  } else if (typeof globalThis.crypto !== 'undefined' && (globalThis.crypto as any).subtle) {
-    hash = await (globalThis.crypto as any).subtle.digest("SHA-256", data);
-  } else {
-    throw new Error('crypto.subtle is not available');
-  }
-  
-  const hashArray = Array.from(new Uint8Array(hash));
-  return btoa(String.fromCharCode(...hashArray)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=/g, "");
+function generateCodeChallenge(verifier: string): string {
+  const hash = sha256.array(verifier);
+  return btoa(String.fromCharCode(...hash)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=/g, "");
 }
 
-async function getAuthorizationUrlWithPKCE(client: OAuth2Client): Promise<{ url: string; codeVerifier: string }> {
+function getAuthorizationUrlWithPKCE(client: OAuth2Client): { url: string; codeVerifier: string } {
   const codeVerifier = generateCodeVerifier();
-  const codeChallenge = await generateCodeChallenge(codeVerifier);
+  const codeChallenge = generateCodeChallenge(codeVerifier);
   
   const params = new URLSearchParams({
     client_id: (client as any).clientId,
@@ -79,7 +74,7 @@ export function LoginForm() {
     setLoading(true)
     setError("")
     try {
-      const { url, codeVerifier } = await getAuthorizationUrlWithPKCE(ssoClient)
+      const { url, codeVerifier } = getAuthorizationUrlWithPKCE(ssoClient)
       document.cookie = `code_verifier=${codeVerifier}; path=/; SameSite=Lax`
       window.location.href = url
     } catch (err) {
