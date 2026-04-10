@@ -46,5 +46,18 @@ export async function GET(request: NextRequest) {
     select: { id: true, name: true, email: true, avatarUrl: true, role: true }
   })
 
-  return NextResponse.json({ user })
+  const response = NextResponse.json({ user })
+
+  const hasCookie = request.cookies.get('auth_token')?.value
+  if (!hasCookie) {
+    response.cookies.set('auth_token', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 60 * 60 * 24 * 7,
+      path: '/',
+    })
+  }
+
+  return response
 }
