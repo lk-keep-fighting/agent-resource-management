@@ -35,27 +35,27 @@ function HomeContent() {
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
-    const ssoToken = searchParams.get("sso_token");
-    if (ssoToken) {
-      setIsLoading(true);
-      const url = new URL(window.location.href);
-      url.searchParams.delete("sso_token");
-      window.history.replaceState({}, "", url.toString());
+    const token = searchParams.get("sso_token");
+    if (!token) return;
 
-      fetch(`/api/auth/session?sso_token=${encodeURIComponent(ssoToken)}`)
-        .then((res) => res.json())
-        .then((data) => {
-          if (data.user) {
-            router.push("/skills");
-          } else {
-            router.push("/login");
-          }
-        })
-        .catch(() => {
-          router.push("/login");
-        });
-    }
-  }, [searchParams, router]);
+    setIsLoading(true);
+    const url = new URL(window.location.href);
+    url.searchParams.delete("sso_token");
+    window.history.replaceState({}, "", url.toString());
+
+    fetch(`/api/auth/session?sso_token=${encodeURIComponent(token)}`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.user) {
+          window.location.href = "/skills";
+        } else {
+          window.location.href = "/login";
+        }
+      })
+      .catch(() => {
+        window.location.href = "/login";
+      });
+  }, [searchParams]);
 
   if (isLoading) {
     return (
