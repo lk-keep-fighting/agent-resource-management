@@ -43,13 +43,23 @@ export default function DashboardLayout({
 
   const fetchUserInfo = async () => {
     try {
-      const res = await fetch("/api/auth/session");
+      const url = new URL(window.location.href);
+      const ssoToken = url.searchParams.get("sso_token");
+
+      let endpoint = "/api/auth/session";
+      if (ssoToken) {
+        endpoint += `?sso_token=${encodeURIComponent(ssoToken)}`;
+        url.searchParams.delete("sso_token");
+        window.history.replaceState({}, "", url.toString());
+      }
+
+      const res = await fetch(endpoint);
       const data = await res.json();
       if (data.user) {
         setUserInfo(data.user);
         setIsChecking(false);
       } else {
-        const ssoUrl = process.env.NEXT_PUBLIC_SSO_URL || 'http://sso.xuanwu-prod.dev.aimstek.cn';
+        const ssoUrl = process.env.NEXT_PUBLIC_SSO_URL || "http://sso.xuanwu-prod.dev.aimstek.cn";
         const callbackUrl = `${window.location.origin}/api/auth/sso-callback`;
         window.location.href = `${ssoUrl}/login?redirect_uri=${encodeURIComponent(callbackUrl)}`;
       }
