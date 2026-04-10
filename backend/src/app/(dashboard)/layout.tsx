@@ -38,44 +38,32 @@ export default function DashboardLayout({
   const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
 
   useEffect(() => {
-    const token = localStorage.getItem("token");
-    const userStr = localStorage.getItem("user");
-    if (!token) {
-      router.push("/login");
-    } else if (userStr) {
-      try {
-        const user = JSON.parse(userStr) as UserInfo;
-        setUserInfo(user);
-      } catch {
-        fetchUserInfo(token);
-      }
-      setIsChecking(false);
-    } else {
-      fetchUserInfo(token);
-    }
-  }, [router]);
+    fetchUserInfo();
+  }, []);
 
-  const fetchUserInfo = async (token: string) => {
+  const fetchUserInfo = async () => {
     try {
-      const res = await fetch("/api/auth/userinfo", {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const res = await fetch("/api/auth/session");
       const data = await res.json();
-      if (data.ok && data.data) {
-        const user = data.data as UserInfo;
-        setUserInfo(user);
-        localStorage.setItem("user", JSON.stringify(user));
+      if (data.user) {
+        setUserInfo(data.user);
+        setIsChecking(false);
+      } else {
+        const ssoUrl = process.env.NEXT_PUBLIC_SSO_URL || 'http://sso.xuanwu-prod.dev.aimstek.cn';
+        const callbackUrl = `${window.location.origin}/api/auth/sso-callback`;
+        window.location.href = `${ssoUrl}/login?redirect_uri=${encodeURIComponent(callbackUrl)}`;
       }
     } catch {
-      console.error("Failed to fetch user info");
-    } finally {
       setIsChecking(false);
     }
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
+  const handleLogout = async () => {
+    try {
+      await fetch("/api/auth/logout", { method: "POST" });
+    } catch (e) {
+      console.error("Logout error:", e);
+    }
     router.push("/login");
   };
 
@@ -87,6 +75,10 @@ export default function DashboardLayout({
         <p>检查登录状态...</p>
       </div>
     );
+  }
+
+  if (!userInfo) {
+    return null;
   }
 
   return (

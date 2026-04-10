@@ -4,28 +4,17 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { useSSO } from "@/lib/sso-client-react";
 
 export function LoginForm() {
   const [apiKey, setApiKey] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [ssoUrl, setSsoUrl] = useState("");
-  const [configLoading, setConfigLoading] = useState(true);
   const router = useRouter();
-  const { loginWithSSO, loading: ssoLoading } = useSSO(ssoUrl);
-
-  useEffect(() => {
-    fetch("/api/config/sso")
-      .then((res) => res.json())
-      .then((data) => setSsoUrl(data.ssoUrl || ""))
-      .catch(() => setSsoUrl(""))
-      .finally(() => setConfigLoading(false));
-  }, []);
 
   const handleSSOLogin = () => {
-    const redirectUri = `${window.location.origin}/auth/callback`;
-    loginWithSSO(redirectUri);
+    const ssoUrl = process.env.NEXT_PUBLIC_SSO_URL || 'http://sso.xuanwu-prod.dev.aimstek.cn';
+    const redirectUri = `${window.location.origin}/api/auth/sso-callback`;
+    window.location.href = `${ssoUrl}/login?redirect_uri=${encodeURIComponent(redirectUri)}`;
   };
 
   const handleApiKeyLogin = async (e: React.FormEvent) => {
@@ -42,8 +31,6 @@ export function LoginForm() {
 
       const data = await res.json();
       if (data.ok) {
-        localStorage.setItem("token", data.data.token);
-        localStorage.setItem("user", JSON.stringify(data.data.user));
         router.push("/skills");
       } else {
         setError(data.msg || "登录失败");
@@ -54,10 +41,6 @@ export function LoginForm() {
       setLoading(false);
     }
   };
-
-  if (configLoading || ssoLoading) {
-    return <p>加载中...</p>;
-  }
 
   return (
     <>
