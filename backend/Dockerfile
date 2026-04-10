@@ -7,6 +7,8 @@ COPY backend/package.json backend/pnpm-lock.yaml* ./
 RUN pnpm install --frozen-lockfile
 
 FROM base AS builder
+ARG NEXT_PUBLIC_SSO_URL
+ENV NEXT_PUBLIC_SSO_URL=$NEXT_PUBLIC_SSO_URL
 RUN npm install -g pnpm
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
