@@ -43,41 +43,29 @@ export default function DashboardLayout({
 
   const fetchUserInfo = async () => {
     try {
-      const url = new URL(window.location.href);
-      const ssoToken = url.searchParams.get("sso_token");
-
-      let endpoint = "/api/auth/session";
-      if (ssoToken) {
-        endpoint += `?sso_token=${encodeURIComponent(ssoToken)}`;
-        url.searchParams.delete("sso_token");
-        window.history.replaceState({}, "", url.toString());
-      }
-
-      const res = await fetch(endpoint);
+      const res = await fetch("/api/auth/session", {
+        credentials: "include"
+      });
       const data = await res.json();
       if (data.user) {
         setUserInfo(data.user);
         setIsChecking(false);
       } else {
-        const ssoUrl = process.env.NEXT_PUBLIC_SSO_URL || "http://sso.xuanwu-prod.dev.aimstek.cn";
-        const callbackUrl = `${window.location.origin}/api/auth/sso-callback`;
-        window.location.href = `${ssoUrl}/login?redirect_uri=${encodeURIComponent(callbackUrl)}`;
+        window.location.href = "/login";
       }
     } catch {
-      setIsChecking(false);
+      window.location.href = "/login";
     }
   };
 
   const handleLogout = async () => {
     try {
-      await fetch("/api/auth/logout", { method: "POST" });
+      await fetch("/api/auth/logout", { method: "POST", credentials: "include" });
     } catch (e) {
       console.error("Logout error:", e);
     }
     router.push("/login");
   };
-
-  const isAdmin = userInfo?.role === "ADMIN";
 
   if (isChecking) {
     return (
@@ -116,33 +104,6 @@ export default function DashboardLayout({
               </Link>
             );
           })}
-          {isAdmin && (
-            <>
-              <div className="pt-4 pb-2">
-                <p className="px-3 text-xs font-medium text-gray-400 uppercase tracking-wider">
-                  系统管理
-                </p>
-              </div>
-              {adminNavItems.map((item) => {
-                const Icon = item.icon;
-                return (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    className={cn(
-                      "flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-colors",
-                      pathname === item.href
-                        ? "bg-gray-100 text-gray-900"
-                        : "text-gray-600 hover:bg-gray-50"
-                    )}
-                  >
-                    <Icon className="h-4 w-4" />
-                    {item.label}
-                  </Link>
-                );
-              })}
-            </>
-          )}
         </nav>
         <div className="absolute bottom-4 left-4">
           <button

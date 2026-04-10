@@ -2,7 +2,7 @@ import { NextRequest } from 'next/server';
 import crypto from 'crypto';
 import prisma from './db';
 import { errorResponse } from './api-response';
-import { extractToken, verifyToken } from './sso-client';
+import { ssoClient } from './sso';
 import type { User } from '@/lib/types';
 
 export function hashApiKey(apiKey: string): string {
@@ -10,34 +10,37 @@ export function hashApiKey(apiKey: string): string {
 }
 
 async function authenticateBySSO(request: NextRequest): Promise<User | null> {
-  const token = extractToken(request);
-  if (!token) return null;
+  const accessToken = request.cookies.get('access_token')?.value
+  if (!accessToken) return null;
 
-  const payload = verifyToken(token);
-  if (!payload) return null;
+  try {
+    const userInfo = await ssoClient.getUserInfo(accessToken)
 
-  const localUser = await prisma.user.findUnique({
-    where: { ssoUserId: payload.userId },
-    select: {
-      id: true,
-      name: true,
-      email: true,
-      ssoUserId: true,
-      role: true,
-      createdAt: true,
-    },
-  });
+    const localUser = await prisma.user.findUnique({
+      where: { ssoUserId: userInfo.sub },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        ssoUserId: true,
+        role: true,
+        createdAt: true,
+      },
+    });
 
-  if (!localUser) return null;
+    if (!localUser) return null;
 
-  return {
-    id: localUser.id,
-    name: localUser.name || '',
-    email: localUser.email || '',
-    apiKey: localUser.ssoUserId || '',
-    role: localUser.role,
-    createdAt: localUser.createdAt.toISOString(),
-  };
+    return {
+      id: localUser.id,
+      name: localUser.name || '',
+      email: localUser.email || '',
+      apiKey: localUser.ssoUserId || '',
+      role: localUser.role,
+      createdAt: localUser.createdAt.toISOString(),
+    };
+  } catch {
+    return null;
+  }
 }
 
 async function authenticateByApiKey(request: NextRequest): Promise<User | null> {

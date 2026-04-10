@@ -1,7 +1,6 @@
 "use client";
 
-import { Suspense, useEffect, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { Bot, Package, Users, Zap, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -29,41 +28,8 @@ const features = [
   },
 ];
 
-function HomeContent() {
+export default function HomePage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const [isLoading, setIsLoading] = useState(false);
-
-  useEffect(() => {
-    const token = searchParams.get("sso_token");
-    if (!token) return;
-
-    setIsLoading(true);
-    const url = new URL(window.location.href);
-    url.searchParams.delete("sso_token");
-    window.history.replaceState({}, "", url.toString());
-
-    fetch(`/api/auth/session?sso_token=${encodeURIComponent(token)}`)
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.user) {
-          window.location.href = "/skills";
-        } else {
-          window.location.href = "/login";
-        }
-      })
-      .catch(() => {
-        window.location.href = "/login";
-      });
-  }, [searchParams]);
-
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-gray-50 to-gray-100">
-        <p>正在登录...</p>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100">
@@ -123,17 +89,5 @@ function HomeContent() {
         </div>
       </footer>
     </div>
-  );
-}
-
-export default function HomePage() {
-  return (
-    <Suspense fallback={
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-gray-50 to-gray-100">
-        <p>加载中...</p>
-      </div>
-    }>
-      <HomeContent />
-    </Suspense>
   );
 }

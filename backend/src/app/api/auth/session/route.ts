@@ -1,53 +1,62 @@
 import { NextRequest, NextResponse } from 'next/server'
-import jwt from 'jsonwebtoken'
 import prisma from '@/lib/db'
+import { ssoClient } from '@/lib/sso'
 
 export async function GET(request: NextRequest) {
-  let token: string | null | undefined = request.cookies.get('auth_token')?.value
+  const accessToken = request.cookies.get('access_token')?.value
 
-  if (!token) {
-    token = request.nextUrl.searchParams.get('sso_token')
-  }
-
-  if (!token) {
+  if (!accessToken) {
     return NextResponse.json({ user: null })
   }
 
-  const jwtSecret = process.env.SSO_JWT_SECRET
-  if (!jwtSecret) {
-    return NextResponse.json({ user: null })
-  }
-
-  let payload: jwt.JwtPayload | string
   try {
-    payload = jwt.verify(token, jwtSecret)
-  } catch {
-    return NextResponse.json({ user: null })
-  }
+    const userInfo = await ssoClient.getUserInfo(accessToken)
+    console.log('[Session] userInfo:', userInfo)
 
-  if (typeof payload === 'string' || !payload.userId) {
-    return NextResponse.json({ user: null })
-  }
-
-  const user = await prisma.user.findUnique({
-    where: { ssoUserId: payload.userId },
-    select: { id: true, name: true, email: true, avatarUrl: true, role: true }
-  })
-
-  const response = NextResponse.json({ user })
-
-  const hasCookie = request.cookies.get('auth_token')?.value
-  if (!hasCookie) {
-    const cookieDomain = process.env.SSO_COOKIE_DOMAIN || undefined
-    response.cookies.set('auth_token', token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: 60 * 60 * 24 * 7,
-      path: '/',
-      domain: cookieDomain,
+    let localUser = await prisma.user.findUnique({
+      where: { ssoUserId: userInfo.sub },
+      select: { id: true, name: true, email: true, avatarUrl: true, role: true }
     })
-  }
+    console.log('[Session] found by ssoUserId:', localUser)
 
-  return response
+    if (!localUser && userInfo.email) {
+      const byEmail = await prisma.user.findUnique({
+        where: { email: userInfo.email },
+        select: { id: true, name: true, email: true, avatarUrl: true, role: true }
+      })
+      console.log('[Session] found by email:', byEmail)
+      
+      if (byEmail) {
+        localUser = await prisma.user.update({
+          where: { id: byEmail.id },
+          data: { ssoUserId: userInfo.sub },
+          select: { id: true, name: true, email: true, avatarUrl: true, role: true }
+        })
+        console.log('[Session] updated by email, new user:', localUser)
+      }
+    }
+
+    if (!localUser) {
+      console.log('[Session] creating new user with:', {
+        ssoUserId: userInfo.sub,
+        name: userInfo.name,
+        email: userInfo.email
+      })
+      localUser = await prisma.user.create({
+        data: {
+          id: crypto.randomUUID(),
+          ssoUserId: userInfo.sub,
+          name: userInfo.name || 'SSO User',
+          email: userInfo.email || null,
+        },
+        select: { id: true, name: true, email: true, avatarUrl: true, role: true }
+      })
+      console.log('[Session] created user:', localUser)
+    }
+
+    return NextResponse.json({ user: localUser })
+  } catch (error) {
+    console.error('Session error:', error)
+    return NextResponse.json({ user: null })
+  }
 }

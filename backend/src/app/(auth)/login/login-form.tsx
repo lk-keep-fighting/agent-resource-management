@@ -4,6 +4,21 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { OAuth2Client } from "xuanwu-sso-sdk";
+
+const ssoUrl = process.env.NEXT_PUBLIC_SSO_URL || 'http://localhost:3000'
+const clientId = process.env.NEXT_PUBLIC_SSO_CLIENT_ID || 'agent-skill-system'
+const clientSecret = process.env.NEXT_PUBLIC_SSO_CLIENT_SECRET || ''
+const redirectUri = typeof window !== 'undefined'
+  ? `${window.location.origin}/api/auth/callback`
+  : 'http://localhost:3001/api/auth/callback'
+
+const ssoClient = new OAuth2Client({
+  clientId,
+  clientSecret,
+  redirectUri,
+  scopes: ['openid', 'profile', 'email'],
+}, ssoUrl)
 
 export function LoginForm() {
   const [apiKey, setApiKey] = useState("");
@@ -11,10 +26,26 @@ export function LoginForm() {
   const [error, setError] = useState("");
   const router = useRouter();
 
-  const handleSSOLogin = () => {
-    const ssoUrl = process.env.NEXT_PUBLIC_SSO_URL || 'http://sso.xuanwu-prod.dev.aimstek.cn';
-    const redirectUri = `${window.location.origin}/api/auth/sso-callback`;
-    window.location.href = `${ssoUrl}/login?redirect_uri=${encodeURIComponent(redirectUri)}`;
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search)
+    const errorParam = urlParams.get('error')
+    if (errorParam) {
+      setError(`SSO Error: ${errorParam}`)
+      window.history.replaceState({}, '', '/login')
+    }
+  }, [])
+
+  const handleSSOLogin = async () => {
+    setLoading(true)
+    setError("")
+    try {
+      const { url, codeVerifier } = await ssoClient.getAuthorizationUrl()
+      document.cookie = `code_verifier=${codeVerifier}; path=/; SameSite=Lax`
+      window.location.href = url
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Login failed')
+      setLoading(false)
+    }
   };
 
   const handleApiKeyLogin = async (e: React.FormEvent) => {
@@ -44,8 +75,8 @@ export function LoginForm() {
 
   return (
     <>
-      <Button onClick={handleSSOLogin} className="w-full" variant="default">
-        单点登录
+      <Button onClick={handleSSOLogin} className="w-full" variant="default" disabled={loading}>
+        {loading ? "跳转中..." : "单点登录"}
       </Button>
       <div className="relative">
         <div className="absolute inset-0 flex items-center">
