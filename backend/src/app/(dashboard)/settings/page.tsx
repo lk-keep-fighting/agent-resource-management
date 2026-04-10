@@ -17,7 +17,7 @@ export default function SettingsPage() {
   const router = useRouter();
 
   useEffect(() => {
-    const userStr = localStorage.getItem("user");
+    const userStr = null // User from session API;
     if (userStr) {
       setUser(JSON.parse(userStr));
     }

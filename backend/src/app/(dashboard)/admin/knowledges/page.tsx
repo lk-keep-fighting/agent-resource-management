@@ -31,11 +31,7 @@ export default function AdminKnowledgesPage() {
   const fetchKnowledges = useCallback(async (searchKeyword = "") => {
     setLoading(true);
     try {
-      const token = localStorage.getItem("token");
-      if (!token) {
-        router.push("/login");
-        return;
-      }
+      // Auth handled by cookie (API reads from cookie)
 
       const params = new URLSearchParams();
       if (searchKeyword) params.set("keyword", searchKeyword);
@@ -43,8 +39,8 @@ export default function AdminKnowledgesPage() {
       const url = queryString ? `/api/v1/admin/knowledges?${queryString}` : "/api/v1/admin/knowledges";
 
       const res = await fetch(url, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+        // Auth via cookie
+        });
       const data = await res.json();
       if (data.ok) {
         setKnowledges(data.data.knowledges);
@@ -72,11 +68,11 @@ export default function AdminKnowledgesPage() {
     if (!confirm("确定要删除这个知识吗？")) return;
 
     try {
-      const token = localStorage.getItem("token");
+      const token = null // Token from cookie;
       const res = await fetch(`/api/v1/admin/knowledges/${id}`, {
         method: "DELETE",
-        headers: { Authorization: `Bearer ${token}` },
-      });
+        // Auth via cookie
+        });
       const data = await res.json();
       if (data.ok) {
         if (selectedKnowledgeId === id) {

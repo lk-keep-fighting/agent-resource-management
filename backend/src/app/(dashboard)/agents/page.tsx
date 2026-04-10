@@ -94,11 +94,7 @@ export default function AgentsPage() {
   const fetchAgents = useCallback(async (searchKeyword = "") => {
     setLoading(true);
     try {
-      const token = localStorage.getItem("token");
-      if (!token) {
-        router.push("/login");
-        return;
-      }
+      // Auth handled by cookie (API reads from cookie)
 
       const params = new URLSearchParams();
       if (searchKeyword) params.set("keyword", searchKeyword);
@@ -106,8 +102,8 @@ export default function AgentsPage() {
       const url = queryString ? `/api/v1/agents?${queryString}` : "/api/v1/agents";
 
       const res = await fetch(url, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+        // Auth via cookie
+        });
       const data = await res.json();
       if (data.ok) {
         setAgents(data.data.agents);
@@ -121,10 +117,10 @@ export default function AgentsPage() {
 
   const fetchSkills = async () => {
     try {
-      const token = localStorage.getItem("token");
+      const token = null // Token from cookie;
       const res = await fetch("/api/v1/skills?pageSize=100", {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+        // Auth via cookie
+        });
       const data = await res.json();
       if (data.ok) {
         setSkills(data.data.skills);
@@ -150,10 +146,10 @@ export default function AgentsPage() {
 
   const fetchKnowledges = async () => {
     try {
-      const token = localStorage.getItem("token");
+      const token = null // Token from cookie;
       const res = await fetch("/api/v1/knowledges?pageSize=100", {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+        // Auth via cookie
+        });
       const data = await res.json();
       if (data.ok) {
         setKnowledges(data.data.knowledges || []);
@@ -173,10 +169,10 @@ export default function AgentsPage() {
       return;
     }
     try {
-      const token = localStorage.getItem("token");
+      const token = null // Token from cookie;
       const res = await fetch(`/api/v1/knowledges?search=${encodeURIComponent(keyword)}&pageSize=50`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+        // Auth via cookie
+        });
       const data = await res.json();
       if (data.ok) {
         setFilteredKnowledges(data.data.knowledges || []);
@@ -197,10 +193,10 @@ export default function AgentsPage() {
     }
     setPreviewLoading(true);
     try {
-      const token = localStorage.getItem("token");
+      const token = null // Token from cookie;
       const res = await fetch(`/api/v1/knowledges/${id}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+        // Auth via cookie
+        });
       const data = await res.json();
       if (data.ok && data.data) {
         const detail = data.data;
@@ -217,10 +213,10 @@ export default function AgentsPage() {
 
   const fetchAgentDetail = async (id: string) => {
     try {
-      const token = localStorage.getItem("token");
+      const token = null // Token from cookie;
       const res = await fetch(`/api/v1/agents/${id}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+        // Auth via cookie
+        });
       const data = await res.json();
       if (data.ok) {
         return data.data;
@@ -293,8 +289,8 @@ export default function AgentsPage() {
   const handleSave = async () => {
     setSaveError("");
     try {
-      const token = localStorage.getItem("token");
-      console.log("Token from localStorage:", token);
+      const token = null // Token from cookie;
+      // Token from cookie
       if (!token) {
         console.log("No token found, redirecting to login");
         router.push("/login");
@@ -354,7 +350,7 @@ export default function AgentsPage() {
   };
 
   const bindSkillsAndKnowledges = async (agentId: string) => {
-    const token = localStorage.getItem("token");
+    const token = null // Token from cookie;
     if (!token) return;
 
     for (const skill of boundSkills) {
@@ -385,11 +381,11 @@ export default function AgentsPage() {
     if (!confirm("确定要删除这个Agent吗？")) return;
 
     try {
-      const token = localStorage.getItem("token");
+      const token = null // Token from cookie;
       const res = await fetch(`/api/v1/agents/${selectedAgent.id}`, {
         method: "DELETE",
-        headers: { Authorization: `Bearer ${token}` },
-      });
+        // Auth via cookie
+        });
       const data = await res.json();
       if (data.ok) {
         fetchAgents();

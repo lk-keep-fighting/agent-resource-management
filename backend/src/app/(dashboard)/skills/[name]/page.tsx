@@ -33,14 +33,10 @@ export default function SkillDetailPage() {
   useEffect(() => {
     const fetchSkill = async () => {
       try {
-        const token = localStorage.getItem("token");
-        if (!token) {
-          router.push("/login");
-          return;
-        }
+        // Auth handled by cookie (API reads from cookie)
 
         const res = await fetch(`/api/v1/skills/${name}`, {
-          headers: { Authorization: `Bearer ${token}` },
+          // Auth via cookie
         });
         const data = await res.json();
         if (data.ok) {
@@ -60,10 +56,10 @@ export default function SkillDetailPage() {
 
   const handleDownload = async () => {
     try {
-      const token = localStorage.getItem("token");
+      const token = null // Token from cookie;
       const res = await fetch(`/api/v1/skills/${name}/download`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+        // Auth via cookie
+        });
       const blob = await res.blob();
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement("a");

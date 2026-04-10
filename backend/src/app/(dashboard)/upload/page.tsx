@@ -33,18 +33,14 @@ export default function UploadPage() {
     setSkillSuccess("");
 
     try {
-      const token = localStorage.getItem("token");
-      if (!token) {
-        router.push("/login");
-        return;
-      }
+      // Auth handled by cookie (API reads from cookie)
 
       const formData = new FormData();
       formData.append("file", skillFile);
 
       const res = await fetch("/api/v1/skills", {
         method: "POST",
-        headers: { Authorization: `Bearer ${token}` },
+        // Auth via cookie
         body: formData,
       });
 
@@ -75,16 +71,11 @@ export default function UploadPage() {
     setKnowledgeSuccess("");
 
     try {
-      const token = localStorage.getItem("token");
-      if (!token) {
-        router.push("/login");
-        return;
-      }
+      // Auth handled by cookie (API reads from cookie)
 
       const res = await fetch("/api/v1/knowledges", {
         method: "POST",
         headers: {
-          Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
         },
         body: JSON.stringify({

@@ -55,15 +55,11 @@ export default function MySkillsPage() {
   const fetchSkills = useCallback(async () => {
     setSkillsLoading(true);
     try {
-      const token = localStorage.getItem("token");
-      if (!token) {
-        router.push("/login");
-        return;
-      }
+      // Auth handled by cookie (API reads from cookie)
 
       const res = await fetch("/api/v1/users/me/skills", {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+        // Auth via cookie
+        });
       const data = await res.json();
       if (data.ok) {
         setSkills(data.data);
@@ -78,15 +74,11 @@ export default function MySkillsPage() {
   const fetchKnowledges = useCallback(async () => {
     setKnowledgesLoading(true);
     try {
-      const token = localStorage.getItem("token");
-      if (!token) {
-        router.push("/login");
-        return;
-      }
+      // Auth handled by cookie (API reads from cookie)
 
       const res = await fetch("/api/v1/users/me/knowledges", {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+        // Auth via cookie
+        });
       const data = await res.json();
       if (data.ok) {
         setKnowledges(data.data);
@@ -104,10 +96,10 @@ export default function MySkillsPage() {
     }
     setSkillDetailLoading(true);
     try {
-      const token = localStorage.getItem("token");
+      const token = null // Token from cookie;
       const res = await fetch(`/api/v1/skills/${name}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+        // Auth via cookie
+        });
       const data = await res.json();
       if (data.ok) {
         setSkillDetailCache((prev) => ({ ...prev, [name]: data.data }));
@@ -137,11 +129,11 @@ export default function MySkillsPage() {
     if (!confirm(`确定要删除 ${name} 吗？`)) return;
 
     try {
-      const token = localStorage.getItem("token");
+      const token = null // Token from cookie;
       const res = await fetch(`/api/v1/skills/${name}`, {
         method: "DELETE",
-        headers: { Authorization: `Bearer ${token}` },
-      });
+        // Auth via cookie
+        });
       const data = await res.json();
       if (data.ok) {
         if (selectedSkillName === name) {
@@ -160,11 +152,11 @@ export default function MySkillsPage() {
     if (!confirm("确定要删除这个知识吗？")) return;
 
     try {
-      const token = localStorage.getItem("token");
+      const token = null // Token from cookie;
       const res = await fetch(`/api/v1/knowledges/${id}`, {
         method: "DELETE",
-        headers: { Authorization: `Bearer ${token}` },
-      });
+        // Auth via cookie
+        });
       const data = await res.json();
       if (data.ok) {
         if (selectedKnowledgeId === id) {
@@ -181,10 +173,10 @@ export default function MySkillsPage() {
 
   const handleDownloadSkill = async (name: string) => {
     try {
-      const token = localStorage.getItem("token");
+      const token = null // Token from cookie;
       const res = await fetch(`/api/v1/skills/${name}/download`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+        // Auth via cookie
+        });
       const blob = await res.blob();
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement("a");

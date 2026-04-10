@@ -30,11 +30,7 @@ export default function KnowledgesPage() {
   const fetchKnowledges = useCallback(async (searchKeyword = "") => {
     setLoading(true);
     try {
-      const token = localStorage.getItem("token");
-      if (!token) {
-        router.push("/login");
-        return;
-      }
+      // Auth handled by cookie (API reads from cookie)
 
       const params = new URLSearchParams();
       if (searchKeyword) params.set("keyword", searchKeyword);
@@ -42,8 +38,8 @@ export default function KnowledgesPage() {
       const url = queryString ? `/api/v1/knowledges?${queryString}` : "/api/v1/knowledges";
 
       const res = await fetch(url, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+        // Auth via cookie
+        });
       const data = await res.json();
       if (data.ok) {
         setKnowledges(data.data.knowledges);
@@ -61,10 +57,10 @@ export default function KnowledgesPage() {
     }
     setDetailLoading(true);
     try {
-      const token = localStorage.getItem("token");
+      const token = null // Token from cookie;
       const res = await fetch(`/api/v1/knowledges/${id}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+        // Auth via cookie
+        });
       const data = await res.json();
       if (data.ok && data.data) {
         setKnowledgeDetailCache((prev) => ({ ...prev, [id]: data.data }));

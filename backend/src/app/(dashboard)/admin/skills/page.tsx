@@ -36,11 +36,7 @@ export default function AdminSkillsPage() {
   const fetchSkills = useCallback(async (searchKeyword = "") => {
     setLoading(true);
     try {
-      const token = localStorage.getItem("token");
-      if (!token) {
-        router.push("/login");
-        return;
-      }
+      // Auth handled by cookie (API reads from cookie)
 
       const params = new URLSearchParams();
       if (searchKeyword) params.set("keyword", searchKeyword);
@@ -48,8 +44,8 @@ export default function AdminSkillsPage() {
       const url = queryString ? `/api/v1/admin/skills?${queryString}` : "/api/v1/admin/skills";
 
       const res = await fetch(url, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+        // Auth via cookie
+        });
       const data = await res.json();
       if (data.ok) {
         setSkills(data.data.skills);
@@ -77,11 +73,11 @@ export default function AdminSkillsPage() {
     if (!confirm(`确定要删除 Skill "${name}" 吗？`)) return;
 
     try {
-      const token = localStorage.getItem("token");
+      const token = null // Token from cookie;
       const res = await fetch(`/api/v1/admin/skills/${name}`, {
         method: "DELETE",
-        headers: { Authorization: `Bearer ${token}` },
-      });
+        // Auth via cookie
+        });
       const data = await res.json();
       if (data.ok) {
         if (selectedSkillName === name) {

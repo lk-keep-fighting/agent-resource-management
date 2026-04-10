@@ -48,10 +48,10 @@ export default function SkillsPage() {
 
   const fetchTags = async () => {
     try {
-      const token = localStorage.getItem("token");
+      const token = null // Token from cookie;
       const res = await fetch("/api/v1/tags", {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+        // Auth via cookie
+        });
       const data = await res.json();
       if (data.ok) {
         setTags(data.data);
@@ -64,11 +64,7 @@ export default function SkillsPage() {
   const fetchSkills = useCallback(async (searchKeyword = "", tag = "") => {
     setLoading(true);
     try {
-      const token = localStorage.getItem("token");
-      if (!token) {
-        router.push("/login");
-        return;
-      }
+      // Auth handled by cookie (API reads from cookie)
 
       const params = new URLSearchParams();
       if (searchKeyword) params.set("keyword", searchKeyword);
@@ -77,8 +73,8 @@ export default function SkillsPage() {
       const url = queryString ? `/api/v1/skills?${queryString}` : "/api/v1/skills";
 
       const res = await fetch(url, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+        // Auth via cookie
+        });
       const data = await res.json();
       if (data.ok) {
         setSkills(data.data.skills);
@@ -96,10 +92,10 @@ export default function SkillsPage() {
     }
     setDetailLoading(true);
     try {
-      const token = localStorage.getItem("token");
+      const token = null // Token from cookie;
       const res = await fetch(`/api/v1/skills/${name}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+        // Auth via cookie
+        });
       const data = await res.json();
       if (data.ok) {
         setSkillDetailCache((prev) => ({ ...prev, [name]: data.data }));
@@ -142,10 +138,10 @@ export default function SkillsPage() {
 
   const handleDownload = async (name: string) => {
     try {
-      const token = localStorage.getItem("token");
+      const token = null // Token from cookie;
       const res = await fetch(`/api/v1/skills/${name}/download`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+        // Auth via cookie
+        });
       const blob = await res.blob();
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
