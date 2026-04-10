@@ -46,8 +46,7 @@ function getAuthorizationUrlWithPKCE(client: OAuth2Client): { url: string; codeV
 const ssoUrl = process.env.NEXT_PUBLIC_SSO_URL || 'http://localhost:3000'
 const clientId = process.env.NEXT_PUBLIC_SSO_CLIENT_ID || 'agent-skill-system'
 const clientSecret = process.env.NEXT_PUBLIC_SSO_CLIENT_SECRET || ''
-const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3001'
-const redirectUri = `${appUrl}/api/auth/callback`
+const redirectUri = process.env.NEXT_PUBLIC_SSO_REDIRECT_URI || 'http://localhost:3001/api/auth/callback'
 
 const ssoClient = new OAuth2Client({
   clientId,

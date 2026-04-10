@@ -3,8 +3,7 @@ import { OAuth2Client } from 'xuanwu-sso-sdk'
 const ssoUrl = process.env.SSO_URL || 'http://localhost:3000'
 const clientId = process.env.SSO_CLIENT_ID || 'agent-skill-system'
 const clientSecret = process.env.SSO_CLIENT_SECRET || ''
-const appUrl = process.env.APP_URL || 'http://localhost:3001'
-const redirectUri = process.env.SSO_REDIRECT_URI || `${appUrl}/api/auth/callback`
+const redirectUri = process.env.SSO_REDIRECT_URI || 'http://localhost:3001/api/auth/callback'
 
 export const ssoClient = new OAuth2Client(
   {
