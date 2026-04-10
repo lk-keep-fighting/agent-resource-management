@@ -15,7 +15,16 @@ function generateCodeVerifier(): string {
 async function generateCodeChallenge(verifier: string): Promise<string> {
   const encoder = new TextEncoder();
   const data = encoder.encode(verifier);
-  const hash = await crypto.subtle.digest("SHA-256", data);
+  
+  let hash: ArrayBuffer;
+  if (typeof crypto !== 'undefined' && crypto.subtle) {
+    hash = await crypto.subtle.digest("SHA-256", data);
+  } else if (typeof globalThis.crypto !== 'undefined' && (globalThis.crypto as any).subtle) {
+    hash = await (globalThis.crypto as any).subtle.digest("SHA-256", data);
+  } else {
+    throw new Error('crypto.subtle is not available');
+  }
+  
   const hashArray = Array.from(new Uint8Array(hash));
   return btoa(String.fromCharCode(...hashArray)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=/g, "");
 }
