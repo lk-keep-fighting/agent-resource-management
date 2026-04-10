@@ -32,8 +32,8 @@ async function authenticateBySSO(request: NextRequest): Promise<User | null> {
 
   return {
     id: localUser.id,
-    name: localUser.name,
-    email: localUser.email,
+    name: localUser.name || '',
+    email: localUser.email || '',
     apiKey: localUser.ssoUserId || '',
     role: localUser.role,
     createdAt: localUser.createdAt.toISOString(),
@@ -66,8 +66,8 @@ async function authenticateByApiKey(request: NextRequest): Promise<User | null> 
 
   return {
     id: user.id,
-    name: user.name,
-    email: user.email,
+    name: user.name || '',
+    email: user.email || '',
     apiKey: apiKeyHash,
     role: user.role,
     createdAt: user.createdAt.toISOString(),

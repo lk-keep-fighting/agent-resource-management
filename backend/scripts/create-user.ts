@@ -26,6 +26,7 @@ async function createUser(name: string, email: string) {
       name,
       email,
       apiKeyHash,
+      ssoUserId: id,
     },
   });
 

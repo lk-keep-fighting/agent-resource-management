@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import jwt from 'jsonwebtoken'
 import prisma from '@/lib/db'
-import { v4 as uuidv4 } from 'uuid'
 
 export async function GET(request: NextRequest) {
   let token: string | null | undefined = request.cookies.get('auth_token')?.value
@@ -30,17 +29,6 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ user: null })
   }
 
-  await prisma.user.upsert({
-    where: { ssoUserId: payload.userId },
-    create: {
-      id: uuidv4(),
-      ssoUserId: payload.userId,
-      name: 'SSO User',
-      email: `sso_${payload.userId}@local`,
-    },
-    update: {},
-  })
-
   const user = await prisma.user.findUnique({
     where: { ssoUserId: payload.userId },
     select: { id: true, name: true, email: true, avatarUrl: true, role: true }
@@ -50,12 +38,14 @@ export async function GET(request: NextRequest) {
 
   const hasCookie = request.cookies.get('auth_token')?.value
   if (!hasCookie) {
+    const cookieDomain = process.env.SSO_COOKIE_DOMAIN || undefined
     response.cookies.set('auth_token', token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
       maxAge: 60 * 60 * 24 * 7,
       path: '/',
+      domain: cookieDomain,
     })
   }
 

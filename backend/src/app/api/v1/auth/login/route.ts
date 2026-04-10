@@ -32,8 +32,8 @@ export async function POST(request: NextRequest) {
     const response: LoginResponse = {
       user: {
         id: user.id,
-        name: user.name,
-        email: user.email,
+        name: user.name || '',
+        email: user.email || '',
         apiKey: apiKeyHash,
         role: user.role,
         createdAt: user.createdAt.toISOString(),
