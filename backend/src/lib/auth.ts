@@ -2,7 +2,7 @@ import { NextRequest } from 'next/server';
 import crypto from 'crypto';
 import prisma from './db';
 import { errorResponse } from './api-response';
-import { extractToken, verifyToken, getUserInfo } from './sso-client';
+import { extractToken, verifyToken } from './sso-client';
 import type { User } from '@/lib/types';
 
 export function hashApiKey(apiKey: string): string {
@@ -13,11 +13,11 @@ async function authenticateBySSO(request: NextRequest): Promise<User | null> {
   const token = extractToken(request);
   if (!token) return null;
 
-  const { valid, user: ssoUser } = await getUserInfo(token);
-  if (!valid || !ssoUser) return null;
+  const payload = verifyToken(token);
+  if (!payload) return null;
 
   const localUser = await prisma.user.findUnique({
-    where: { ssoUserId: ssoUser.id },
+    where: { ssoUserId: payload.userId },
     select: {
       id: true,
       name: true,

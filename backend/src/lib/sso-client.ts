@@ -1,24 +1,5 @@
-import jwt from 'jsonwebtoken'
 import { NextRequest, NextResponse } from 'next/server'
-
-export interface SSOUser {
-  id: string
-  feishuUnionId: string | null
-  email: string | null
-  name: string | null
-  avatarUrl: string | null
-  role: 'ADMIN' | 'USER'
-  createdAt: Date | null
-}
-
-export interface SSOUserWithSsoId extends SSOUser {
-  ssoUserId: string
-}
-
-export interface SSOConfig {
-  ssoUrl: string
-  jwtSecret: string
-}
+import jwt from 'jsonwebtoken'
 
 export interface TokenPayload {
   userId: string
@@ -26,15 +7,12 @@ export interface TokenPayload {
   role: string
 }
 
-function getConfig(): SSOConfig {
-  const ssoUrl = process.env.SSO_URL
+function getJwtSecret(): string {
   const jwtSecret = process.env.SSO_JWT_SECRET
-
-  if (!ssoUrl || !jwtSecret) {
-    throw new Error('Missing SSO configuration. Please set SSO_URL and SSO_JWT_SECRET environment variables.')
+  if (!jwtSecret) {
+    throw new Error('Missing SSO_JWT_SECRET environment variable')
   }
-
-  return { ssoUrl, jwtSecret }
+  return jwtSecret
 }
 
 export function extractToken(request: NextRequest): string | null {
@@ -52,8 +30,13 @@ export function extractToken(request: NextRequest): string | null {
 
 export function verifyToken(token: string): TokenPayload | null {
   try {
-    const { jwtSecret } = getConfig()
-    return jwt.verify(token, jwtSecret) as TokenPayload
+    const payload = jwt.verify(token, getJwtSecret()) as jwt.JwtPayload
+    if (!payload.userId) return null
+    return {
+      userId: payload.userId,
+      feishuUnionId: payload.feishuUnionId || '',
+      role: payload.role || 'USER'
+    }
   } catch {
     return null
   }
@@ -67,26 +50,13 @@ export function verifyTokenSync(token: string, secret: string): TokenPayload | n
   }
 }
 
-export async function getUserInfo(token: string): Promise<{ valid: boolean; user: SSOUser | null }> {
-  try {
-    const { ssoUrl } = getConfig()
-    const response = await fetch(`${ssoUrl}/api/auth/userinfo`, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    })
-    return response.json()
-  } catch {
-    return { valid: false, user: null }
+export function parseTokenFromCallback(request: NextRequest): string | null {
+  const authHeader = request.headers.get('authorization')
+  if (authHeader?.startsWith('Bearer ')) {
+    return authHeader.slice(7)
   }
-}
-
-export async function getSession(request: NextRequest): Promise<SSOUser | null> {
-  const token = extractToken(request)
-  if (!token) return null
-
-  const { valid, user } = await getUserInfo(token)
-  return valid ? user : null
+  const { searchParams } = new URL(request.url)
+  return searchParams.get('sso_token') || searchParams.get('token') || request.cookies.get('auth_token')?.value || null
 }
 
 export function createAuthMiddleware() {
@@ -101,17 +71,12 @@ export function createAuthMiddleware() {
       return NextResponse.json({ error: 'Invalid token' }, { status: 401 })
     }
 
-    const { valid, user } = await getUserInfo(token)
-    if (!valid || !user) {
-      return NextResponse.json({ error: 'User not found' }, { status: 401 })
-    }
-
-    return { user, payload }
+    return { payload }
   }
 }
 
 export function createProtectedRoute<T>(
-  handler: (request: NextRequest, user: SSOUser) => Promise<T>
+  handler: (request: NextRequest, payload: TokenPayload) => Promise<T>
 ) {
   return async (request: NextRequest) => {
     const token = extractToken(request)
@@ -119,17 +84,17 @@ export function createProtectedRoute<T>(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { valid, user } = await getUserInfo(token)
-    if (!valid || !user) {
+    const payload = verifyToken(token)
+    if (!payload) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    return handler(request, user)
+    return handler(request, payload)
   }
 }
 
 export function createAdminRoute<T>(
-  handler: (request: NextRequest, user: SSOUser) => Promise<T>
+  handler: (request: NextRequest, payload: TokenPayload) => Promise<T>
 ) {
   return async (request: NextRequest) => {
     const token = extractToken(request)
@@ -137,24 +102,15 @@ export function createAdminRoute<T>(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { valid, user } = await getUserInfo(token)
-    if (!valid || !user) {
+    const payload = verifyToken(token)
+    if (!payload) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    if (user.role !== 'ADMIN') {
+    if (payload.role !== 'ADMIN') {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
-    return handler(request, user)
+    return handler(request, payload)
   }
-}
-
-export function parseTokenFromCallback(request: NextRequest): string | null {
-  const authHeader = request.headers.get('authorization');
-  if (authHeader?.startsWith('Bearer ')) {
-    return authHeader.slice(7);
-  }
-  const { searchParams } = new URL(request.url)
-  return searchParams.get('sso_token') || searchParams.get('token') || request.cookies.get('auth_token')?.value || null
 }
