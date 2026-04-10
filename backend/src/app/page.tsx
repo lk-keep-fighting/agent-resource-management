@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Bot, Package, Users, Zap, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -29,15 +29,41 @@ const features = [
   },
 ];
 
-export default function HomePage() {
+function HomeContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
-    const token = localStorage.getItem("token");
-    if (token) {
-      router.push("/skills");
+    const ssoToken = searchParams.get("sso_token");
+    if (ssoToken) {
+      setIsLoading(true);
+      const url = new URL(window.location.href);
+      url.searchParams.delete("sso_token");
+      window.history.replaceState({}, "", url.toString());
+
+      fetch(`/api/auth/session?sso_token=${encodeURIComponent(ssoToken)}`)
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.user) {
+            router.push("/skills");
+          } else {
+            router.push("/login");
+          }
+        })
+        .catch(() => {
+          router.push("/login");
+        });
     }
-  }, [router]);
+  }, [searchParams, router]);
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-gray-50 to-gray-100">
+        <p>正在登录...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100">
@@ -97,5 +123,17 @@ export default function HomePage() {
         </div>
       </footer>
     </div>
+  );
+}
+
+export default function HomePage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-gray-50 to-gray-100">
+        <p>加载中...</p>
+      </div>
+    }>
+      <HomeContent />
+    </Suspense>
   );
 }
