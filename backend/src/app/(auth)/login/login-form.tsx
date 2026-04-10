@@ -6,12 +6,43 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { OAuth2Client } from "xuanwu-sso-sdk";
 
+function generateCodeVerifier(): string {
+  const array = new Uint8Array(32);
+  crypto.getRandomValues(array);
+  return Array.from(array, (byte) => byte.toString(16).padStart(2, "0")).join("");
+}
+
+async function generateCodeChallenge(verifier: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(verifier);
+  const hash = await crypto.subtle.digest("SHA-256", data);
+  const hashArray = Array.from(new Uint8Array(hash));
+  return btoa(String.fromCharCode(...hashArray)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=/g, "");
+}
+
+async function getAuthorizationUrlWithPKCE(client: OAuth2Client): Promise<{ url: string; codeVerifier: string }> {
+  const codeVerifier = generateCodeVerifier();
+  const codeChallenge = await generateCodeChallenge(codeVerifier);
+  
+  const params = new URLSearchParams({
+    client_id: (client as any).clientId,
+    redirect_uri: (client as any).redirectUri,
+    response_type: "code",
+    scope: (client as any).scopes.join(" "),
+    code_challenge: codeChallenge,
+    code_challenge_method: "S256"
+  });
+  
+  return {
+    url: `${(client as any).ssoUrl}/oauth/authorize?${params.toString()}`,
+    codeVerifier
+  };
+}
+
 const ssoUrl = process.env.NEXT_PUBLIC_SSO_URL || 'http://localhost:3000'
 const clientId = process.env.NEXT_PUBLIC_SSO_CLIENT_ID || 'agent-skill-system'
 const clientSecret = process.env.NEXT_PUBLIC_SSO_CLIENT_SECRET || ''
-const redirectUri = typeof window !== 'undefined'
-  ? `${window.location.origin}/api/auth/callback`
-  : 'http://localhost:3001/api/auth/callback'
+const redirectUri = process.env.NEXT_PUBLIC_SSO_REDIRECT_URI || 'http://localhost:3001/api/auth/callback'
 
 const ssoClient = new OAuth2Client({
   clientId,
@@ -39,7 +70,7 @@ export function LoginForm() {
     setLoading(true)
     setError("")
     try {
-      const { url, codeVerifier } = await ssoClient.getAuthorizationUrl()
+      const { url, codeVerifier } = await getAuthorizationUrlWithPKCE(ssoClient)
       document.cookie = `code_verifier=${codeVerifier}; path=/; SameSite=Lax`
       window.location.href = url
     } catch (err) {
