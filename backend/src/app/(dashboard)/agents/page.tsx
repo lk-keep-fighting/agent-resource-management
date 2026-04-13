@@ -307,6 +307,32 @@ export default function AgentsPage() {
         });
         const data = await res.json();
         if (data.ok) {
+          const currentKnowledgesRes = await fetch(`/api/v1/agents/${selectedAgent.id}/knowledges`);
+          const currentKnowledgesData = await currentKnowledgesRes.json();
+          const currentKnowledgeIds = (currentKnowledgesData.data || []).map((k: { knowledgeId: string }) => k.knowledgeId);
+          const boundKnowledgeIds = boundKnowledges.map(k => k.knowledgeId);
+          
+          for (const knowledgeId of currentKnowledgeIds) {
+            if (!boundKnowledgeIds.includes(knowledgeId)) {
+              await fetch(`/api/v1/agents/${selectedAgent.id}/knowledges?knowledgeId=${knowledgeId}`, {
+                method: "DELETE",
+              });
+            }
+          }
+
+          const currentSkillsRes = await fetch(`/api/v1/agents/${selectedAgent.id}/skills`);
+          const currentSkillsData = await currentSkillsRes.json();
+          const currentSkillIds = (currentSkillsData.data || []).map((s: { skillId: string }) => s.skillId);
+          const boundSkillIds = boundSkills.map(s => s.skillId);
+          
+          for (const skillId of currentSkillIds) {
+            if (!boundSkillIds.includes(skillId)) {
+              await fetch(`/api/v1/agents/${selectedAgent.id}/skills?skillId=${skillId}`, {
+                method: "DELETE",
+              });
+            }
+          }
+
           await bindSkillsAndKnowledges(selectedAgent.id);
           const detail = await fetchAgentDetail(selectedAgent.id);
           if (detail) {
