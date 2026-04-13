@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/db'
-import { ssoClient } from '@/lib/sso'
+import { getUserInfo } from 'xuanwu-sso-sdk'
 
 export async function GET(request: NextRequest) {
   const accessToken = request.cookies.get('access_token')?.value
@@ -10,18 +10,23 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const userInfo = await ssoClient.getUserInfo(accessToken)
+    const userInfo = await getUserInfo(accessToken)
     console.log('[Session] userInfo:', userInfo)
 
+    if (!userInfo.valid || !userInfo.user) {
+      console.log('[Session] invalid user info')
+      return NextResponse.json({ user: null })
+    }
+
     let localUser = await prisma.user.findUnique({
-      where: { ssoUserId: userInfo.sub },
+      where: { ssoUserId: userInfo.user.id },
       select: { id: true, name: true, email: true, avatarUrl: true, role: true }
     })
     console.log('[Session] found by ssoUserId:', localUser)
 
-    if (!localUser && userInfo.email) {
+    if (!localUser && userInfo.user.email) {
       const byEmail = await prisma.user.findUnique({
-        where: { email: userInfo.email },
+        where: { email: userInfo.user.email },
         select: { id: true, name: true, email: true, avatarUrl: true, role: true }
       })
       console.log('[Session] found by email:', byEmail)
@@ -29,7 +34,7 @@ export async function GET(request: NextRequest) {
       if (byEmail) {
         localUser = await prisma.user.update({
           where: { id: byEmail.id },
-          data: { ssoUserId: userInfo.sub },
+          data: { ssoUserId: userInfo.user.id },
           select: { id: true, name: true, email: true, avatarUrl: true, role: true }
         })
         console.log('[Session] updated by email, new user:', localUser)
@@ -38,16 +43,16 @@ export async function GET(request: NextRequest) {
 
     if (!localUser) {
       console.log('[Session] creating new user with:', {
-        ssoUserId: userInfo.sub,
-        name: userInfo.name,
-        email: userInfo.email
+        ssoUserId: userInfo.user.id,
+        name: userInfo.user.name,
+        email: userInfo.user.email
       })
       localUser = await prisma.user.create({
         data: {
           id: crypto.randomUUID(),
-          ssoUserId: userInfo.sub,
-          name: userInfo.name || 'SSO User',
-          email: userInfo.email || null,
+          ssoUserId: userInfo.user.id,
+          name: userInfo.user.name || 'SSO User',
+          email: userInfo.user.email || null,
         },
         select: { id: true, name: true, email: true, avatarUrl: true, role: true }
       })

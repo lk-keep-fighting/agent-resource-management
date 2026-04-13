@@ -1,86 +1,22 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { OAuth2Client } from "xuanwu-sso-sdk";
-import { sha256 } from 'js-sha256';
-
-function generateCodeVerifier(): string {
-  const array = new Uint8Array(32);
-  if (typeof crypto !== 'undefined' && crypto.getRandomValues) {
-    crypto.getRandomValues(array);
-  } else {
-    for (let i = 0; i < array.length; i++) {
-      array[i] = Math.floor(Math.random() * 256);
-    }
-  }
-  return Array.from(array, (byte) => byte.toString(16).padStart(2, "0")).join("");
-}
-
-function generateCodeChallenge(verifier: string): string {
-  const hash = sha256.array(verifier);
-  return btoa(String.fromCharCode(...hash)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=/g, "");
-}
-
-function getAuthorizationUrlWithPKCE(client: OAuth2Client): { url: string; codeVerifier: string } {
-  const codeVerifier = generateCodeVerifier();
-  const codeChallenge = generateCodeChallenge(codeVerifier);
-  
-  const params = new URLSearchParams({
-    client_id: (client as any).clientId,
-    redirect_uri: (client as any).redirectUri,
-    response_type: "code",
-    scope: (client as any).scopes.join(" "),
-    code_challenge: codeChallenge,
-    code_challenge_method: "S256"
-  });
-  
-  return {
-    url: `${(client as any).ssoUrl}/oauth/authorize?${params.toString()}`,
-    codeVerifier
-  };
-}
+import { useSSO } from "xuanwu-sso-sdk";
 
 const ssoUrl = process.env.NEXT_PUBLIC_SSO_URL || 'http://localhost:3000'
-const clientId = process.env.NEXT_PUBLIC_SSO_CLIENT_ID || 'agent-skill-system'
-const clientSecret = process.env.NEXT_PUBLIC_SSO_CLIENT_SECRET || ''
-const redirectUri = process.env.NEXT_PUBLIC_SSO_REDIRECT_URI || 'http://localhost:3001/api/auth/callback'
-
-const ssoClient = new OAuth2Client({
-  clientId,
-  clientSecret,
-  redirectUri,
-  scopes: ['openid', 'profile', 'email'],
-}, ssoUrl)
 
 export function LoginForm() {
   const [apiKey, setApiKey] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const router = useRouter();
+  const { loginWithSSO } = useSSO(ssoUrl);
 
-  useEffect(() => {
-    const urlParams = new URLSearchParams(window.location.search)
-    const errorParam = urlParams.get('error')
-    if (errorParam) {
-      setError(`SSO Error: ${errorParam}`)
-      window.history.replaceState({}, '', '/login')
-    }
-  }, [])
-
-  const handleSSOLogin = async () => {
-    setLoading(true)
-    setError("")
-    try {
-      const { url, codeVerifier } = getAuthorizationUrlWithPKCE(ssoClient)
-      document.cookie = `code_verifier=${codeVerifier}; path=/; SameSite=Lax`
-      window.location.href = url
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Login failed')
-      setLoading(false)
-    }
+  const handleSSOLogin = () => {
+    loginWithSSO(`${window.location.origin}/auth/callback`);
   };
 
   const handleApiKeyLogin = async (e: React.FormEvent) => {
