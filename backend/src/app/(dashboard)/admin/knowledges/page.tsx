@@ -68,11 +68,9 @@ export default function AdminKnowledgesPage() {
     if (!confirm("确定要删除这个知识吗？")) return;
 
     try {
-      const token = null // Token from cookie;
       const res = await fetch(`/api/v1/admin/knowledges/${id}`, {
         method: "DELETE",
-        // Auth via cookie
-        });
+      });
       const data = await res.json();
       if (data.ok) {
         if (selectedKnowledgeId === id) {

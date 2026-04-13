@@ -104,6 +104,29 @@ export default function DashboardLayout({
               </Link>
             );
           })}
+          {userInfo?.role === "ADMIN" && (
+            <>
+              <div className="my-2 border-t" />
+              {adminNavItems.map((item) => {
+                const Icon = item.icon;
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className={cn(
+                      "flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-colors",
+                      pathname === item.href
+                        ? "bg-gray-100 text-gray-900"
+                        : "text-gray-600 hover:bg-gray-50"
+                    )}
+                  >
+                    <Icon className="h-4 w-4" />
+                    {item.label}
+                  </Link>
+                );
+              })}
+            </>
+          )}
         </nav>
         <div className="absolute bottom-4 left-4">
           <button

@@ -57,10 +57,7 @@ export default function KnowledgesPage() {
     }
     setDetailLoading(true);
     try {
-      const token = null // Token from cookie;
-      const res = await fetch(`/api/v1/knowledges/${id}`, {
-        // Auth via cookie
-        });
+      const res = await fetch(`/api/v1/knowledges/${id}`);
       const data = await res.json();
       if (data.ok && data.data) {
         setKnowledgeDetailCache((prev) => ({ ...prev, [id]: data.data }));

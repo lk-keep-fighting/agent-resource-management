@@ -56,10 +56,7 @@ export default function SkillDetailPage() {
 
   const handleDownload = async () => {
     try {
-      const token = null // Token from cookie;
-      const res = await fetch(`/api/v1/skills/${name}/download`, {
-        // Auth via cookie
-        });
+      const res = await fetch(`/api/v1/skills/${name}/download`);
       const blob = await res.blob();
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement("a");

@@ -117,10 +117,7 @@ export default function AgentsPage() {
 
   const fetchSkills = async () => {
     try {
-      const token = null // Token from cookie;
-      const res = await fetch("/api/v1/skills?pageSize=100", {
-        // Auth via cookie
-        });
+      const res = await fetch("/api/v1/skills?pageSize=100");
       const data = await res.json();
       if (data.ok) {
         setSkills(data.data.skills);
@@ -146,10 +143,7 @@ export default function AgentsPage() {
 
   const fetchKnowledges = async () => {
     try {
-      const token = null // Token from cookie;
-      const res = await fetch("/api/v1/knowledges?pageSize=100", {
-        // Auth via cookie
-        });
+      const res = await fetch("/api/v1/knowledges?pageSize=100");
       const data = await res.json();
       if (data.ok) {
         setKnowledges(data.data.knowledges || []);
@@ -169,10 +163,7 @@ export default function AgentsPage() {
       return;
     }
     try {
-      const token = null // Token from cookie;
-      const res = await fetch(`/api/v1/knowledges?search=${encodeURIComponent(keyword)}&pageSize=50`, {
-        // Auth via cookie
-        });
+      const res = await fetch(`/api/v1/knowledges?search=${encodeURIComponent(keyword)}&pageSize=50`);
       const data = await res.json();
       if (data.ok) {
         setFilteredKnowledges(data.data.knowledges || []);
@@ -193,10 +184,7 @@ export default function AgentsPage() {
     }
     setPreviewLoading(true);
     try {
-      const token = null // Token from cookie;
-      const res = await fetch(`/api/v1/knowledges/${id}`, {
-        // Auth via cookie
-        });
+      const res = await fetch(`/api/v1/knowledges/${id}`);
       const data = await res.json();
       if (data.ok && data.data) {
         const detail = data.data;
@@ -213,10 +201,7 @@ export default function AgentsPage() {
 
   const fetchAgentDetail = async (id: string) => {
     try {
-      const token = null // Token from cookie;
-      const res = await fetch(`/api/v1/agents/${id}`, {
-        // Auth via cookie
-        });
+      const res = await fetch(`/api/v1/agents/${id}`);
       const data = await res.json();
       if (data.ok) {
         return data.data;
@@ -289,20 +274,11 @@ export default function AgentsPage() {
   const handleSave = async () => {
     setSaveError("");
     try {
-      const token = null // Token from cookie;
-      // Token from cookie
-      if (!token) {
-        console.log("No token found, redirecting to login");
-        router.push("/login");
-        return;
-      }
-
       if (isCreating) {
         const res = await fetch("/api/v1/agents", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
           },
           body: JSON.stringify(formData),
         });
@@ -326,7 +302,6 @@ export default function AgentsPage() {
           method: "PUT",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
           },
           body: JSON.stringify(formData),
         });
@@ -350,15 +325,11 @@ export default function AgentsPage() {
   };
 
   const bindSkillsAndKnowledges = async (agentId: string) => {
-    const token = null // Token from cookie;
-    if (!token) return;
-
     for (const skill of boundSkills) {
       await fetch(`/api/v1/agents/${agentId}/skills`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({ skillId: skill.skillId, config: skill.config }),
       });
@@ -369,7 +340,6 @@ export default function AgentsPage() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({ knowledgeId: knowledge.knowledgeId, retrievalConfig: knowledge.retrievalConfig }),
       });
@@ -381,11 +351,9 @@ export default function AgentsPage() {
     if (!confirm("确定要删除这个Agent吗？")) return;
 
     try {
-      const token = null // Token from cookie;
       const res = await fetch(`/api/v1/agents/${selectedAgent.id}`, {
         method: "DELETE",
-        // Auth via cookie
-        });
+      });
       const data = await res.json();
       if (data.ok) {
         fetchAgents();

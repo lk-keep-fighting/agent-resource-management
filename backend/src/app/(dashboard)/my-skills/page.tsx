@@ -96,10 +96,7 @@ export default function MySkillsPage() {
     }
     setSkillDetailLoading(true);
     try {
-      const token = null // Token from cookie;
-      const res = await fetch(`/api/v1/skills/${name}`, {
-        // Auth via cookie
-        });
+      const res = await fetch(`/api/v1/skills/${name}`);
       const data = await res.json();
       if (data.ok) {
         setSkillDetailCache((prev) => ({ ...prev, [name]: data.data }));
@@ -129,11 +126,9 @@ export default function MySkillsPage() {
     if (!confirm(`确定要删除 ${name} 吗？`)) return;
 
     try {
-      const token = null // Token from cookie;
       const res = await fetch(`/api/v1/skills/${name}`, {
         method: "DELETE",
-        // Auth via cookie
-        });
+      });
       const data = await res.json();
       if (data.ok) {
         if (selectedSkillName === name) {
@@ -152,11 +147,9 @@ export default function MySkillsPage() {
     if (!confirm("确定要删除这个知识吗？")) return;
 
     try {
-      const token = null // Token from cookie;
       const res = await fetch(`/api/v1/knowledges/${id}`, {
         method: "DELETE",
-        // Auth via cookie
-        });
+      });
       const data = await res.json();
       if (data.ok) {
         if (selectedKnowledgeId === id) {
@@ -173,10 +166,7 @@ export default function MySkillsPage() {
 
   const handleDownloadSkill = async (name: string) => {
     try {
-      const token = null // Token from cookie;
-      const res = await fetch(`/api/v1/skills/${name}/download`, {
-        // Auth via cookie
-        });
+      const res = await fetch(`/api/v1/skills/${name}/download`);
       const blob = await res.blob();
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement("a");

@@ -73,11 +73,9 @@ export default function AdminSkillsPage() {
     if (!confirm(`确定要删除 Skill "${name}" 吗？`)) return;
 
     try {
-      const token = null // Token from cookie;
       const res = await fetch(`/api/v1/admin/skills/${name}`, {
         method: "DELETE",
-        // Auth via cookie
-        });
+      });
       const data = await res.json();
       if (data.ok) {
         if (selectedSkillName === name) {

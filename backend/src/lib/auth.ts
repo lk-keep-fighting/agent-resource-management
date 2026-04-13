@@ -2,7 +2,7 @@ import { NextRequest } from 'next/server';
 import crypto from 'crypto';
 import prisma from './db';
 import { errorResponse } from './api-response';
-import { ssoClient } from './sso';
+import { getUserInfo } from 'xuanwu-sso-sdk';
 import type { User } from '@/lib/types';
 
 export function hashApiKey(apiKey: string): string {
@@ -14,10 +14,14 @@ async function authenticateBySSO(request: NextRequest): Promise<User | null> {
   if (!accessToken) return null;
 
   try {
-    const userInfo = await ssoClient.getUserInfo(accessToken)
+    const userInfoResult = await getUserInfo(accessToken)
+    if (!userInfoResult.valid || !userInfoResult.user) {
+      return null;
+    }
+    const userInfo = userInfoResult.user
 
-    const localUser = await prisma.user.findUnique({
-      where: { ssoUserId: userInfo.sub },
+    let localUser = await prisma.user.findUnique({
+      where: { ssoUserId: userInfo.id },
       select: {
         id: true,
         name: true,
@@ -28,7 +32,32 @@ async function authenticateBySSO(request: NextRequest): Promise<User | null> {
       },
     });
 
-    if (!localUser) return null;
+    if (!localUser && userInfo.email) {
+      const byEmail = await prisma.user.findUnique({
+        where: { email: userInfo.email },
+        select: { id: true, name: true, email: true, ssoUserId: true, role: true, createdAt: true }
+      });
+
+      if (byEmail) {
+        localUser = await prisma.user.update({
+          where: { id: byEmail.id },
+          data: { ssoUserId: userInfo.id },
+          select: { id: true, name: true, email: true, ssoUserId: true, role: true, createdAt: true }
+        });
+      }
+    }
+
+    if (!localUser) {
+      localUser = await prisma.user.create({
+        data: {
+          id: crypto.randomUUID(),
+          ssoUserId: userInfo.id,
+          name: userInfo.name || 'SSO User',
+          email: userInfo.email || null,
+        },
+        select: { id: true, name: true, email: true, ssoUserId: true, role: true, createdAt: true }
+      });
+    }
 
     return {
       id: localUser.id,
@@ -38,7 +67,8 @@ async function authenticateBySSO(request: NextRequest): Promise<User | null> {
       role: localUser.role,
       createdAt: localUser.createdAt.toISOString(),
     };
-  } catch {
+  } catch (err) {
+    console.error('[auth] SSO auth error:', err);
     return null;
   }
 }

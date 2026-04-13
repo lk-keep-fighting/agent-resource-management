@@ -74,8 +74,25 @@ export async function fetchKnowledges(query: KnowledgeQuery = {}): Promise<Knowl
 }
 
 export async function fetchKnowledgeById(id: string): Promise<Knowledge | null> {
+  const prisma = require('@/lib/db').default;
+
+  const localKnowledge = await prisma.knowledge.findUnique({
+    where: { id },
+  });
+
+  if (localKnowledge) {
+    return {
+      id: localKnowledge.id,
+      name: localKnowledge.name,
+      description: localKnowledge.description || '',
+      content: localKnowledge.content,
+      createdAt: localKnowledge.createdAt.toISOString(),
+      updatedAt: localKnowledge.updatedAt.toISOString(),
+    };
+  }
+
   if (!MARKET_SERVICE_URL) {
-    throw new Error('MARKET_SERVICE_URL is not configured');
+    return null;
   }
 
   const params = new URLSearchParams({ api_key: MARKET_API_KEY, id });
@@ -88,7 +105,7 @@ export async function fetchKnowledgeById(id: string): Promise<Knowledge | null> 
   });
 
   if (!response.ok) {
-    throw new Error(`Failed to fetch knowledge: ${response.statusText}`);
+    return null;
   }
 
   const data = await response.json();

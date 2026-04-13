@@ -48,10 +48,7 @@ export default function SkillsPage() {
 
   const fetchTags = async () => {
     try {
-      const token = null // Token from cookie;
-      const res = await fetch("/api/v1/tags", {
-        // Auth via cookie
-        });
+      const res = await fetch("/api/v1/tags");
       const data = await res.json();
       if (data.ok) {
         setTags(data.data);
@@ -92,10 +89,7 @@ export default function SkillsPage() {
     }
     setDetailLoading(true);
     try {
-      const token = null // Token from cookie;
-      const res = await fetch(`/api/v1/skills/${name}`, {
-        // Auth via cookie
-        });
+      const res = await fetch(`/api/v1/skills/${name}`);
       const data = await res.json();
       if (data.ok) {
         setSkillDetailCache((prev) => ({ ...prev, [name]: data.data }));
@@ -138,10 +132,7 @@ export default function SkillsPage() {
 
   const handleDownload = async (name: string) => {
     try {
-      const token = null // Token from cookie;
-      const res = await fetch(`/api/v1/skills/${name}/download`, {
-        // Auth via cookie
-        });
+      const res = await fetch(`/api/v1/skills/${name}/download`);
       const blob = await res.blob();
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
