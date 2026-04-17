@@ -196,7 +196,7 @@ export default function MyPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">我的</h1>
+        <h1 className="text-2xl font-bold">我的资源</h1>
       </div>
 
       <div className="flex gap-1 border-b">
@@ -209,7 +209,7 @@ export default function MyPage() {
           }`}
         >
           <Package className="h-4 w-4" />
-          我的发布
+          已发布能力
         </button>
         <button
           onClick={() => handleTabChange("knowledge")}
@@ -220,7 +220,7 @@ export default function MyPage() {
           }`}
         >
           <BookOpen className="h-4 w-4" />
-          我的知识
+          已创建知识
         </button>
         <button
           onClick={() => handleTabChange("settings")}
@@ -336,7 +336,7 @@ function SkillTab({
               ) : skills.length === 0 ? (
                 <tr>
                   <td colSpan={5} className="px-4 py-8 text-center text-gray-500">
-                    暂无发布的 Skill
+                    暂无发布的能力资产
                   </td>
                 </tr>
               ) : (
@@ -525,7 +525,7 @@ function KnowledgeTab({
               ) : knowledges.length === 0 ? (
                 <tr>
                   <td colSpan={3} className="px-4 py-8 text-center text-gray-500">
-                    暂无创建的知识
+                    暂无创建的知识资源
                   </td>
                 </tr>
               ) : (

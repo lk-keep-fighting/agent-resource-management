@@ -1,6 +1,15 @@
-# ARM - Agent Resource Management Backend
+# ARM - Agent Resource Management
 
-企业级 Agent 资源管理系统后端服务，基于 Next.js 14 App Router 构建。
+借鉴**人力资源管理 (HRM)** 思想的 Agent 资源管理系统。将 AI Agent 视为"数字员工"，对 Skill、Knowledge 等资源进行全生命周期管理，实现资源的**获取、配置、调度与绩效评估**。
+
+## 核心概念
+
+| ARM 概念 | HRM 对应 | 说明 |
+|----------|----------|------|
+| Agent | 员工 | 数字化的 AI 工作单元 |
+| Skill (能力) | 技能/能力 | 可复用的专业能力资产 |
+| Knowledge (知识) | 知识库 | 专业领域知识存储 |
+| Orchestration (编排) | 团队协作 | 多 Agent 协同工作 |
 
 ## 功能特性
 
@@ -19,41 +28,41 @@
 | Framework | Next.js 14 (App Router) |
 | UI | React 18 + shadcn/ui + Tailwind CSS |
 | Database | MySQL + Prisma ORM |
-| File Storage | 本地文件系统 (`data/skills/`) |
+| File Storage | 本地文件系统 |
 | Validation | Zod |
+| Auth | SSO + API Key |
 
 ## 项目结构
 
 ```
-backend/
-├── prisma/
-│   └── schema.prisma           # Prisma 数据模型
-├── src/
-│   ├── app/
-│   │   ├── (auth)/              # 认证页面
-│   │   │   └── login/
-│   │   ├── (dashboard)/         # 管理后台
-│   │   │   ├── agents/          # Agent 工厂
-│   │   │   ├── skills/          # 能力资产库
-│   │   │   ├── knowledges/      # 知识资源库
-│   │   │   ├── my/             # 我的资源
-│   │   │   ├── upload/         # 资源上传
-│   │   │   └── admin/          # 管理员功能
-│   │   └── api/v1/              # API Routes
-│   │       ├── auth/            # 认证接口
-│   │       ├── agents/          # Agent 接口
-│   │       ├── skills/          # Skill 接口
-│   │       ├── knowledges/     # Knowledge 接口
-│   │       └── stats/           # 统计接口
-│   ├── components/ui/           # UI 组件
-│   └── lib/
-│       ├── auth.ts              # 认证中间件
-│       ├── db.ts                # Prisma Client
-│       ├── api-response.ts      # API 响应封装
-│       ├── types.ts             # 类型定义
-│       └── knowledge.ts         # 知识服务
-├── data/                        # 文件存储
-└── docs/                       # 设计文档
+agent-skill-system/
+├── backend/                      # ARM 主服务
+│   ├── prisma/
+│   │   └── schema.prisma         # Prisma 数据模型
+│   ├── src/
+│   │   ├── app/
+│   │   │   ├── (auth)/          # 认证页面
+│   │   │   ├── (dashboard)/     # 管理后台
+│   │   │   │   ├── agents/      # Agent 工厂
+│   │   │   │   ├── skills/      # 能力资产库
+│   │   │   │   ├── knowledges/  # 知识资源库
+│   │   │   │   ├── my/          # 我的资源
+│   │   │   │   └── admin/       # 管理员功能
+│   │   │   └── api/v1/          # API Routes
+│   │   │       ├── auth/        # 认证接口
+│   │   │       ├── agents/      # Agent 接口
+│   │   │       ├── skills/      # Skill 接口
+│   │   │       ├── knowledges/  # Knowledge 接口
+│   │   │       └── stats/       # 统计接口
+│   │   ├── components/ui/       # UI 组件
+│   │   └── lib/                 # 工具库
+│   └── data/                    # 文件存储
+├── cli/                         # ADK CLI 工具
+│   └── src/
+│       ├── cmd/                 # 命令实现
+│       └── lib/                 # 客户端库
+└── pkg/                        # 共享包
+    └── types/                   # 类型定义
 ```
 
 ## 快速开始
@@ -81,17 +90,14 @@ NEXT_PUBLIC_SSO_URL=http://localhost:3000
 ### 3. 数据库初始化
 
 ```bash
-# 安装依赖
+cd backend
 pnpm install
 
 # 生成 Prisma Client
 pnpm prisma generate
 
-# 推送 schema 到数据库（开发环境）
+# 推送 schema 到数据库
 pnpm prisma db push
-
-# 或创建并应用迁移
-pnpm prisma migrate dev
 ```
 
 ### 4. 启动服务
@@ -101,11 +107,35 @@ pnpm prisma migrate dev
 pnpm dev
 
 # 生产模式
-pnpm build
-pnpm start
+pnpm build && pnpm start
 ```
 
 服务地址: http://localhost:3000
+
+## 核心模块
+
+### Agent 工厂
+
+创建和管理数字员工团队，配置其技能和知识。
+
+### 能力资产库
+
+Skill 市场的核心模块，支持：
+- 浏览和搜索能力资产
+- 上传和发布新能力
+- 下载能力到本地
+- 管理我发布的能力
+
+### 知识资源库
+
+管理和组织专业知识：
+- 创建本地知识
+- 同步外部知识服务
+- 为 Agent 绑定知识
+
+### 资源编排 (规划中)
+
+多 Agent 协作与任务调度中心。
 
 ## API 接口
 
@@ -119,7 +149,7 @@ pnpm start
 
 | Method | Endpoint | 说明 |
 |--------|----------|------|
-| POST | `/api/v1/auth/login` | 登录 (验证 API Key) |
+| POST | `/api/v1/auth/login` | API Key 登录 |
 | GET | `/api/v1/auth/me` | 获取当前用户 |
 | GET | `/api/auth/session` | 获取会话 |
 
@@ -133,10 +163,9 @@ pnpm start
 | PUT | `/api/v1/agents/:id` | 更新 |
 | DELETE | `/api/v1/agents/:id` | 删除 |
 | POST | `/api/v1/agents/:id/skills` | 绑定技能 |
-| DELETE | `/api/v1/agents/:id/skills/:skillId` | 解绑技能 |
 | POST | `/api/v1/agents/:id/knowledges` | 绑定知识 |
 
-### Skills (能力)
+### Skill (能力)
 
 | Method | Endpoint | 说明 |
 |--------|----------|------|
@@ -147,7 +176,7 @@ pnpm start
 | DELETE | `/api/v1/skills/:name` | 删除 |
 | GET | `/api/v1/users/me/skills` | 我的发布 |
 
-### Knowledges (知识)
+### Knowledge (知识)
 
 | Method | Endpoint | 说明 |
 |--------|----------|------|
@@ -155,12 +184,6 @@ pnpm start
 | POST | `/api/v1/knowledges` | 创建 |
 | GET | `/api/v1/knowledges/:id` | 详情 |
 | GET | `/api/v1/users/me/knowledges` | 我的知识 |
-
-### 健康检查
-
-| Method | Endpoint | 说明 |
-|--------|----------|------|
-| GET | `/api/v1/health` | 健康检查 |
 
 ### 响应格式
 
@@ -180,20 +203,44 @@ interface ApiResponse<T> {
 | `/login` | 登录页 |
 | `/agents` | Agent 工厂 |
 | `/skills` | 能力资产库 |
-| `/skills/[name]` | 能力详情 |
 | `/knowledges` | 知识资源库 |
 | `/my` | 我的资源 |
 | `/upload` | 资源上传 |
 | `/admin/skills` | 能力审核 (管理员) |
 | `/admin/knowledges` | 知识审核 (管理员) |
 
+## CLI 工具
+
+配套的 ADK CLI 工具支持命令行管理资源和 Agent：
+
+```bash
+# 登录
+adk login http://localhost:3000 <api-key>
+
+# 浏览能力
+adk skill ls
+adk skill search <keyword>
+
+# 下载/上传能力
+adk skill download <name>
+adk skill upload <path>
+
+# 管理 Agent
+adk agent ls
+adk agent info <id>
+```
+
+详见 [CLI README](./cli/README.md)
+
 ## 常用命令
 
 ```bash
-pnpm dev      # 开发模式
-pnpm build    # 构建生产版本
-pnpm start    # 启动生产服务
-pnpm lint     # 代码检查
+# 后端开发
+cd backend
+pnpm dev        # 开发模式
+pnpm build      # 构建
+pnpm start      # 生产启动
+pnpm lint       # 代码检查
 ```
 
 ## 开发指南
@@ -214,14 +261,9 @@ src/app/api/v1/example/route.ts
 import prisma from '@/lib/db';
 
 const agents = await prisma.agent.findMany();
-const agent = await prisma.agent.findUnique({
-  where: { id: agentId },
-});
 ```
 
 ### API 响应封装
-
-使用 `src/lib/api-response.ts` 中的封装函数：
 
 ```typescript
 import { successResponse, errorResponse } from '@/lib/api-response';
@@ -229,3 +271,7 @@ import { successResponse, errorResponse } from '@/lib/api-response';
 return successResponse(data, '操作成功');
 return errorResponse('错误信息', 400);
 ```
+
+## License
+
+MIT

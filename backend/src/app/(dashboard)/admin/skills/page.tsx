@@ -123,15 +123,15 @@ export default function AdminSkillsPage() {
       <div className="flex gap-6 h-[calc(100vh-220px)]">
         <div className="flex-1 flex flex-col space-y-4 overflow-hidden">
           <div className="flex-1 overflow-auto border rounded-lg bg-white">
-            <table className="w-full">
+            <table className="w-full table-fixed">
               <thead className="bg-gray-50 border-b sticky top-0">
                 <tr>
                   <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">名称</th>
-                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">发布者</th>
                   <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">描述</th>
-                  <th className="px-4 py-3 text-right text-sm font-medium text-gray-500">下载量</th>
-                  <th className="px-4 py-3 text-right text-sm font-medium text-gray-500">发布时间</th>
-                  <th className="px-4 py-3 text-right text-sm font-medium text-gray-500">操作</th>
+                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-500 w-48">发布者</th>
+                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-500 w-48">发布时间</th>
+                  <th className="px-4 py-3 text-right text-sm font-medium text-gray-500 w-20">下载量</th>
+                  <th className="px-4 py-3 text-right text-sm font-medium text-gray-500 w-16">操作</th>
                 </tr>
               </thead>
               <tbody className="divide-y">
@@ -158,19 +158,19 @@ export default function AdminSkillsPage() {
                         <span className="font-medium text-blue-600">{skill.name}</span>
                       </td>
                       <td className="px-4 py-3">
+                        <div className="text-sm text-gray-500 truncate">{skill.description}</div>
+                      </td>
+                      <td className="px-4 py-3 w-48">
                         <div className="text-sm">
-                          <div className="font-medium">{skill.publisherName}</div>
-                          <div className="text-gray-400 text-xs">{skill.publisherEmail}</div>
+                          <div className="font-medium truncate">{skill.publisherName}</div>
+                          <div className="text-gray-400 text-xs truncate">{skill.publisherEmail}</div>
                         </div>
                       </td>
-                      <td className="px-4 py-3">
-                        <div className="text-sm text-gray-500 max-w-xs truncate">{skill.description}</div>
-                      </td>
-                      <td className="px-4 py-3 text-right text-sm text-gray-500">
-                        {skill.downloadCount}
-                      </td>
-                      <td className="px-4 py-3 text-right text-sm text-gray-500">
+                      <td className="px-4 py-3 w-48 text-sm text-gray-500">
                         {new Date(skill.publishedAt).toLocaleDateString()}
+                      </td>
+                      <td className="px-4 py-3 w-20 text-right text-sm text-gray-500">
+                        {skill.downloadCount}
                       </td>
                       <td className="px-4 py-3 text-right">
                         <Button

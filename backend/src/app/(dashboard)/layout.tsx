@@ -7,16 +7,16 @@ import { cn } from "@/lib/utils";
 import { Package, User, Settings, LogOut, Bot, BookOpen, Shield, Upload } from "lucide-react";
 
 const baseNavItems = [
-  { href: "/agents", label: "Agent 管理", icon: Bot },
-  { href: "/skills", label: "Skill 市场", icon: Package },
-  { href: "/knowledges", label: "知识 市场", icon: BookOpen },
-  { href: "/my", label: "我的", icon: User },
-  { href: "/upload", label: "上传", icon: Upload },
+  { href: "/agents", label: "Agent 工厂", icon: Bot },
+  { href: "/skills", label: "能力资产库", icon: Package },
+  { href: "/knowledges", label: "知识资源库", icon: BookOpen },
+  { href: "/my", label: "我的资源", icon: User },
+  { href: "/upload", label: "资源上传", icon: Upload },
 ];
 
 const adminNavItems = [
-  { href: "/admin/skills", label: "Skill 管理", icon: Shield },
-  { href: "/admin/knowledges", label: "知识 管理", icon: Shield },
+  { href: "/admin/skills", label: "能力审核", icon: Shield },
+  { href: "/admin/knowledges", label: "知识审核", icon: Shield },
 ];
 
 interface UserInfo {
@@ -80,9 +80,10 @@ export default function DashboardLayout({
 
   return (
     <div className="min-h-screen flex">
-      <aside className="w-64 border-r bg-white">
+      <aside className="w-56 border-r bg-white">
         <div className="p-4 border-b">
-          <h1 className="text-xl font-bold">Agent Skill</h1>
+          <h1 className="text-xl font-bold">ARM</h1>
+          <p className="text-xs text-gray-500">Agent Resource Management</p>
         </div>
         <nav className="p-4 space-y-1">
           {baseNavItems.map((item) => {

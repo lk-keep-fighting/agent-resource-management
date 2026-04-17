@@ -46,27 +46,32 @@ export function LoginForm() {
 
   return (
     <>
-      <Button onClick={handleSSOLogin} className="w-full" variant="default" disabled={loading}>
-        {loading ? "跳转中..." : "单点登录"}
+      <Button
+        onClick={handleSSOLogin}
+        className="w-full h-11 bg-gradient-to-r from-blue-600 to-purple-600 hover:opacity-90"
+        disabled={loading}
+      >
+        {loading ? "跳转中..." : "单点登录 (SSO)"}
       </Button>
       <div className="relative">
         <div className="absolute inset-0 flex items-center">
           <span className="w-full border-t" />
         </div>
         <div className="relative flex justify-center text-xs uppercase">
-          <span className="bg-background px-2 text-muted-foreground">或</span>
+          <span className="bg-white px-2 text-muted-foreground">或</span>
         </div>
       </div>
       <form onSubmit={handleApiKeyLogin} className="space-y-4">
         <Input
           type="password"
-          placeholder="API Key"
+          placeholder="输入 API Key"
           value={apiKey}
           onChange={(e) => setApiKey(e.target.value)}
+          className="h-11"
         />
         {error && <p className="text-sm text-red-500">{error}</p>}
-        <Button type="submit" className="w-full" disabled={loading}>
-          {loading ? "登录中..." : "API Key 登录"}
+        <Button type="submit" className="w-full h-11" disabled={loading}>
+          {loading ? "登录中..." : "使用 API Key 登录"}
         </Button>
       </form>
     </>
