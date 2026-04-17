@@ -11,7 +11,7 @@ export default function AuthCallback() {
     const token = parseTokenFromCallback(window.location.href);
     if (token) {
       document.cookie = `access_token=${token}; path=/; SameSite=Lax; max-age=3600`;
-      router.push("/skills");
+      router.push("/agents");
     } else {
       router.push("/login?error=callback_failed");
     }

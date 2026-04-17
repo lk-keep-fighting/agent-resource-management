@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { X, Plus, Search, Pencil, Trash2, Bot, BookOpen, Wrench } from "lucide-react";
+import { X, Plus, Search, Pencil, Trash2, Bot, BookOpen, Wrench, Download } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 
 interface AgentSkill {
@@ -390,6 +390,29 @@ export default function AgentsPage() {
     }
   };
 
+  const handleDownload = async () => {
+    if (!selectedAgent) return;
+    try {
+      const res = await fetch(`/api/v1/agents/${selectedAgent.id}/download`);
+      if (!res.ok) {
+        alert("下载失败");
+        return;
+      }
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${selectedAgent.name}.zip`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+    } catch {
+      console.error("Failed to download agent");
+      alert("下载失败");
+    }
+  };
+
   const handleToggleSkill = (skill: Skill) => {
     const exists = boundSkills.find((s) => s.skillId === skill.id);
     if (exists) {
@@ -493,18 +516,19 @@ export default function AgentsPage() {
                 <th className="px-4 py-3 text-center text-sm font-medium text-gray-500">状态</th>
                 <th className="px-4 py-3 text-center text-sm font-medium text-gray-500">技能</th>
                 <th className="px-4 py-3 text-center text-sm font-medium text-gray-500">知识</th>
+                <th className="px-4 py-3 text-center text-sm font-medium text-gray-500 w-20">操作</th>
               </tr>
             </thead>
             <tbody className="divide-y">
               {loading && agents.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="px-4 py-8 text-center text-gray-500">
-                    加载中...
-                  </td>
-                </tr>
-              ) : agents.length === 0 ? (
-                <tr>
-                  <td colSpan={5} className="px-4 py-8 text-center text-gray-500">
+<td colSpan={6} className="px-4 py-8 text-center text-gray-500">
+                      加载中...
+                    </td>
+                  </tr>
+                ) : agents.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="px-4 py-8 text-center text-gray-500">
                     暂无 Agent，点击&quot;新建 Agent&quot;创建
                   </td>
                 </tr>
@@ -550,6 +574,18 @@ export default function AgentsPage() {
                           <BookOpen className="h-3 w-3" />
                           {agent.knowledgesCount || 0}
                         </span>
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            window.location.href = `/api/v1/agents/${agent.id}/download`;
+                          }}
+                        >
+                          <Download className="h-4 w-4" />
+                        </Button>
                       </td>
                   </tr>
                 ))
@@ -802,6 +838,10 @@ export default function AgentsPage() {
                 </div>
 
                 <div className="flex gap-2 pt-4">
+                  <Button variant="outline" className="flex-1" onClick={handleDownload}>
+                    <Download className="h-4 w-4 mr-2" />
+                    下载
+                  </Button>
                   <Button variant="outline" className="flex-1" onClick={handleEdit}>
                     <Pencil className="h-4 w-4 mr-2" />
                     编辑
