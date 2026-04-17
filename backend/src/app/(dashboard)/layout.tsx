@@ -4,15 +4,14 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
-import { Package, User, Settings, LogOut, Bot, BookOpen, Upload, Shield } from "lucide-react";
+import { Package, User, Settings, LogOut, Bot, BookOpen, Shield, Upload } from "lucide-react";
 
 const baseNavItems = [
   { href: "/agents", label: "Agent 管理", icon: Bot },
-  { href: "/knowledges", label: "知识 市场", icon: BookOpen },
   { href: "/skills", label: "Skill 市场", icon: Package },
-  { href: "/my-skills", label: "我的发布", icon: User },
+  { href: "/knowledges", label: "知识 市场", icon: BookOpen },
+  { href: "/my", label: "我的", icon: User },
   { href: "/upload", label: "上传", icon: Upload },
-  { href: "/settings", label: "设置", icon: Settings },
 ];
 
 const adminNavItems = [
@@ -83,7 +82,7 @@ export default function DashboardLayout({
     <div className="min-h-screen flex">
       <aside className="w-64 border-r bg-white">
         <div className="p-4 border-b">
-          <h1 className="text-xl font-bold">Agent Skills</h1>
+          <h1 className="text-xl font-bold">Agent Skill</h1>
         </div>
         <nav className="p-4 space-y-1">
           {baseNavItems.map((item) => {

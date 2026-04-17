@@ -50,7 +50,7 @@ export default function HomePage() {
           <p className="text-xl text-gray-600 mb-8 max-w-2xl mx-auto">
             为你的 AI Agent 管理和扩展技能，构建更强大的智能助手
           </p>
-          <Button size="lg" onClick={() => router.push("/login")}>
+          <Button size="lg" onClick={() => router.push("/agents")}>
             开始使用 <ArrowRight className="ml-2 h-5 w-5" />
           </Button>
         </div>
