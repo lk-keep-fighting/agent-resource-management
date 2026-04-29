@@ -488,8 +488,8 @@ export default function AgentsPage() {
   return (
     <div className="flex gap-6 h-[calc(100vh-120px)]">
       {/* Agent List */}
-      <div className="flex-1 flex flex-col space-y-4 overflow-hidden">
-        <div className="flex items-center justify-between">
+      <div className="flex-1 flex flex-col min-h-0">
+        <div className="flex items-center justify-between mb-4">
           <h1 className="text-2xl font-bold">Agent 管理</h1>
           <Button onClick={handleCreateNew}>
             <Plus className="h-4 w-4 mr-2" />
@@ -497,7 +497,7 @@ export default function AgentsPage() {
           </Button>
         </div>
 
-        <form onSubmit={handleSearch} className="flex gap-2">
+        <form onSubmit={handleSearch} className="flex gap-2 mb-4 justify-center">
           <Input
             placeholder="搜索 Agent..."
             value={keyword}
@@ -510,99 +510,83 @@ export default function AgentsPage() {
           </Button>
         </form>
 
-        <div className="flex-1 overflow-auto border rounded-lg bg-white">
-          <table className="w-full">
-            <thead className="bg-gray-50 border-b sticky top-0">
-              <tr>
-                <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">名称</th>
-                <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">描述</th>
-                <th className="px-4 py-3 text-center text-sm font-medium text-gray-500">状态</th>
-                <th className="px-4 py-3 text-center text-sm font-medium text-gray-500">技能</th>
-                <th className="px-4 py-3 text-center text-sm font-medium text-gray-500">知识</th>
-                <th className="px-4 py-3 text-center text-sm font-medium text-gray-500 w-20">操作</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y">
-              {loading && agents.length === 0 ? (
-                <tr>
-<td colSpan={6} className="px-4 py-8 text-center text-gray-500">
-                      加载中...
-                    </td>
-                  </tr>
-                ) : agents.length === 0 ? (
-                  <tr>
-                    <td colSpan={6} className="px-4 py-8 text-center text-gray-500">
-                    暂无 Agent，点击&quot;新建 Agent&quot;创建
-                  </td>
-                </tr>
-              ) : (
-                agents.map((agent) => (
-                  <tr
-                    key={agent.id}
-                    className={`hover:bg-gray-50 cursor-pointer transition-colors ${
-                      selectedAgent?.id === agent.id ? "bg-blue-50" : ""
-                    }`}
-                    onClick={() => handleAgentClick(agent)}
-                  >
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-2">
+        <div className="flex-1 overflow-auto">
+          {loading && agents.length === 0 ? (
+            <div className="flex items-center justify-center h-64 text-gray-500">
+              加载中...
+            </div>
+          ) : agents.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-64 text-gray-500">
+              <Bot className="w-16 h-16 mb-4 text-gray-300" />
+              <p>暂无 Agent，点击&quot;新建 Agent&quot;创建</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 p-1">
+              {agents.map((agent) => (
+                <Card
+                  key={agent.id}
+                  className={`cursor-pointer transition-all hover:shadow-md ${
+                    selectedAgent?.id === agent.id ? "outline outline-2 outline-blue-500 outline-offset-[-2px] bg-blue-50/30" : ""
+                  }`}
+                  onClick={() => handleAgentClick(agent)}
+                >
+                  <CardContent className="p-4">
+                    <div className="flex flex-col items-center text-center">
+                      <div className="w-20 h-20 mb-3 rounded-xl overflow-hidden bg-gray-100 flex items-center justify-center">
                         {agent.avatar ? (
                           <img
                             src={getAvatarFromConfig(agent.avatar)}
                             alt=""
-                            className="w-10 h-10 rounded-lg object-contain bg-gray-100"
+                            className="w-full h-full object-contain"
                           />
                         ) : (
-                          <Bot className="h-4 w-4 text-blue-500" />
+                          <Bot className="w-10 h-10 text-blue-500" />
                         )}
-                        <span className="font-medium text-blue-600">{agent.name}</span>
                       </div>
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="text-sm text-gray-500 max-w-xs truncate">
-                        {agent.description || "-"}
+                      <h3 className="font-semibold text-gray-900 mb-1 truncate w-full">
+                        {agent.name}
+                      </h3>
+                      <p className="text-sm text-gray-500 mb-2 line-clamp-2 h-8">
+                        {agent.description || "暂无描述"}
+                      </p>
+                      <div className="flex items-center gap-2 mb-2">
+                        <span
+                          className={`inline-block px-2 py-0.5 text-xs rounded-full ${
+                            agent.status === "active"
+                              ? "bg-green-100 text-green-700"
+                              : "bg-gray-100 text-gray-500"
+                          }`}
+                        >
+                          {agent.status === "active" ? "启用" : "停用"}
+                        </span>
                       </div>
-                    </td>
-                    <td className="px-4 py-3 text-center">
-                      <span
-                        className={`inline-block px-2 py-0.5 text-xs rounded-full ${
-                          agent.status === "active"
-                            ? "bg-green-100 text-green-700"
-                            : "bg-gray-100 text-gray-500"
-                        }`}
-                      >
-                        {agent.status === "active" ? "启用" : "停用"}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-center">
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-50 text-blue-600 text-xs rounded-full">
-                          <Wrench className="h-3 w-3" />
+                      <div className="flex items-center gap-3 text-xs text-gray-500">
+                        <span className="inline-flex items-center gap-1">
+                          <Wrench className="h-3 w-3 text-blue-500" />
                           {agent.skillsCount || 0}
                         </span>
-                      </td>
-                      <td className="px-4 py-3 text-center">
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-green-50 text-green-600 text-xs rounded-full">
-                          <BookOpen className="h-3 w-3" />
+                        <span className="inline-flex items-center gap-1">
+                          <BookOpen className="h-3 w-3 text-green-500" />
                           {agent.knowledgesCount || 0}
                         </span>
-                      </td>
-                      <td className="px-4 py-3 text-center">
                         <Button
                           size="sm"
                           variant="ghost"
+                          className="h-6 px-2 ml-auto"
                           onClick={(e) => {
                             e.stopPropagation();
                             window.location.href = `/api/v1/agents/${agent.id}/download`;
                           }}
                         >
-                          <Download className="h-4 w-4" />
+                          <Download className="h-3 w-3" />
                         </Button>
-                      </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
