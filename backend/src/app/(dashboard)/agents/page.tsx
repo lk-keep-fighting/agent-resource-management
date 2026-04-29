@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { X, Plus, Search, Pencil, Trash2, Bot, BookOpen, Wrench, Download } from "lucide-react";
 import ReactMarkdown from "react-markdown";
+import { AvatarPicker, getAvatarFromConfig } from "@/components/ui/avatar-picker";
 
 interface AgentSkill {
   skillId: string;
@@ -83,6 +84,7 @@ export default function AgentsPage() {
     name: "",
     description: "",
     prompt: "",
+    avatar: "",
     status: "active" as "active" | "draft",
     version: "1.0.0",
   });
@@ -231,6 +233,7 @@ export default function AgentsPage() {
         name: detail.name,
         description: detail.description,
         prompt: detail.prompt,
+        avatar: detail.avatar || "",
         status: detail.status,
         version: detail.version,
       });
@@ -254,7 +257,7 @@ export default function AgentsPage() {
     setSelectedAgent(null);
     setIsCreating(true);
     setIsEditing(true);
-    setFormData({ name: "", description: "", prompt: "", status: "active", version: "1.0.0" });
+    setFormData({ name: "", description: "", prompt: "", avatar: "", status: "active", version: "1.0.0" });
     setBoundSkills([]);
     setBoundKnowledges([]);
   };
@@ -543,7 +546,15 @@ export default function AgentsPage() {
                   >
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2">
-                        <Bot className="h-4 w-4 text-blue-500" />
+                        {agent.avatar ? (
+                          <img
+                            src={getAvatarFromConfig(agent.avatar)}
+                            alt=""
+                            className="w-10 h-10 rounded-lg object-contain bg-gray-100"
+                          />
+                        ) : (
+                          <Bot className="h-4 w-4 text-blue-500" />
+                        )}
                         <span className="font-medium text-blue-600">{agent.name}</span>
                       </div>
                     </td>
@@ -600,9 +611,18 @@ export default function AgentsPage() {
         <Card className="w-[500px] flex-shrink-0 overflow-auto">
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between">
-              <CardTitle className="text-lg">
-                {isCreating ? "新建 Agent" : selectedAgent?.name}
-              </CardTitle>
+              <div className="flex items-center gap-3">
+                {selectedAgent?.avatar && (
+                  <img
+                    src={getAvatarFromConfig(selectedAgent.avatar)}
+                    alt=""
+                    className="w-10 h-10 rounded-lg object-contain bg-gray-100"
+                  />
+                )}
+                <CardTitle className="text-lg">
+                  {isCreating ? "新建 Agent" : selectedAgent?.name}
+                </CardTitle>
+              </div>
               <Button
                 size="sm"
                 variant="ghost"
@@ -621,6 +641,14 @@ export default function AgentsPage() {
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                     placeholder="Agent 名称"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">头像</label>
+                  <AvatarPicker
+                    value={formData.avatar}
+                    onChange={(avatar) => setFormData({ ...formData, avatar })}
+                    seed={formData.avatar ? JSON.parse(formData.avatar)?.seed : undefined}
                   />
                 </div>
                 <div className="space-y-2">
