@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
 import { Package, User, Settings, LogOut, Bot, BookOpen, Shield, Upload } from "lucide-react";
 
 const baseNavItems = [
-  { href: "/agents", label: "Agent 工厂", icon: Bot },
+  { href: "/agents", label: "Agent员工", icon: Bot },
   { href: "/skills", label: "能力资产库", icon: Package },
   { href: "/knowledges", label: "知识资源库", icon: BookOpen },
   { href: "/my", label: "我的资源", icon: User },
