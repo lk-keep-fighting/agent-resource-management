@@ -58,6 +58,10 @@ export default function MyPage() {
 
   const [user, setUser] = useState<UserInfo | null>(null);
 
+  const [apiKey, setApiKey] = useState<string | null>(null);
+  const [showApiKey, setShowApiKey] = useState(false);
+  const [apiKeyLoading, setApiKeyLoading] = useState(false);
+
   const [skills, setSkills] = useState<Skill[]>([]);
   const [skillsLoading, setSkillsLoading] = useState(true);
   const [selectedSkillName, setSelectedSkillName] = useState<string | null>(null);
@@ -87,6 +91,31 @@ export default function MyPage() {
         }
       });
   }, []);
+
+  const generateApiKey = async () => {
+    setApiKeyLoading(true);
+    try {
+      const res = await fetch("/api/v1/users/me/api-key/generate", {
+        method: "POST",
+        credentials: "include",
+      });
+      const data = await res.json();
+      if (data.ok && data.data?.apiKey) {
+        setApiKey(data.data.apiKey);
+        setShowApiKey(true);
+      }
+    } catch (err) {
+      console.error("Failed to generate API Key:", err);
+    } finally {
+      setApiKeyLoading(false);
+    }
+  };
+
+  const copyApiKey = () => {
+    if (apiKey) {
+      navigator.clipboard.writeText(apiKey);
+    }
+  };
 
   const fetchSkills = useCallback(async () => {
     setSkillsLoading(true);
@@ -480,35 +509,65 @@ export default function MyPage() {
       </Dialog>
 
       {activeTab === "settings" && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <User className="h-5 w-5" />
-              账户信息
-            </CardTitle>
-            <CardDescription>当前登录账户信息</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-2 text-sm">
-            <div className="flex justify-between">
-              <span className="text-gray-500">ID:</span>
-              <span>{user?.id || '-'}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-gray-500">名称:</span>
-              <span>{user?.name || '-'}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-gray-500">邮箱:</span>
-              <span>{user?.email || '-'}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-gray-500">角色:</span>
-              <span className={user?.role === "ADMIN" ? "text-red-600 font-medium" : ""}>
-                {user?.role === "ADMIN" ? "管理员" : "普通用户"}
-              </span>
-            </div>
-          </CardContent>
-        </Card>
+        <div className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <User className="h-5 w-5" />
+                账户信息
+              </CardTitle>
+              <CardDescription>当前登录账户信息</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-2 text-sm">
+              <div className="flex justify-between">
+                <span className="text-gray-500">ID:</span>
+                <span>{user?.id || '-'}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-500">名称:</span>
+                <span>{user?.name || '-'}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-500">邮箱:</span>
+                <span>{user?.email || '-'}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-500">角色:</span>
+                <span className={user?.role === "ADMIN" ? "text-red-600 font-medium" : ""}>
+                  {user?.role === "ADMIN" ? "管理员" : "普通用户"}
+                </span>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>API Key</CardTitle>
+              <CardDescription>
+                用于 CLI 和 API 访问。生成后请妥善保管，无法再次查看。
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {showApiKey && apiKey ? (
+                <div className="space-y-3">
+                  <div className="flex gap-2">
+                    <Input value={apiKey} readOnly className="font-mono text-sm" />
+                    <Button variant="outline" onClick={copyApiKey}>
+                      复制
+                    </Button>
+                  </div>
+                  <p className="text-xs text-amber-600">
+                    请立即复制并妥善保管此 Key，之后将无法再次查看。
+                  </p>
+                </div>
+              ) : (
+                <Button onClick={generateApiKey} disabled={apiKeyLoading}>
+                  {apiKeyLoading ? "生成中..." : "生成 API Key"}
+                </Button>
+              )}
+            </CardContent>
+          </Card>
+        </div>
       )}
     </div>
   );
