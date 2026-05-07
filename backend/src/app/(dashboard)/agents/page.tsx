@@ -595,6 +595,37 @@ export default function AgentsPage() {
         />
       </div>
 
+      <div className="space-y-2">
+        <label className="text-sm font-medium">版本号</label>
+        <Input
+          value={formData.version}
+          onChange={(e) => setFormData({ ...formData, version: e.target.value })}
+          placeholder="1.0.0"
+        />
+      </div>
+
+      <div className="space-y-2">
+        <label className="text-sm font-medium">状态</label>
+        <div className="flex gap-4">
+          <label className="flex items-center gap-2">
+            <input
+              type="radio"
+              checked={formData.status === "active"}
+              onChange={() => setFormData({ ...formData, status: "active" })}
+            />
+            <span className="text-sm">启用</span>
+          </label>
+          <label className="flex items-center gap-2">
+            <input
+              type="radio"
+              checked={formData.status === "draft"}
+              onChange={() => setFormData({ ...formData, status: "draft" })}
+            />
+            <span className="text-sm">停用</span>
+          </label>
+        </div>
+      </div>
+
       <div className="p-3 bg-blue-50 rounded-lg">
         <div className="flex items-start gap-2">
           <Lightbulb className="h-4 w-4 text-blue-500 mt-0.5 flex-shrink-0" />
@@ -941,11 +972,14 @@ export default function AgentsPage() {
                       </div>
                       <h3 className="font-semibold text-gray-900 mb-1 truncate w-full">{agent.name}</h3>
                       <p className="text-sm text-gray-500 mb-2 line-clamp-2 h-8">{agent.description || "暂无描述"}</p>
-                      <span className={`inline-block px-2 py-0.5 text-xs rounded-full mb-2 ${
-                        agent.status === "active" ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500"
-                      }`}>
-                        {agent.status === "active" ? "启用" : "停用"}
-                      </span>
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className={`inline-block px-2 py-0.5 text-xs rounded-full ${
+                          agent.status === "active" ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500"
+                        }`}>
+                          {agent.status === "active" ? "启用" : "停用"}
+                        </span>
+                        <span className="text-xs text-gray-400">v{agent.version}</span>
+                      </div>
                       <div className="flex items-center gap-3 text-xs text-gray-500">
                         <span className="inline-flex items-center gap-1">
                           <Wrench className="h-3 w-3 text-blue-500" />
