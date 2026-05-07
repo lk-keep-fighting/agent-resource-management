@@ -1,16 +1,17 @@
-# Agent Development Kit (ADK) - CLI
+# Agent Resource Management (ARM) - CLI
 
-Agent Skill CLI 是一个用于管理 Agent Skills 的命令行工具，支持技能的浏览、搜索、上传、下载、验证等功能。
+Agent Resource Management CLI 是一个用于管理 Skills、Knowledges 和 Agents 的命令行工具，支持浏览、搜索、上传、下载、验证等功能。
 
-**注意**: 本 CLI 需要配合 [Agent Skill Backend](https://github.com/your-repo/agent-skill-backend) 后端管理系统一起使用。请先确保后端服务已启动。
+**注意**: 本 CLI 需要配合 ARM Backend 后端管理系统一起使用。请先确保后端服务已启动。
 
 ## 功能特性
 
 - 认证管理 (登录/登出)
-- 技能浏览与搜索
-- 技能详情查看
-- 技能上传/下载/删除
-- 技能本地验证
+- Skill 浏览与搜索
+- Knowledge 浏览与搜索
+- Agent 浏览与搜索
+- 上传/下载/删除
+- 本地验证
 - 多服务端支持
 
 ## 安装
@@ -28,7 +29,7 @@ npm run build
 npm link
 
 # 验证安装
-adk --help
+arm --help
 ```
 
 ### 或使用 Bun 直接运行
@@ -43,47 +44,73 @@ bun run src/main.ts --help
 ### 1. 登录
 
 ```bash
-adk login http://localhost:3000 <your-api-key>
+arm login http://localhost:3000 <your-api-key>
 ```
 
-### 2. 浏览技能
+### 2. 浏览 Skills
 
 ```bash
-# 列出所有技能
-adk skill ls
+# 列出所有 Skills
+arm skill ls
 
-# 搜索技能
-adk skill search pdf
+# 搜索 Skills
+arm skill search pdf
 
-# 查看技能详情
-adk skill info pdf-tool
+# 查看 Skill 详情
+arm skill info pdf-tool
 ```
 
-### 3. 下载技能
+### 3. 浏览 Knowledges
 
 ```bash
-# 下载到当前目录
-adk skill download pdf-tool
+# 列出所有 Knowledges
+arm knowledge ls
 
-# 下载到指定目录
-adk skill download pdf-tool ./my-skills
+# 搜索 Knowledges
+arm knowledge search api-doc
 ```
 
-### 4. 上传技能
+### 4. 浏览 Agents
 
 ```bash
-# 上传本地技能目录
-adk skill upload ./my-skills/pdf-tool
+# 列出所有 Agents
+arm agent ls
+
+# 搜索 Agents
+arm agent search assistant
 ```
 
-### 5. 验证技能格式
+### 5. 下载
 
 ```bash
-# 验证本地技能目录
-adk skill validate ./my-skills/pdf-tool
+# 下载 Skill 到当前目录
+arm skill download pdf-tool
 
-# 验证 ZIP 文件
-adk skill validate ./my-skills/pdf-tool.zip
+# 下载 Knowledge 到指定目录
+arm knowledge download api-doc ./my-knowledges
+
+# 下载 Agent 到指定目录
+arm agent download workspace-assistant ./agents
+```
+
+### 6. 上传
+
+```bash
+# 上传本地 Skill 目录
+arm skill upload ./my-skills/pdf-tool
+
+# 上传本地 Knowledge 目录
+arm knowledge upload ./my-knowledges/api-doc
+```
+
+### 7. 验证格式
+
+```bash
+# 验证 Skill 目录
+arm skill validate ./my-skills/pdf-tool
+
+# 验证 Skill ZIP 文件
+arm skill validate ./my-skills/pdf-tool.zip
 ```
 
 ## 命令参考
@@ -92,38 +119,54 @@ adk skill validate ./my-skills/pdf-tool.zip
 
 | 命令 | 说明 |
 |------|------|
-| `adk login <server-url> <api-key>` | 登录到指定服务端 |
-| `adk logout` | 登出当前用户 |
-| `adk me` | 显示当前用户信息 |
+| `arm login <server-url> <api-key>` | 登录到指定服务端 |
+| `arm logout` | 登出当前用户 |
+| `arm me` | 显示当前用户信息 |
 
-### 技能浏览命令
-
-| 命令 | 说明 |
-|------|------|
-| `adk skill ls` | 列出所有公开技能 |
-| `adk skill search <keyword>` | 搜索技能 |
-| `adk skill info <name>` | 查看技能详情 |
-
-### 技能管理命令
+### Skill 命令
 
 | 命令 | 说明 |
 |------|------|
-| `adk skill download <name> [dir]` | 下载技能到指定目录 |
-| `adk skill upload <path>` | 上传本地技能目录 |
-| `adk skill my` | 查看我发布的技能 |
-| `adk skill delete <name>` | 删除我发布的技能 |
-| `adk skill validate <path>` | 验证技能格式（支持目录和 ZIP） |
+| `arm skill ls` | 列出所有公开 Skills |
+| `arm skill search <keyword>` | 搜索 Skills |
+| `arm skill info <name>` | 查看 Skill 详情 |
+| `arm skill download <name> [dir]` | 下载 Skill 到指定目录 |
+| `arm skill upload <path>` | 上传本地 Skill 目录 |
+| `arm skill my` | 查看我发布的 Skills |
+| `arm skill delete <name>` | 删除我发布的 Skill |
+| `arm skill validate <path>` | 验证 Skill 格式（支持目录和 ZIP） |
+
+### Knowledge 命令
+
+| 命令 | 说明 |
+|------|------|
+| `arm knowledge ls` | 列出所有公开 Knowledges |
+| `arm knowledge search <keyword>` | 搜索 Knowledges |
+| `arm knowledge info <name>` | 查看 Knowledge 详情 |
+| `arm knowledge download <name> [dir]` | 下载 Knowledge 到指定目录 |
+| `arm knowledge upload <path>` | 上传本地 Knowledge 目录 |
+| `arm knowledge my` | 查看我发布的 Knowledges |
+| `arm knowledge delete <name>` | 删除我发布的 Knowledge |
+
+### Agent 命令
+
+| 命令 | 说明 |
+|------|------|
+| `arm agent ls` | 列出所有公开 Agents |
+| `arm agent search <keyword>` | 搜索 Agents |
+| `arm agent info <name>` | 查看 Agent 详情 |
+| `arm agent download <name> [dir]` | 下载 Agent 到指定目录 |
 
 ### 服务端命令
 
 | 命令 | 说明 |
 |------|------|
-| `adk server` | 显示当前服务端 |
-| `adk server set <url>` | 设置默认服务端 |
+| `arm server` | 显示当前服务端 |
+| `arm server set <url>` | 设置默认服务端 |
 
-## 技能格式规范
+## Skill 格式规范
 
-上传的技能目录必须包含 `SKILL.md` 文件，且 frontmatter 必须符合以下格式：
+上传的 Skill 目录必须包含 `SKILL.md` 文件，且 frontmatter 必须符合以下格式：
 
 ```yaml
 ---
@@ -134,9 +177,9 @@ compatibility: 兼容性信息 # 可选
 allowed-tools: tool1 tool2 # 可选，空格分隔
 ---
 
-# 技能说明
+# Skill 说明
 
-这里是技能的详细说明文档...
+这里是 Skill 的详细说明文档...
 ```
 
 ### 验证规则
@@ -149,7 +192,7 @@ allowed-tools: tool1 tool2 # 可选，空格分隔
 
 ## 配置文件
 
-登录后配置保存在 `~/.adk/config.json`:
+登录后配置保存在 `~/.arm/config.json`:
 
 ```json
 {
@@ -181,7 +224,7 @@ npm run build
 
 ## 后端配合
 
-本 CLI 需要配合 Agent Skill Backend 使用。启动后端服务：
+本 CLI 需要配合 ARM Backend 使用。启动后端服务：
 
 ```bash
 cd backend

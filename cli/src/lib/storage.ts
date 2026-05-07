@@ -1,7 +1,7 @@
 import { writeFileSync, readFileSync, existsSync, mkdirSync } from 'fs';
 import { join } from 'path';
 
-const CONFIG_DIR = join(process.env.HOME || '/root', '.adk');
+const CONFIG_DIR = join(process.env.HOME || '/root', '.arm');
 const CONFIG_FILE = join(CONFIG_DIR, 'config.json');
 
 interface Config {

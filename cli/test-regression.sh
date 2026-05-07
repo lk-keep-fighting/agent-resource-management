@@ -4,7 +4,7 @@ CLI_DIR="/Users/lk/Documents/Dev/aims/xuanwu/xuanwu-agents/agent-sdk/agent-skill
 DATA_DIR="$CLI_DIR/data/skills"
 SERVER_URL="http://localhost:3000"
 API_KEY="4567c9e607564e91b3898c46d89cb68dc4e40ec4a52b456699b695cf800fd446"
-ADK="/Users/lk/.bun/bin/bun run $CLI_DIR/src/main.ts"
+ARM="/Users/lk/.bun/bin/bun run $CLI_DIR/src/main.ts"
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -34,7 +34,7 @@ cleanup() {
     log "Cleaning up..."
     rm -rf "$DATA_DIR/pdf-tool-downloaded"
     rm -f "$DATA_DIR/test-skill.zip"
-    $ADK logout 2>/dev/null || true
+    $ARM logout 2>/dev/null || true
 }
 
 check_output() {
@@ -65,8 +65,8 @@ log "========== Regression Test Suite =========="
 cleanup
 
 echo ""
-log "=== TC-CLI-001: adk login 成功登录 ==="
-output=$($ADK login $SERVER_URL $API_KEY 2>&1)
+log "=== TC-CLI-001: arm login 成功登录 ==="
+output=$($ARM login $SERVER_URL $API_KEY 2>&1)
 if echo "$output" | grep -q "登录成功"; then
     pass "TC-CLI-001: Login successful"
 else
@@ -75,13 +75,13 @@ fi
 
 echo ""
 log "=== Setup: Upload test skills ==="
-$ADK skill upload $DATA_DIR/pdf-tool > /dev/null 2>&1
-$ADK skill upload $DATA_DIR/github-tool > /dev/null 2>&1
+$ARM skill upload $DATA_DIR/pdf-tool > /dev/null 2>&1
+$ARM skill upload $DATA_DIR/github-tool > /dev/null 2>&1
 
 echo ""
-log "=== TC-CLI-002: adk login 失败 (无效 API Key) ==="
-$ADK logout > /dev/null 2>&1
-output=$($ADK login $SERVER_URL invalid-api-key 2>&1)
+log "=== TC-CLI-002: arm login 失败 (无效 API Key) ==="
+$ARM logout > /dev/null 2>&1
+output=$($ARM login $SERVER_URL invalid-api-key 2>&1)
 if echo "$output" | grep -q "登录失败"; then
     pass "TC-CLI-002: Login with invalid key fails"
 else
@@ -89,8 +89,8 @@ else
 fi
 
 echo ""
-log "=== TC-CLI-003: adk login 失败 (无效 Server URL) ==="
-output=$($ADK login http://invalid:9999 $API_KEY 2>&1)
+log "=== TC-CLI-003: arm login 失败 (无效 Server URL) ==="
+output=$($ARM login http://invalid:9999 $API_KEY 2>&1)
 if echo "$output" | grep -q "登录失败"; then
     pass "TC-CLI-003: Login with invalid server fails"
 else
@@ -98,9 +98,9 @@ else
 fi
 
 echo ""
-log "=== TC-CLI-004: adk logout 登出 ==="
-$ADK login $SERVER_URL $API_KEY > /dev/null 2>&1
-output=$($ADK logout 2>&1)
+log "=== TC-CLI-004: arm logout 登出 ==="
+$ARM login $SERVER_URL $API_KEY > /dev/null 2>&1
+output=$($ARM logout 2>&1)
 if echo "$output" | grep -q "已退出登录"; then
     pass "TC-CLI-004: Logout successful"
 else
@@ -108,9 +108,9 @@ else
 fi
 
 echo ""
-log "=== TC-CLI-005: adk logout 未登录时 ==="
-$ADK logout > /dev/null 2>&1
-output=$($ADK logout 2>&1)
+log "=== TC-CLI-005: arm logout 未登录时 ==="
+$ARM logout > /dev/null 2>&1
+output=$($ARM logout 2>&1)
 if echo "$output" | grep -q "未登录"; then
     pass "TC-CLI-005: Logout when not logged in"
 else
@@ -118,9 +118,9 @@ else
 fi
 
 echo ""
-log "=== TC-CLI-006: adk skill ls 列出所有 Skills ==="
-$ADK login $SERVER_URL $API_KEY > /dev/null 2>&1
-output=$($ADK skill ls 2>&1)
+log "=== TC-CLI-006: arm skill ls 列出所有 Skills ==="
+$ARM login $SERVER_URL $API_KEY > /dev/null 2>&1
+output=$($ARM skill ls 2>&1)
 if echo "$output" | grep -qE "(Skill|暂无)"; then
     pass "TC-CLI-006: List skills successful"
 else
@@ -128,9 +128,9 @@ else
 fi
 
 echo ""
-log "=== TC-CLI-007: adk skill ls 未登录时 ==="
-$ADK logout > /dev/null 2>&1
-output=$($ADK skill ls 2>&1)
+log "=== TC-CLI-007: arm skill ls 未登录时 ==="
+$ARM logout > /dev/null 2>&1
+output=$($ARM skill ls 2>&1)
 if echo "$output" | grep -qE "未登录|Please login"; then
     pass "TC-CLI-007: List skills without login fails"
 else
@@ -138,9 +138,9 @@ else
 fi
 
 echo ""
-log "=== TC-CLI-008: adk skill search 搜索 Skills ==="
-$ADK login $SERVER_URL $API_KEY > /dev/null 2>&1
-output=$($ADK skill search pdf 2>&1)
+log "=== TC-CLI-008: arm skill search 搜索 Skills ==="
+$ARM login $SERVER_URL $API_KEY > /dev/null 2>&1
+output=$($ARM skill search pdf 2>&1)
 if echo "$output" | grep -qE "(找到|暂无)"; then
     pass "TC-CLI-008: Search skills successful"
 else
@@ -148,9 +148,9 @@ else
 fi
 
 echo ""
-log "=== TC-CLI-009: adk skill info 查看 Skill 详情 ==="
-$ADK login $SERVER_URL $API_KEY > /dev/null 2>&1
-output=$($ADK skill info pdf-tool 2>&1)
+log "=== TC-CLI-009: arm skill info 查看 Skill 详情 ==="
+$ARM login $SERVER_URL $API_KEY > /dev/null 2>&1
+output=$($ARM skill info pdf-tool 2>&1)
 if echo "$output" | grep -qE "(pdf-tool|Name:)"; then
     pass "TC-CLI-009: Skill info successful"
 else
@@ -158,8 +158,8 @@ else
 fi
 
 echo ""
-log "=== TC-CLI-010: adk skill info Skill 不存在 ==="
-output=$($ADK skill info non-existent-skill-xyz 2>&1)
+log "=== TC-CLI-010: arm skill info Skill 不存在 ==="
+output=$($ARM skill info non-existent-skill-xyz 2>&1)
 if echo "$output" | grep -qE "(未找到|不存在|not found)"; then
     pass "TC-CLI-010: Info for non-existent skill"
 else
@@ -167,8 +167,8 @@ else
 fi
 
 echo ""
-log "=== TC-CLI-014: adk skill upload 上传 Skill ==="
-output=$($ADK skill upload $DATA_DIR/pdf-tool 2>&1)
+log "=== TC-CLI-014: arm skill upload 上传 Skill ==="
+output=$($ARM skill upload $DATA_DIR/pdf-tool 2>&1)
 if echo "$output" | grep -qE "(上传成功|Published)"; then
     pass "TC-CLI-014: Upload skill successful"
 else
@@ -176,8 +176,8 @@ else
 fi
 
 echo ""
-log "=== TC-CLI-015: adk skill upload 目录不存在 ==="
-output=$($ADK skill upload $DATA_DIR/non-existent-dir-xyz 2>&1)
+log "=== TC-CLI-015: arm skill upload 目录不存在 ==="
+output=$($ARM skill upload $DATA_DIR/non-existent-dir-xyz 2>&1)
 if echo "$output" | grep -qE "(目录不存在|不存在)"; then
     pass "TC-CLI-015: Upload non-existent directory"
 else
@@ -185,8 +185,8 @@ else
 fi
 
 echo ""
-log "=== TC-CLI-016: adk skill upload SKILL.md 缺失 ==="
-output=$($ADK skill upload $DATA_DIR/invalid-skill 2>&1)
+log "=== TC-CLI-016: arm skill upload SKILL.md 缺失 ==="
+output=$($ARM skill upload $DATA_DIR/invalid-skill 2>&1)
 if echo "$output" | grep -qE "(缺少|无效|SKILL.md)"; then
     pass "TC-CLI-016: Upload invalid skill without SKILL.md"
 else
@@ -194,8 +194,8 @@ else
 fi
 
 echo ""
-log "=== TC-CLI-017: adk skill my 查看我的发布 ==="
-output=$($ADK skill my 2>&1)
+log "=== TC-CLI-017: arm skill my 查看我的发布 ==="
+output=$($ARM skill my 2>&1)
 if echo "$output" | grep -qE "(发布|Skill|暂无)"; then
     pass "TC-CLI-017: My skills listed"
 else
@@ -203,8 +203,8 @@ else
 fi
 
 echo ""
-log "=== TC-CLI-020: adk skill validate 验证有效 Skill ==="
-output=$($ADK skill validate $DATA_DIR/pdf-tool 2>&1)
+log "=== TC-CLI-020: arm skill validate 验证有效 Skill ==="
+output=$($ARM skill validate $DATA_DIR/pdf-tool 2>&1)
 if echo "$output" | grep -qE "(通过|Valid)"; then
     pass "TC-CLI-020: Validate valid skill"
 else
@@ -212,8 +212,8 @@ else
 fi
 
 echo ""
-log "=== TC-CLI-021: adk skill validate 验证无效 Skill ==="
-output=$($ADK skill validate $DATA_DIR/invalid-skill 2>&1)
+log "=== TC-CLI-021: arm skill validate 验证无效 Skill ==="
+output=$($ARM skill validate $DATA_DIR/invalid-skill 2>&1)
 if echo "$output" | grep -qE "(失败|Invalid|错误)"; then
     pass "TC-CLI-021: Validate invalid skill"
 else
@@ -221,8 +221,8 @@ else
 fi
 
 echo ""
-log "=== TC-CLI-011: adk skill download 下载 Skill ==="
-output=$($ADK skill download pdf-tool $DATA_DIR 2>&1)
+log "=== TC-CLI-011: arm skill download 下载 Skill ==="
+output=$($ARM skill download pdf-tool $DATA_DIR 2>&1)
 if echo "$output" | grep -qE "(已下载)"; then
     if [ -f "$DATA_DIR/pdf-tool.zip" ]; then
         pass "TC-CLI-011: Download skill successful"
@@ -234,8 +234,8 @@ else
 fi
 
 echo ""
-log "=== TC-CLI-013: adk skill download Skill 不存在 ==="
-output=$($ADK skill download non-existent-skill-xyz 2>&1)
+log "=== TC-CLI-013: arm skill download Skill 不存在 ==="
+output=$($ARM skill download non-existent-skill-xyz 2>&1)
 if echo "$output" | grep -qE "(未找到|不存在|not found)"; then
     pass "TC-CLI-013: Download non-existent skill"
 else
@@ -243,8 +243,8 @@ else
 fi
 
 echo ""
-log "=== TC-CLI-019: adk skill delete 无权限 (先上传自己的skill再删除) ==="
-output=$($ADK skill upload $DATA_DIR/github-tool 2>&1)
+log "=== TC-CLI-019: arm skill delete 无权限 (先上传自己的skill再删除) ==="
+output=$($ARM skill upload $DATA_DIR/github-tool 2>&1)
 if echo "$output" | grep -qE "(上传成功|Published)"; then
     uploaded=true
 else
@@ -252,7 +252,7 @@ else
 fi
 
 if [ "$uploaded" = true ]; then
-    output=$($ADK skill delete github-tool 2>&1)
+    output=$($ARM skill delete github-tool 2>&1)
     if echo "$output" | grep -qE "(已删除|删除成功|Deleted)"; then
         pass "TC-CLI-019: Delete own skill"
     else
