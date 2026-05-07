@@ -3,8 +3,16 @@
 import { useEffect, useState, useCallback } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Download, Trash2, X, Package, BookOpen, User, Settings as SettingsIcon } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Download, Trash2, X, Package, BookOpen, User, Settings as SettingsIcon, Edit, Save } from "lucide-react";
 import ReactMarkdown from "react-markdown";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 
 type TabType = "skill" | "knowledge" | "settings";
 
@@ -59,6 +67,16 @@ export default function MyPage() {
   const [knowledgesLoading, setKnowledgesLoading] = useState(true);
   const [selectedKnowledgeId, setSelectedKnowledgeId] = useState<string | null>(null);
 
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [editForm, setEditForm] = useState({ name: "", description: "", content: "" });
+  const [editSaving, setEditSaving] = useState(false);
+  const [editingKnowledgeId, setEditingKnowledgeId] = useState<string | null>(null);
+
+  const [linkedAgents, setLinkedAgents] = useState<{ agentId: string; agentName: string; agentVersion: string }[]>([]);
+  const [selectedAgentIds, setSelectedAgentIds] = useState<string[]>([]);
+  const [versionModalOpen, setVersionModalOpen] = useState(false);
+  const [versionUpdating, setVersionUpdating] = useState(false);
+
   useEffect(() => {
     fetch("/api/auth/session", { credentials: "include" })
       .then(res => res.json())
@@ -96,6 +114,24 @@ export default function MyPage() {
       console.error("Failed to fetch knowledges");
     } finally {
       setKnowledgesLoading(false);
+    }
+  }, []);
+
+  const fetchLinkedAgents = useCallback(async (knowledgeId: string) => {
+    try {
+      const res = await fetch(`/api/v1/knowledges/${knowledgeId}/agents`);
+      const data = await res.json();
+      if (data.ok && Array.isArray(data.data)) {
+        setLinkedAgents(data.data);
+        setSelectedAgentIds(data.data.map((a: { agentId: string }) => a.agentId));
+      } else {
+        setLinkedAgents([]);
+        setSelectedAgentIds([]);
+      }
+    } catch {
+      console.error("Failed to fetch linked agents");
+      setLinkedAgents([]);
+      setSelectedAgentIds([]);
     }
   }, []);
 
@@ -168,6 +204,87 @@ export default function MyPage() {
     } catch {
       alert("删除失败");
     }
+  };
+
+  const handleEditKnowledge = (knowledge: Knowledge) => {
+    setEditingKnowledgeId(knowledge.id);
+    setEditForm({
+      name: knowledge.name || "",
+      description: knowledge.description || "",
+      content: knowledge.content || "",
+    });
+    setEditModalOpen(true);
+  };
+
+  const handleEditSave = async () => {
+    if (!editingKnowledgeId) return;
+    setEditSaving(true);
+    try {
+      const res = await fetch(`/api/v1/knowledges/${editingKnowledgeId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(editForm),
+      });
+      const data = await res.json();
+      if (data.ok) {
+        setKnowledges((prev) =>
+          prev.map((k) =>
+            k.id === editingKnowledgeId ? { ...k, ...editForm, updatedAt: new Date().toISOString() } : k
+          )
+        );
+        setSelectedKnowledgeId(null);
+        setEditModalOpen(false);
+        fetchKnowledges();
+
+        await fetchLinkedAgents(editingKnowledgeId);
+        if (linkedAgents.length > 0) {
+          setVersionModalOpen(true);
+        }
+      } else {
+        alert(data.message || "保存失败");
+      }
+    } catch {
+      console.error("Failed to save knowledge");
+      alert("保存失败");
+    } finally {
+      setEditSaving(false);
+    }
+  };
+
+  const handleVersionUpdate = async () => {
+    if (selectedAgentIds.length === 0) {
+      setVersionModalOpen(false);
+      return;
+    }
+    setVersionUpdating(true);
+    try {
+      const res = await fetch("/api/v1/agents/batch-version", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          agentIds: selectedAgentIds,
+          knowledgeId: editingKnowledgeId,
+        }),
+      });
+      const data = await res.json();
+      if (data.ok) {
+        alert(`已更新 ${data.data.updatedAgents.length} 个Agent版本`);
+      } else {
+        alert(data.message || "版本更新失败");
+      }
+    } catch {
+      console.error("Failed to update agent versions");
+      alert("版本更新失败");
+    } finally {
+      setVersionUpdating(false);
+      setVersionModalOpen(false);
+    }
+  };
+
+  const toggleAgentSelection = (agentId: string) => {
+    setSelectedAgentIds((prev) =>
+      prev.includes(agentId) ? prev.filter((id) => id !== agentId) : [...prev, agentId]
+    );
   };
 
   const handleDownloadSkill = async (name: string) => {
@@ -255,8 +372,99 @@ export default function MyPage() {
           selectedKnowledgeId={selectedKnowledgeId}
           onSelect={setSelectedKnowledgeId}
           onDelete={handleDeleteKnowledge}
+          onEdit={handleEditKnowledge}
         />
       )}
+
+      <Dialog open={editModalOpen} onOpenChange={setEditModalOpen}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-auto">
+          <DialogHeader>
+            <DialogTitle>编辑知识</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div>
+              <label className="text-sm font-medium mb-1 block">名称</label>
+              <Input
+                value={editForm.name}
+                onChange={(e) => setEditForm((prev) => ({ ...prev, name: e.target.value }))}
+                placeholder="请输入知识名称"
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium mb-1 block">描述</label>
+              <Input
+                value={editForm.description}
+                onChange={(e) => setEditForm((prev) => ({ ...prev, description: e.target.value }))}
+                placeholder="请输入描述"
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium mb-1 block">内容</label>
+              <textarea
+                className="flex min-h-[200px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                value={editForm.content}
+                onChange={(e) => setEditForm((prev) => ({ ...prev, content: e.target.value }))}
+                placeholder="请输入知识内容 (支持 Markdown)"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditModalOpen(false)}>
+              取消
+            </Button>
+            <Button onClick={handleEditSave} disabled={editSaving}>
+              <Save className="h-4 w-4 mr-2" />
+              {editSaving ? "保存中..." : "保存"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={versionModalOpen} onOpenChange={setVersionModalOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>更新关联Agent版本</DialogTitle>
+          </DialogHeader>
+          <div className="py-4">
+            <p className="text-sm text-gray-500 mb-4">
+              此知识已关联以下Agent，编辑后是否更新它们的版本号？
+            </p>
+            {linkedAgents.length === 0 ? (
+              <p className="text-sm text-gray-400">暂无关联的Agent</p>
+            ) : (
+              <div className="space-y-2 max-h-60 overflow-auto">
+                {linkedAgents.map((agent) => (
+                  <label
+                    key={agent.agentId}
+                    className="flex items-center gap-3 p-2 rounded hover:bg-gray-50 cursor-pointer"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={selectedAgentIds.includes(agent.agentId)}
+                      onChange={() => toggleAgentSelection(agent.agentId)}
+                      className="rounded"
+                    />
+                    <div className="flex-1">
+                      <div className="font-medium text-sm">{agent.agentName}</div>
+                      <div className="text-xs text-gray-500">
+                        当前版本: {agent.agentVersion}
+                      </div>
+                    </div>
+                  </label>
+                ))}
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setVersionModalOpen(false)} disabled={versionUpdating}>
+              跳过
+            </Button>
+            <Button onClick={handleVersionUpdate} disabled={versionUpdating}>
+              {versionUpdating ? "更新中..." : "确认更新"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {activeTab === "settings" && (
         <Card>
@@ -494,12 +702,14 @@ function KnowledgeTab({
   selectedKnowledgeId,
   onSelect,
   onDelete,
+  onEdit,
 }: {
   knowledges: Knowledge[];
   loading: boolean;
   selectedKnowledgeId: string | null;
   onSelect: (id: string | null) => void;
   onDelete: (id: string) => void;
+  onEdit: (knowledge: Knowledge) => void;
 }) {
   const selectedKnowledge = knowledges.find(k => k.id === selectedKnowledgeId);
 
@@ -587,14 +797,23 @@ function KnowledgeTab({
               </div>
             )}
 
-            <Button
-              className="w-full"
-              variant="destructive"
-              onClick={() => onDelete(selectedKnowledge.id)}
-            >
-              <Trash2 className="h-4 w-4 mr-2" />
-              删除
-            </Button>
+            <div className="flex gap-2">
+              <Button
+                className="flex-1"
+                onClick={() => onEdit(selectedKnowledge)}
+              >
+                <Edit className="h-4 w-4 mr-2" />
+                编辑
+              </Button>
+              <Button
+                className="flex-1"
+                variant="destructive"
+                onClick={() => onDelete(selectedKnowledge.id)}
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                删除
+              </Button>
+            </div>
           </CardContent>
         </Card>
       )}
