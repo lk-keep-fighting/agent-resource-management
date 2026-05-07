@@ -151,6 +151,7 @@ export async function fetchLocalKnowledges(query: { keyword?: string; tags?: str
       orderBy: { createdAt: 'desc' },
       include: {
         knowledgeTags: { include: { tag: true } },
+        creator: { select: { id: true, name: true } },
       },
     }),
     prisma.knowledge.count({ where }),
@@ -165,6 +166,7 @@ export async function fetchLocalKnowledges(query: { keyword?: string; tags?: str
       tags: k.knowledgeTags.map((kt: any) => kt.tag.name),
       createdAt: k.createdAt.toISOString(),
       updatedAt: k.updatedAt.toISOString(),
+      creatorName: k.creator?.name ?? '未知',
     })),
     total,
   };

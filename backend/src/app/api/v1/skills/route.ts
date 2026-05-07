@@ -45,6 +45,8 @@ export async function GET(request: NextRequest) {
     const tagMode = searchParams.get('tagMode') || 'or';
     const pageSize = parseInt(searchParams.get('pageSize') || '20', 10);
     const pageNum = parseInt(searchParams.get('page') || '1', 10);
+    const sortBy = searchParams.get('sortBy') || 'publishedAt';
+    const sortOrder = searchParams.get('sortOrder') || 'desc';
     const offset = (pageNum - 1) * pageSize;
 
     const tags = tagsParam
@@ -78,15 +80,22 @@ export async function GET(request: NextRequest) {
         : {}),
     };
 
+    const validSortFields = ['publishedAt', 'updatedAt', 'downloadCount', 'name'];
+    const orderByField = validSortFields.includes(sortBy) ? sortBy : 'publishedAt';
+    const orderByDirection = sortOrder === 'asc' ? 'asc' : 'desc';
+
     const [skills, total] = await Promise.all([
       prisma.skill.findMany({
         where,
         skip: offset,
         take: pageSize,
-        orderBy: { publishedAt: 'desc' },
+        orderBy: { [orderByField]: orderByDirection },
         include: {
           skillTags: {
             include: { tag: true },
+          },
+          publisher: {
+            select: { id: true, name: true },
           },
         },
       }),
@@ -105,6 +114,7 @@ export async function GET(request: NextRequest) {
       fileHash: skill.fileHash,
       publishedAt: skill.publishedAt.toISOString(),
       publishedBy: skill.publishedBy,
+      publisherName: skill.publisher?.name ?? '未知',
       updatedAt: skill.updatedAt.toISOString(),
       downloadCount: skill.downloadCount,
       status: skill.status,

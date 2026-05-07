@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { TagFilter, SelectedTagsDisplay } from "@/components/ui/tag-filter";
-import { Download, Search, X } from "lucide-react";
+import { Download, Search, X, ArrowUp, ArrowDown } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 
 interface Skill {
@@ -16,7 +16,9 @@ interface Skill {
   license?: string;
   downloadCount: number;
   publishedAt: string;
+  updatedAt: string;
   publishedBy: string;
+  publisherName?: string;
   tags: string[];
 }
 
@@ -44,6 +46,8 @@ export default function SkillsPage() {
   const [keyword, setKeyword] = useState("");
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [tagMode, setTagMode] = useState<"and" | "or">("or");
+  const [sortBy, setSortBy] = useState<string>("updatedAt");
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
   const [selectedSkillName, setSelectedSkillName] = useState<string | null>(null);
   const [skillDetailCache, setSkillDetailCache] = useState<Record<string, SkillDetail>>({});
   const [detailLoading, setDetailLoading] = useState(false);
@@ -64,7 +68,9 @@ export default function SkillsPage() {
   const fetchSkills = useCallback(async (
     searchKeyword: string = keyword,
     tagsToFilter: string[] = selectedTags,
-    mode: "and" | "or" = tagMode
+    mode: "and" | "or" = tagMode,
+    currentSortBy: string = sortBy,
+    currentSortOrder: "asc" | "desc" = sortOrder
   ) => {
     setLoading(true);
     try {
@@ -74,6 +80,8 @@ export default function SkillsPage() {
         params.set("tags", tagsToFilter.join(","));
         params.set("tagMode", mode);
       }
+      params.set("sortBy", currentSortBy);
+      params.set("sortOrder", currentSortOrder);
       const queryString = params.toString();
       const url = queryString ? `/api/v1/skills?${queryString}` : "/api/v1/skills";
 
@@ -87,7 +95,7 @@ export default function SkillsPage() {
     } finally {
       setLoading(false);
     }
-  }, [keyword, selectedTags, tagMode]);
+  }, [keyword, selectedTags, tagMode, sortBy, sortOrder]);
 
   const fetchSkillDetail = useCallback(async (name: string) => {
     if (skillDetailCache[name]) {
@@ -125,18 +133,18 @@ export default function SkillsPage() {
       clearTimeout(debounceRef.current);
     }
     debounceRef.current = setTimeout(() => {
-      fetchSkills(keyword, selectedTags, tagMode);
+      fetchSkills(keyword, selectedTags, tagMode, sortBy, sortOrder);
     }, 300);
     return () => {
       if (debounceRef.current) {
         clearTimeout(debounceRef.current);
       }
     };
-  }, [selectedTags, tagMode, keyword]);
+  }, [selectedTags, tagMode, keyword, sortBy, sortOrder]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
-    fetchSkills(keyword, selectedTags, tagMode);
+    fetchSkills(keyword, selectedTags, tagMode, sortBy, sortOrder);
   };
 
   const handleTagsChange = (tags: string[]) => {
@@ -171,6 +179,15 @@ export default function SkillsPage() {
       a.click();
     } catch {
       alert("下载失败");
+    }
+  };
+
+  const handleSort = (field: string) => {
+    if (sortBy === field) {
+      setSortOrder(sortOrder === "asc" ? "desc" : "asc");
+    } else {
+      setSortBy(field);
+      setSortOrder("desc");
     }
   };
 
@@ -215,22 +232,48 @@ export default function SkillsPage() {
           <table className="w-full">
             <thead className="bg-gray-50 border-b sticky top-0">
               <tr>
-                <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">名称</th>
+                <th
+                  className="px-4 py-3 text-left text-sm font-medium text-gray-500 cursor-pointer hover:bg-gray-100"
+                  onClick={() => handleSort("name")}
+                >
+                  <div className="flex items-center gap-1">
+                    名称
+                    {sortBy === "name" && (sortOrder === "asc" ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />)}
+                  </div>
+                </th>
                 <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">描述</th>
                 <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">标签</th>
-                <th className="px-4 py-3 text-right text-sm font-medium text-gray-500">下载量</th>
+                <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">发布人</th>
+                <th
+                  className="px-4 py-3 text-right text-sm font-medium text-gray-500 cursor-pointer hover:bg-gray-100"
+                  onClick={() => handleSort("downloadCount")}
+                >
+                  <div className="flex items-center justify-end gap-1">
+                    下载量
+                    {sortBy === "downloadCount" && (sortOrder === "asc" ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />)}
+                  </div>
+                </th>
+                <th
+                  className="px-4 py-3 text-right text-sm font-medium text-gray-500 cursor-pointer hover:bg-gray-100"
+                  onClick={() => handleSort("updatedAt")}
+                >
+                  <div className="flex items-center justify-end gap-1">
+                    修改时间
+                    {sortBy === "updatedAt" && (sortOrder === "asc" ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />)}
+                  </div>
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y">
               {loading && skills.length === 0 ? (
                 <tr>
-                  <td colSpan={4} className="px-4 py-8 text-center text-gray-500">
+                  <td colSpan={6} className="px-4 py-8 text-center text-gray-500">
                     加载中...
                   </td>
                 </tr>
               ) : skills.length === 0 ? (
                 <tr>
-                  <td colSpan={4} className="px-4 py-8 text-center text-gray-500">
+                  <td colSpan={6} className="px-4 py-8 text-center text-gray-500">
                     暂无 Skill
                   </td>
                 </tr>
@@ -263,8 +306,14 @@ export default function SkillsPage() {
                         )}
                       </div>
                     </td>
+                    <td className="px-4 py-3 text-sm text-gray-500">
+                      {skill.publisherName || '-'}
+                    </td>
                     <td className="px-4 py-3 text-right text-sm text-gray-500">
                       {skill.downloadCount}
+                    </td>
+                    <td className="px-4 py-3 text-right text-sm text-gray-500">
+                      {new Date(skill.updatedAt).toLocaleDateString()}
                     </td>
                   </tr>
                 ))

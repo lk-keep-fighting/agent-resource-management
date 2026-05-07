@@ -25,6 +25,7 @@ interface Knowledge {
   updatedAt?: string;
   content?: string;
   tags?: string[];
+  creatorName?: string;
 }
 
 interface AgentSummary {
@@ -339,19 +340,20 @@ export default function KnowledgesPage() {
                 <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">名称</th>
                 <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">描述</th>
                 <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">标签</th>
+                <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">发布人</th>
                 <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">更新时间</th>
               </tr>
             </thead>
             <tbody className="divide-y">
               {loading && knowledges.length === 0 ? (
                 <tr>
-                  <td colSpan={4} className="px-4 py-8 text-center text-gray-500">
+                  <td colSpan={5} className="px-4 py-8 text-center text-gray-500">
                     加载中...
                   </td>
                 </tr>
               ) : knowledges.length === 0 ? (
                 <tr>
-                  <td colSpan={4} className="px-4 py-8 text-center text-gray-500">
+                  <td colSpan={5} className="px-4 py-8 text-center text-gray-500">
                     暂无知识
                   </td>
                 </tr>
@@ -383,6 +385,9 @@ export default function KnowledgesPage() {
                           <span className="text-xs text-gray-400">-</span>
                         )}
                       </div>
+                    </td>
+                    <td className="px-4 py-3 text-sm text-gray-500">
+                      {knowledge.creatorName || "-"}
                     </td>
                     <td className="px-4 py-3 text-sm text-gray-500">
                       {knowledge.updatedAt ? new Date(knowledge.updatedAt).toLocaleDateString() : "-"}
