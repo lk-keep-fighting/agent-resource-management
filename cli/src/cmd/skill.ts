@@ -12,7 +12,7 @@ import { mkdtempSync, rmSync } from 'fs';
 export async function listSkills(): Promise<void> {
   const config = loadConfig();
   if (!config?.token) {
-    error('未登录，请先运行 adk login');
+    error('未登录，请先运行 arm login');
     process.exit(1);
   }
 
@@ -37,7 +37,7 @@ export async function listSkills(): Promise<void> {
 export async function searchSkills(keyword: string): Promise<void> {
   const config = loadConfig();
   if (!config?.token) {
-    error('未登录，请先运行 adk login');
+    error('未登录，请先运行 arm login');
     process.exit(1);
   }
 
@@ -62,7 +62,7 @@ export async function searchSkills(keyword: string): Promise<void> {
 export async function infoSkill(name: string): Promise<void> {
   const config = loadConfig();
   if (!config?.token) {
-    error('未登录，请先运行 adk login');
+    error('未登录，请先运行 arm login');
     process.exit(1);
   }
 
@@ -79,7 +79,7 @@ export async function infoSkill(name: string): Promise<void> {
 export async function downloadSkill(name: string, outputDir?: string): Promise<void> {
   const config = loadConfig();
   if (!config?.token) {
-    error('未登录，请先运行 adk login');
+    error('未登录，请先运行 arm login');
     process.exit(1);
   }
 
@@ -99,7 +99,7 @@ export async function downloadSkill(name: string, outputDir?: string): Promise<v
 export async function uploadSkill(filePath: string): Promise<void> {
   const config = loadConfig();
   if (!config?.token) {
-    error('未登录，请先运行 adk login');
+    error('未登录，请先运行 arm login');
     process.exit(1);
   }
 
@@ -142,7 +142,7 @@ export async function uploadSkill(filePath: string): Promise<void> {
 export async function mySkills(): Promise<void> {
   const config = loadConfig();
   if (!config?.token) {
-    error('未登录，请先运行 adk login');
+    error('未登录，请先运行 arm login');
     process.exit(1);
   }
 
@@ -167,7 +167,7 @@ export async function mySkills(): Promise<void> {
 export async function deleteSkill(name: string): Promise<void> {
   const config = loadConfig();
   if (!config?.token) {
-    error('未登录，请先运行 adk login');
+    error('未登录，请先运行 arm login');
     process.exit(1);
   }
 

@@ -9,7 +9,7 @@ import { mkdtempSync, rmSync } from 'fs';
 export async function listAgents(): Promise<void> {
   const config = loadConfig();
   if (!config?.token) {
-    error('未登录，请先运行 adk login');
+    error('未登录，请先运行 arm login');
     process.exit(1);
   }
 
@@ -34,7 +34,7 @@ export async function listAgents(): Promise<void> {
 export async function searchAgents(keyword: string): Promise<void> {
   const config = loadConfig();
   if (!config?.token) {
-    error('未登录，请先运行 adk login');
+    error('未登录，请先运行 arm login');
     process.exit(1);
   }
 
@@ -59,7 +59,7 @@ export async function searchAgents(keyword: string): Promise<void> {
 export async function infoAgent(name: string): Promise<void> {
   const config = loadConfig();
   if (!config?.token) {
-    error('未登录，请先运行 adk login');
+    error('未登录，请先运行 arm login');
     process.exit(1);
   }
 
@@ -73,6 +73,19 @@ export async function infoAgent(name: string): Promise<void> {
     }
 
     const fullAgent = await client.getAgent(agent.id);
+
+    if (fullAgent.knowledges && fullAgent.knowledges.length > 0) {
+      const knowledgeNamePromises = fullAgent.knowledges.map(async (k) => {
+        try {
+          const knowledge = await client.getKnowledge(k.knowledgeId);
+          return { knowledgeId: k.knowledgeId, knowledgeName: knowledge.name, retrievalConfig: k.retrievalConfig };
+        } catch {
+          return k;
+        }
+      });
+      fullAgent.knowledges = await Promise.all(knowledgeNamePromises);
+    }
+
     console.log(formatAgentDetail(fullAgent));
   } catch (err) {
     error(`获取详情失败: ${err instanceof Error ? err.message : '未知错误'}`);
@@ -83,7 +96,7 @@ export async function infoAgent(name: string): Promise<void> {
 export async function downloadAgent(name: string, outputDir?: string): Promise<void> {
   const config = loadConfig();
   if (!config?.token) {
-    error('未登录，请先运行 adk login');
+    error('未登录，请先运行 arm login');
     process.exit(1);
   }
 

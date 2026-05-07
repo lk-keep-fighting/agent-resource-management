@@ -186,4 +186,89 @@ export class ApiClient {
       version,
     };
   }
+
+  async listKnowledge(keyword?: string, page = 1, pageSize = 20): Promise<{ knowledges: any[]; total: number }> {
+    let path = `/knowledges?page=${page}&pageSize=${pageSize}`;
+    if (keyword) {
+      path += `&keyword=${encodeURIComponent(keyword)}`;
+    }
+    const res = await this.request<{ knowledges: any[]; total: number }>(path);
+    if (!res.ok) {
+      throw new Error(res.msg);
+    }
+    return res.data;
+  }
+
+  async getKnowledge(name: string): Promise<any> {
+    const res = await this.request<any>(`/knowledges/${name}`);
+    if (!res.ok) {
+      throw new Error(res.msg);
+    }
+    return res.data;
+  }
+
+  async getMyKnowledge(): Promise<any[]> {
+    const res = await this.request<any[]>('/users/me/knowledges');
+    if (!res.ok) {
+      throw new Error(res.msg);
+    }
+    return res.data;
+  }
+
+  async uploadKnowledge(filePath: string): Promise<any> {
+    const { readFileSync } = await import('fs');
+    const { basename } = await import('path');
+    const fileName = basename(filePath);
+    const fileBuffer = readFileSync(filePath);
+
+    const formData = new FormData();
+    const blob = new Blob([fileBuffer]);
+    formData.append('file', blob, fileName);
+
+    const headers: Record<string, string> = {};
+    if (this.token) {
+      headers['Authorization'] = `Bearer ${this.token}`;
+    }
+
+    const res = await fetch(`${this.serverUrl}/api/v1/knowledges`, {
+      method: 'POST',
+      headers,
+      body: formData,
+    });
+
+    const data = await res.json();
+    if (!data.ok) {
+      throw new Error(data.msg);
+    }
+    return data.data;
+  }
+
+  async deleteKnowledge(name: string): Promise<void> {
+    const res = await this.request<null>(`/knowledges/${name}`, {
+      method: 'DELETE',
+    });
+    if (!res.ok) {
+      throw new Error(res.msg);
+    }
+  }
+
+  async downloadKnowledge(name: string): Promise<ArrayBuffer> {
+    const headers: Record<string, string> = {};
+    if (this.token) {
+      headers['Authorization'] = `Bearer ${this.token}`;
+    }
+
+    const res = await fetch(`${this.serverUrl}/api/v1/knowledges/${name}/download`, {
+      headers,
+    });
+
+    if (!res.ok) {
+      if (res.status === 404) {
+        throw new Error('Knowledge 不存在');
+      }
+      throw new Error('下载失败');
+    }
+
+    return res.arrayBuffer();
+  }
 }

@@ -35,7 +35,7 @@ export async function logout(): Promise<void> {
 export async function getCurrentUser(): Promise<void> {
   const config = loadConfig();
   if (!config?.token) {
-    error('未登录，请先运行 adk login');
+    error('未登录，请先运行 arm login');
     process.exit(1);
   }
 
