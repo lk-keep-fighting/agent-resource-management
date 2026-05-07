@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
-import { Package, User, Settings, LogOut, Bot, BookOpen, Shield, Upload } from "lucide-react";
+import { Package, User, Settings, LogOut, Bot, BookOpen, Shield, Upload, Tags } from "lucide-react";
 
 const baseNavItems = [
   { href: "/agents", label: "Agent员工", icon: Bot },
@@ -17,6 +17,7 @@ const baseNavItems = [
 const adminNavItems = [
   { href: "/admin/skills", label: "能力审核", icon: Shield },
   { href: "/admin/knowledges", label: "知识审核", icon: Shield },
+  { href: "/admin/tags", label: "标签管理", icon: Tags },
 ];
 
 interface UserInfo {

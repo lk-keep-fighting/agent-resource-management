@@ -19,6 +19,7 @@ export default function UploadPage() {
   const [knowledgeName, setKnowledgeName] = useState("");
   const [knowledgeDesc, setKnowledgeDesc] = useState("");
   const [knowledgeContent, setKnowledgeContent] = useState("");
+  const [knowledgeTags, setKnowledgeTags] = useState("");
   const [knowledgeLoading, setKnowledgeLoading] = useState(false);
   const [knowledgeError, setKnowledgeError] = useState("");
   const [knowledgeSuccess, setKnowledgeSuccess] = useState("");
@@ -82,6 +83,7 @@ export default function UploadPage() {
           name: knowledgeName.trim(),
           description: knowledgeDesc.trim(),
           content: knowledgeContent.trim(),
+          tags: knowledgeTags.split(",").map((t) => t.trim()).filter(Boolean),
         }),
       });
 
@@ -91,6 +93,7 @@ export default function UploadPage() {
         setKnowledgeName("");
         setKnowledgeDesc("");
         setKnowledgeContent("");
+        setKnowledgeTags("");
         setTimeout(() => router.push("/knowledges"), 1500);
       } else {
         setKnowledgeError(data.msg || "创建失败");
@@ -232,6 +235,16 @@ export default function UploadPage() {
                   value={knowledgeContent}
                   onChange={(e) => setKnowledgeContent(e.target.value)}
                 />
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium">标签</label>
+                <Input
+                  placeholder="输入标签，逗号分隔，例如：api, python, 机器学习"
+                  value={knowledgeTags}
+                  onChange={(e) => setKnowledgeTags(e.target.value)}
+                />
+                <p className="text-xs text-gray-400">多个标签用逗号分隔</p>
               </div>
 
               {knowledgeError && (

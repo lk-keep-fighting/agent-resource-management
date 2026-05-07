@@ -48,6 +48,7 @@ interface Knowledge {
   name: string;
   description?: string;
   content?: string;
+  tags?: string[];
   createdAt: string;
   updatedAt: string;
 }
@@ -68,7 +69,7 @@ export default function MyPage() {
   const [selectedKnowledgeId, setSelectedKnowledgeId] = useState<string | null>(null);
 
   const [editModalOpen, setEditModalOpen] = useState(false);
-  const [editForm, setEditForm] = useState({ name: "", description: "", content: "" });
+  const [editForm, setEditForm] = useState({ name: "", description: "", content: "", tags: [] as string[] });
   const [editSaving, setEditSaving] = useState(false);
   const [editingKnowledgeId, setEditingKnowledgeId] = useState<string | null>(null);
 
@@ -212,6 +213,7 @@ export default function MyPage() {
       name: knowledge.name || "",
       description: knowledge.description || "",
       content: knowledge.content || "",
+      tags: knowledge.tags || [],
     });
     setEditModalOpen(true);
   };
@@ -405,6 +407,17 @@ export default function MyPage() {
                 value={editForm.content}
                 onChange={(e) => setEditForm((prev) => ({ ...prev, content: e.target.value }))}
                 placeholder="请输入知识内容 (支持 Markdown)"
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium mb-1 block">标签 (逗号分隔)</label>
+              <Input
+                value={editForm.tags.join(", ")}
+                onChange={(e) => setEditForm((prev) => ({
+                  ...prev,
+                  tags: e.target.value.split(",").map((t) => t.trim()).filter(Boolean)
+                }))}
+                placeholder="例如：api, python, 机器学习"
               />
             </div>
           </div>
@@ -722,19 +735,20 @@ function KnowledgeTab({
               <tr>
                 <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">名称</th>
                 <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">描述</th>
+                <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">标签</th>
                 <th className="px-4 py-3 text-right text-sm font-medium text-gray-500">创建时间</th>
               </tr>
             </thead>
             <tbody className="divide-y">
               {loading && knowledges.length === 0 ? (
                 <tr>
-                  <td colSpan={3} className="px-4 py-8 text-center text-gray-500">
+                  <td colSpan={4} className="px-4 py-8 text-center text-gray-500">
                     加载中...
                   </td>
                 </tr>
               ) : knowledges.length === 0 ? (
                 <tr>
-                  <td colSpan={3} className="px-4 py-8 text-center text-gray-500">
+                  <td colSpan={4} className="px-4 py-8 text-center text-gray-500">
                     暂无创建的知识资源
                   </td>
                 </tr>
@@ -750,6 +764,22 @@ function KnowledgeTab({
                     </td>
                     <td className="px-4 py-3">
                       <div className="text-sm text-gray-500 max-w-xs truncate">{knowledge.description || '-'}</div>
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex flex-wrap gap-1">
+                        {knowledge.tags && knowledge.tags.length > 0 ? (
+                          knowledge.tags.map((tag) => (
+                            <span
+                              key={tag}
+                              className="text-xs px-2 py-0.5 bg-blue-50 text-blue-600 rounded-full"
+                            >
+                              {tag}
+                            </span>
+                          ))
+                        ) : (
+                          <span className="text-xs text-gray-400">-</span>
+                        )}
+                      </div>
                     </td>
                     <td className="px-4 py-3 text-right text-sm text-gray-500">
                       {new Date(knowledge.createdAt).toLocaleDateString()}
@@ -779,6 +809,19 @@ function KnowledgeTab({
           <CardContent className="space-y-4">
             {selectedKnowledge.description && (
               <p className="text-sm text-gray-500">{selectedKnowledge.description}</p>
+            )}
+
+            {selectedKnowledge.tags && selectedKnowledge.tags.length > 0 && (
+              <div className="flex flex-wrap gap-1">
+                {selectedKnowledge.tags.map((tag) => (
+                  <span
+                    key={tag}
+                    className="text-xs px-2 py-0.5 bg-blue-50 text-blue-600 rounded-full"
+                  >
+                    {tag}
+                  </span>
+                ))}
+              </div>
             )}
 
             <div className="grid grid-cols-2 gap-2 text-sm">

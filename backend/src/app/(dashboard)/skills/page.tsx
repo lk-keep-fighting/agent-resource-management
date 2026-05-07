@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { TagFilter, SelectedTagsDisplay } from "@/components/ui/tag-filter";
 import { Download, Search, X } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 
@@ -33,6 +34,7 @@ interface Tag {
   id: string;
   name: string;
   skillCount: number;
+  knowledgeCount?: number;
 }
 
 export default function SkillsPage() {
@@ -40,7 +42,8 @@ export default function SkillsPage() {
   const [tags, setTags] = useState<Tag[]>([]);
   const [loading, setLoading] = useState(true);
   const [keyword, setKeyword] = useState("");
-  const [selectedTag, setSelectedTag] = useState("");
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [tagMode, setTagMode] = useState<"and" | "or">("or");
   const [selectedSkillName, setSelectedSkillName] = useState<string | null>(null);
   const [skillDetailCache, setSkillDetailCache] = useState<Record<string, SkillDetail>>({});
   const [detailLoading, setDetailLoading] = useState(false);
@@ -58,20 +61,23 @@ export default function SkillsPage() {
     }
   };
 
-  const fetchSkills = useCallback(async (searchKeyword = "", tag = "") => {
+  const fetchSkills = useCallback(async (
+    searchKeyword: string = keyword,
+    tagsToFilter: string[] = selectedTags,
+    mode: "and" | "or" = tagMode
+  ) => {
     setLoading(true);
     try {
-      // Auth handled by cookie (API reads from cookie)
-
       const params = new URLSearchParams();
       if (searchKeyword) params.set("keyword", searchKeyword);
-      if (tag) params.set("tag", tag);
+      if (tagsToFilter.length > 0) {
+        params.set("tags", tagsToFilter.join(","));
+        params.set("tagMode", mode);
+      }
       const queryString = params.toString();
       const url = queryString ? `/api/v1/skills?${queryString}` : "/api/v1/skills";
 
-      const res = await fetch(url, {
-        // Auth via cookie
-        });
+      const res = await fetch(url);
       const data = await res.json();
       if (data.ok) {
         setSkills(data.data.skills);
@@ -81,7 +87,7 @@ export default function SkillsPage() {
     } finally {
       setLoading(false);
     }
-  }, [router]);
+  }, [keyword, selectedTags, tagMode]);
 
   const fetchSkillDetail = useCallback(async (name: string) => {
     if (skillDetailCache[name]) {
@@ -104,7 +110,7 @@ export default function SkillsPage() {
   useEffect(() => {
     fetchTags();
     fetchSkills();
-  }, [fetchSkills]);
+  }, []);
 
   useEffect(() => {
     if (selectedSkillName) {
@@ -112,14 +118,38 @@ export default function SkillsPage() {
     }
   }, [selectedSkillName, fetchSkillDetail]);
 
+  const debounceRef = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    if (debounceRef.current) {
+      clearTimeout(debounceRef.current);
+    }
+    debounceRef.current = setTimeout(() => {
+      fetchSkills(keyword, selectedTags, tagMode);
+    }, 300);
+    return () => {
+      if (debounceRef.current) {
+        clearTimeout(debounceRef.current);
+      }
+    };
+  }, [selectedTags, tagMode, keyword]);
+
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
-    fetchSkills(keyword, selectedTag);
+    fetchSkills(keyword, selectedTags, tagMode);
   };
 
-  const handleTagSelect = (tag: string) => {
-    setSelectedTag(tag === selectedTag ? "" : tag);
-    fetchSkills(keyword, tag === selectedTag ? "" : tag);
+  const handleTagsChange = (tags: string[]) => {
+    setSelectedTags(tags);
+  };
+
+  const handleTagModeChange = (mode: "and" | "or") => {
+    setTagMode(mode);
+  };
+
+  const handleTagRemove = (tag: string) => {
+    const newTags = selectedTags.filter((t) => t !== tag);
+    setSelectedTags(newTags);
   };
 
   const handleSkillClick = (skill: Skill) => {
@@ -167,24 +197,17 @@ export default function SkillsPage() {
         </form>
 
         {tags.length > 0 && (
-          <div className="flex flex-wrap gap-2">
-            <Button
-              size="sm"
-              variant={selectedTag === "" ? "default" : "outline"}
-              onClick={() => handleTagSelect("")}
-            >
-              全部
-            </Button>
-            {tags.map((tag) => (
-              <Button
-                key={tag.id}
-                size="sm"
-                variant={selectedTag === tag.name ? "default" : "outline"}
-                onClick={() => handleTagSelect(tag.name)}
-              >
-                {tag.name} ({tag.skillCount})
-              </Button>
-            ))}
+          <div className="flex flex-wrap gap-3 items-center">
+            <TagFilter
+              tags={tags}
+              selectedTags={selectedTags}
+              tagMode={tagMode}
+              onTagsChange={handleTagsChange}
+              onTagModeChange={handleTagModeChange}
+              placeholder="标签筛选"
+              immediate={true}
+            />
+            <SelectedTagsDisplay tags={selectedTags} onRemove={handleTagRemove} />
           </div>
         )}
 

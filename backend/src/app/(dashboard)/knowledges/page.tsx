@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { TagFilter, SelectedTagsDisplay } from "@/components/ui/tag-filter";
 import { Search, X, Edit, Save } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import {
@@ -23,6 +24,7 @@ interface Knowledge {
   createdAt?: string;
   updatedAt?: string;
   content?: string;
+  tags?: string[];
 }
 
 interface AgentSummary {
@@ -36,17 +38,27 @@ interface AgentSummary {
   };
 }
 
+interface Tag {
+  id: string;
+  name: string;
+  skillCount?: number;
+  knowledgeCount?: number;
+}
+
 export default function KnowledgesPage() {
   const [knowledges, setKnowledges] = useState<Knowledge[]>([]);
+  const [tags, setTags] = useState<Tag[]>([]);
   const [loading, setLoading] = useState(true);
   const [keyword, setKeyword] = useState("");
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [tagMode, setTagMode] = useState<"and" | "or">("or");
   const [selectedKnowledgeId, setSelectedKnowledgeId] = useState<string | null>(null);
   const [knowledgeDetailCache, setKnowledgeDetailCache] = useState<Record<string, Knowledge>>({});
   const [detailLoading, setDetailLoading] = useState(false);
   const [user, setUser] = useState<{ role?: string } | null>(null);
 
   const [editModalOpen, setEditModalOpen] = useState(false);
-  const [editForm, setEditForm] = useState({ name: "", description: "", content: "" });
+  const [editForm, setEditForm] = useState({ name: "", description: "", content: "", tags: [] as string[] });
   const [editSaving, setEditSaving] = useState(false);
 
   const [linkedAgents, setLinkedAgents] = useState<AgentSummary[]>([]);
@@ -56,11 +68,31 @@ export default function KnowledgesPage() {
 
   const router = useRouter();
 
-  const fetchKnowledges = useCallback(async (searchKeyword = "") => {
+  const fetchTags = async () => {
+    try {
+      const res = await fetch("/api/v1/tags");
+      const data = await res.json();
+      if (data.ok) {
+        setTags(data.data);
+      }
+    } catch {
+      console.error("Failed to fetch tags");
+    }
+  };
+
+  const fetchKnowledges = useCallback(async (
+    searchKeyword: string = keyword,
+    tagsToFilter: string[] = selectedTags,
+    mode: "and" | "or" = tagMode
+  ) => {
     setLoading(true);
     try {
       const params = new URLSearchParams();
-      if (searchKeyword) params.set("keyword", searchKeyword);
+      if (searchKeyword) params.set("search", searchKeyword);
+      if (tagsToFilter.length > 0) {
+        params.set("tags", tagsToFilter.join(","));
+        params.set("tagMode", mode);
+      }
       const queryString = params.toString();
       const url = queryString ? `/api/v1/knowledges?${queryString}` : "/api/v1/knowledges";
 
@@ -74,7 +106,7 @@ export default function KnowledgesPage() {
     } finally {
       setLoading(false);
     }
-  }, [router]);
+  }, [router, keyword, selectedTags, tagMode]);
 
   const fetchKnowledgeDetail = useCallback(async (id: string) => {
     if (knowledgeDetailCache[id]) {
@@ -120,8 +152,9 @@ export default function KnowledgesPage() {
   }, []);
 
   useEffect(() => {
+    fetchTags();
     fetchKnowledges();
-  }, [fetchKnowledges]);
+  }, []);
 
   useEffect(() => {
     if (selectedKnowledgeId) {
@@ -129,9 +162,38 @@ export default function KnowledgesPage() {
     }
   }, [selectedKnowledgeId, fetchKnowledgeDetail]);
 
+  const debounceRef = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    if (debounceRef.current) {
+      clearTimeout(debounceRef.current);
+    }
+    debounceRef.current = setTimeout(() => {
+      fetchKnowledges(keyword, selectedTags, tagMode);
+    }, 300);
+    return () => {
+      if (debounceRef.current) {
+        clearTimeout(debounceRef.current);
+      }
+    };
+  }, [selectedTags, tagMode, keyword]);
+
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
-    fetchKnowledges(keyword);
+    fetchKnowledges(keyword, selectedTags, tagMode);
+  };
+
+  const handleTagsChange = (tags: string[]) => {
+    setSelectedTags(tags);
+  };
+
+  const handleTagModeChange = (mode: "and" | "or") => {
+    setTagMode(mode);
+  };
+
+  const handleTagRemove = (tag: string) => {
+    const newTags = selectedTags.filter((t) => t !== tag);
+    handleTagsChange(newTags);
   };
 
   const handleKnowledgeClick = (knowledge: Knowledge) => {
@@ -150,6 +212,7 @@ export default function KnowledgesPage() {
         name: selectedKnowledge.name || "",
         description: selectedKnowledge.description || "",
         content: selectedKnowledge.content || "",
+        tags: selectedKnowledge.tags || [],
       });
       setEditModalOpen(true);
     }
@@ -162,7 +225,12 @@ export default function KnowledgesPage() {
       const res = await fetch(`/api/v1/knowledges/${selectedKnowledgeId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(editForm),
+        body: JSON.stringify({
+          name: editForm.name,
+          description: editForm.description,
+          content: editForm.content,
+          tags: editForm.tags,
+        }),
       });
       const data = await res.json();
       if (data.ok) {
@@ -249,25 +317,41 @@ export default function KnowledgesPage() {
           </Button>
         </form>
 
+        {tags.length > 0 && (
+          <div className="flex flex-wrap gap-3 items-center">
+            <TagFilter
+              tags={tags}
+              selectedTags={selectedTags}
+              tagMode={tagMode}
+              onTagsChange={handleTagsChange}
+              onTagModeChange={handleTagModeChange}
+              placeholder="标签筛选"
+              immediate={true}
+            />
+            <SelectedTagsDisplay tags={selectedTags} onRemove={handleTagRemove} />
+          </div>
+        )}
+
         <div className="flex-1 overflow-auto border rounded-lg bg-white">
           <table className="w-full">
             <thead className="bg-gray-50 border-b sticky top-0">
               <tr>
                 <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">名称</th>
                 <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">描述</th>
+                <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">标签</th>
                 <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">更新时间</th>
               </tr>
             </thead>
             <tbody className="divide-y">
               {loading && knowledges.length === 0 ? (
                 <tr>
-                  <td colSpan={3} className="px-4 py-8 text-center text-gray-500">
+                  <td colSpan={4} className="px-4 py-8 text-center text-gray-500">
                     加载中...
                   </td>
                 </tr>
               ) : knowledges.length === 0 ? (
                 <tr>
-                  <td colSpan={3} className="px-4 py-8 text-center text-gray-500">
+                  <td colSpan={4} className="px-4 py-8 text-center text-gray-500">
                     暂无知识
                   </td>
                 </tr>
@@ -283,6 +367,22 @@ export default function KnowledgesPage() {
                     </td>
                     <td className="px-4 py-3">
                       <div className="text-sm text-gray-500 max-w-xs truncate">{knowledge.description || "-"}</div>
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex flex-wrap gap-1">
+                        {knowledge.tags && knowledge.tags.length > 0 ? (
+                          knowledge.tags.map((tag) => (
+                            <span
+                              key={tag}
+                              className="text-xs px-2 py-0.5 bg-blue-50 text-blue-600 rounded-full"
+                            >
+                              {tag}
+                            </span>
+                          ))
+                        ) : (
+                          <span className="text-xs text-gray-400">-</span>
+                        )}
+                      </div>
                     </td>
                     <td className="px-4 py-3 text-sm text-gray-500">
                       {knowledge.updatedAt ? new Date(knowledge.updatedAt).toLocaleDateString() : "-"}
@@ -321,6 +421,19 @@ export default function KnowledgesPage() {
               <>
                 {selectedKnowledge.description && (
                   <p className="text-sm text-gray-500">{selectedKnowledge.description}</p>
+                )}
+
+                {selectedKnowledge.tags && selectedKnowledge.tags.length > 0 && (
+                  <div className="flex flex-wrap gap-1">
+                    {selectedKnowledge.tags.map((tag) => (
+                      <span
+                        key={tag}
+                        className="text-xs px-2 py-0.5 bg-blue-50 text-blue-600 rounded-full"
+                      >
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
                 )}
 
                 <div className="grid grid-cols-2 gap-2 text-sm">
@@ -364,6 +477,17 @@ export default function KnowledgesPage() {
                 value={editForm.description}
                 onChange={(e) => setEditForm((prev) => ({ ...prev, description: e.target.value }))}
                 placeholder="请输入描述"
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium mb-1 block">标签 (逗号分隔)</label>
+              <Input
+                value={editForm.tags.join(", ")}
+                onChange={(e) => setEditForm((prev) => ({
+                  ...prev,
+                  tags: e.target.value.split(",").map((t) => t.trim()).filter(Boolean)
+                }))}
+                placeholder="例如: python, api, 机器学习"
               />
             </div>
             <div>

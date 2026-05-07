@@ -123,22 +123,35 @@ export async function fetchKnowledgeById(id: string): Promise<Knowledge | null> 
   return null;
 }
 
-export async function fetchLocalKnowledges(query: { keyword?: string } = {}): Promise<{ knowledges: Knowledge[]; total: number }> {
+export async function fetchLocalKnowledges(query: { keyword?: string; tags?: string[]; tagMode?: string } = {}): Promise<{ knowledges: Knowledge[]; total: number }> {
   const prisma = require('@/lib/db').default;
-  
-  const where = query.keyword
-    ? {
-        OR: [
-          { name: { contains: query.keyword } },
-          { description: { contains: query.keyword } },
-        ],
-      }
-    : {};
+
+  const where: any = {
+    ...(query.keyword
+      ? {
+          OR: [
+            { name: { contains: query.keyword } },
+            { description: { contains: query.keyword } },
+          ],
+        }
+      : {}),
+    ...(query.tags && query.tags.length > 0
+      ? {
+          knowledgeTags:
+            query.tagMode === 'and'
+              ? { some: { tag: { name: { in: query.tags } } }, every: { tag: { name: { in: query.tags } } } }
+              : { some: { tag: { name: { in: query.tags } } } },
+        }
+      : {}),
+  };
 
   const [knowledges, total] = await Promise.all([
     prisma.knowledge.findMany({
       where,
       orderBy: { createdAt: 'desc' },
+      include: {
+        knowledgeTags: { include: { tag: true } },
+      },
     }),
     prisma.knowledge.count({ where }),
   ]);
@@ -149,6 +162,7 @@ export async function fetchLocalKnowledges(query: { keyword?: string } = {}): Pr
       name: k.name,
       description: k.description || '',
       content: k.content,
+      tags: k.knowledgeTags.map((kt: any) => kt.tag.name),
       createdAt: k.createdAt.toISOString(),
       updatedAt: k.updatedAt.toISOString(),
     })),

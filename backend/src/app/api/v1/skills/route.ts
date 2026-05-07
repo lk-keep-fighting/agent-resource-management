@@ -41,25 +41,41 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const keyword = searchParams.get('keyword') || '';
     const tagName = searchParams.get('tag') || '';
+    const tagsParam = searchParams.get('tags') || '';
+    const tagMode = searchParams.get('tagMode') || 'or';
     const pageSize = parseInt(searchParams.get('pageSize') || '20', 10);
     const pageNum = parseInt(searchParams.get('page') || '1', 10);
     const offset = (pageNum - 1) * pageSize;
 
+    const tags = tagsParam
+      ? tagsParam.split(',').map((t) => t.trim()).filter(Boolean)
+      : tagName
+        ? [tagName]
+        : [];
+
     const where: Prisma.SkillWhereInput = {
       status: 'active',
-      ...(keyword ? {
-        OR: [
-          { name: { contains: keyword } },
-          { description: { contains: keyword } },
-        ],
-      } : {}),
-      ...(tagName ? {
-        skillTags: {
-          some: {
-            tag: { name: tagName },
-          },
-        },
-      } : {}),
+      ...(keyword
+        ? {
+            OR: [
+              { name: { contains: keyword } },
+              { description: { contains: keyword } },
+            ],
+          }
+        : {}),
+      ...(tags.length > 0
+        ? {
+            skillTags:
+              tagMode === 'and'
+                ? {
+                    some: { tag: { name: { in: tags } } },
+                    every: { tag: { name: { in: tags } } },
+                  }
+                : {
+                    some: { tag: { name: { in: tags } } },
+                  },
+          }
+        : {}),
     };
 
     const [skills, total] = await Promise.all([

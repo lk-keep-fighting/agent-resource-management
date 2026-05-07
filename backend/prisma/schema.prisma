@@ -61,7 +61,8 @@ model Tag {
   name      String   @unique
   createdAt DateTime @default(now())
 
-  skillTags SkillTag[]
+  skillTags     SkillTag[]
+  knowledgeTags KnowledgeTag[]
 
   @@map("tags")
 }
@@ -143,8 +144,20 @@ model Knowledge {
   updatedAt   DateTime @updatedAt @map("updated_at")
   createdBy   String   @map("created_by")
 
-  creator User @relation(fields: [createdBy], references: [id], onDelete: Cascade)
+  creator         User            @relation(fields: [createdBy], references: [id], onDelete: Cascade)
+  knowledgeTags   KnowledgeTag[]
 
   @@index([name], name: "idx_knowledge_name")
   @@map("knowledges")
+}
+
+model KnowledgeTag {
+  knowledgeId String
+  tagId       String
+
+  knowledge Knowledge @relation(fields: [knowledgeId], references: [id], onDelete: Cascade)
+  tag       Tag       @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([knowledgeId, tagId])
+  @@map("knowledge_tags")
 }
