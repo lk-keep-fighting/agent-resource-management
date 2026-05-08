@@ -1,6 +1,6 @@
 {
   "name": "agent-resource-management",
-  "version": "1.4.0",
+  "version": "1.4.1",
   "type": "module",
   "bin": {
     "arm": "./dist/main.js"
