@@ -271,4 +271,91 @@ export class ApiClient {
 
     return res.arrayBuffer();
   }
+
+  async createAgent(data: {
+    name: string;
+    description?: string;
+    prompt?: string;
+    avatar?: string;
+    skills?: Array<{ skillId: string; config?: Record<string, unknown> }>;
+    knowledges?: Array<{ knowledgeId: string; retrievalConfig?: { topK?: number; similarityThreshold?: number } }>;
+  }): Promise<Agent> {
+    const res = await this.request<Agent>('/agents', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) {
+      throw new Error(res.msg);
+    }
+    return res.data;
+  }
+
+  async updateAgent(id: string, data: Partial<{
+    name: string;
+    description: string;
+    prompt: string;
+    avatar: string;
+    status: 'active' | 'draft';
+  }>): Promise<Agent> {
+    const res = await this.request<Agent>(`/agents/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) {
+      throw new Error(res.msg);
+    }
+    return res.data;
+  }
+
+  async deleteAgent(id: string): Promise<void> {
+    const res = await this.request<null>(`/agents/${id}`, {
+      method: 'DELETE',
+    });
+    if (!res.ok) {
+      throw new Error(res.msg);
+    }
+  }
+
+  async bindSkillToAgent(agentId: string, skillId: string, config?: Record<string, unknown>): Promise<void> {
+    const res = await this.request<null>(`/agents/${agentId}/skills`, {
+      method: 'POST',
+      body: JSON.stringify({ skillId, config }),
+    });
+    if (!res.ok) {
+      throw new Error(res.msg);
+    }
+  }
+
+  async unbindSkillFromAgent(agentId: string, skillId: string): Promise<void> {
+    const res = await this.request<null>(`/agents/${agentId}/skills?skillId=${skillId}`, {
+      method: 'DELETE',
+    });
+    if (!res.ok) {
+      throw new Error(res.msg);
+    }
+  }
+
+  async bindKnowledgeToAgent(agentId: string, knowledgeId: string, retrievalConfig?: { topK?: number; similarityThreshold?: number }): Promise<void> {
+    const res = await this.request<null>(`/agents/${agentId}/knowledges`, {
+      method: 'POST',
+      body: JSON.stringify({ knowledgeId, retrievalConfig }),
+    });
+    if (!res.ok) {
+      throw new Error(res.msg);
+    }
+  }
+
+  async unbindKnowledgeFromAgent(agentId: string, knowledgeId: string): Promise<void> {
+    const res = await this.request<null>(`/agents/${agentId}/knowledges?knowledgeId=${knowledgeId}`, {
+      method: 'DELETE',
+    });
+    if (!res.ok) {
+      throw new Error(res.msg);
+    }
+  }
+
+  async getAgentByName(name: string): Promise<Agent | null> {
+    const result = await this.listAgents(name, 1, 1);
+    return result.agents.find(a => a.name === name) || null;
+  }
 }

@@ -1,6 +1,6 @@
 import { login, logout, getCurrentUser } from './cmd/auth';
 import { listSkills, searchSkills, infoSkill, downloadSkill, uploadSkill, mySkills, deleteSkill, validateSkill } from './cmd/skill';
-import { listAgents, searchAgents, infoAgent, downloadAgent } from './cmd/agent';
+import { listAgents, searchAgents, infoAgent, downloadAgent, createAgent, updateAgent, deleteAgent, bindSkill, unbindSkill, bindKnowledge, unbindKnowledge } from './cmd/agent';
 import { listKnowledge, searchKnowledge, infoKnowledge, downloadKnowledge, uploadKnowledge, myKnowledge, deleteKnowledge } from './cmd/knowledge';
 import { showServer, setServer } from './cmd/server';
 
@@ -186,6 +186,153 @@ async function main() {
           }
           await downloadAgent(args[2], args[3]);
           break;
+        case 'create':
+          if (!args[2]) {
+            console.error('用法: arm agent create <name> [--description="..."] [--prompt="..."] [--avatar="..."] [--skill=id] [--knowledge=id] [--skill-config=\'{...}\'] [--knowledge-config=\'{...}\'] [--json]');
+            process.exit(1);
+          }
+          {
+            const name = args[2];
+            const options: Record<string, string | undefined> = {};
+            const skills: string[] = [];
+            const knowledges: string[] = [];
+            const skillConfigs: string[] = [];
+            const knowledgeConfigs: string[] = [];
+
+            for (let i = 3; i < args.length; i++) {
+              const arg = args[i];
+              if (arg.startsWith('--description=')) {
+                options.description = arg.split('=').slice(1).join('=');
+              } else if (arg.startsWith('--prompt=')) {
+                options.prompt = arg.split('=').slice(1).join('=');
+              } else if (arg.startsWith('--avatar=')) {
+                options.avatar = arg.split('=').slice(1).join('=');
+              } else if (arg.startsWith('--skill=')) {
+                skills.push(arg.split('=').slice(1).join('='));
+              } else if (arg.startsWith('--knowledge=')) {
+                knowledges.push(arg.split('=').slice(1).join('='));
+              } else if (arg.startsWith('--skill-config=')) {
+                skillConfigs.push(arg.split('=').slice(1).join('='));
+              } else if (arg.startsWith('--knowledge-config=')) {
+                knowledgeConfigs.push(arg.split('=').slice(1).join('='));
+              }
+            }
+
+            await createAgent(name, {
+              description: options.description,
+              prompt: options.prompt,
+              avatar: options.avatar,
+              skills,
+              knowledges,
+              skillConfigs,
+              knowledgeConfigs,
+            });
+          }
+          break;
+        case 'update':
+          if (!args[2]) {
+            console.error('用法: arm agent update <id> [--name="..."] [--description="..."] [--prompt="..."] [--avatar="..."] [--status=active|draft] [--json]');
+            process.exit(1);
+          }
+          {
+            const id = args[2];
+            const options: Record<string, string | undefined> = {};
+
+            for (let i = 3; i < args.length; i++) {
+              const arg = args[i];
+              if (arg.startsWith('--name=')) {
+                options.name = arg.split('=').slice(1).join('=');
+              } else if (arg.startsWith('--description=')) {
+                options.description = arg.split('=').slice(1).join('=');
+              } else if (arg.startsWith('--prompt=')) {
+                options.prompt = arg.split('=').slice(1).join('=');
+              } else if (arg.startsWith('--avatar=')) {
+                options.avatar = arg.split('=').slice(1).join('=');
+              } else if (arg.startsWith('--status=')) {
+                options.status = arg.split('=').slice(1).join('=');
+              }
+            }
+
+            await updateAgent(id, {
+              name: options.name,
+              description: options.description,
+              prompt: options.prompt,
+              avatar: options.avatar,
+              status: options.status as 'active' | 'draft' | undefined,
+            });
+          }
+          break;
+        case 'delete':
+          if (!args[2]) {
+            console.error('用法: arm agent delete <id> [--json]');
+            process.exit(1);
+          }
+          await deleteAgent(args[2]);
+          break;
+        case 'bind':
+          if (!args[2]) {
+            console.error('用法: arm agent bind <id> --skill=<skillId> [--skill-config=\'{...}\'] 或 arm agent bind <id> --knowledge=<knowledgeId> [--knowledge-config=\'{...}\'] [--json]');
+            process.exit(1);
+          }
+          {
+            const id = args[2];
+            let skillId: string | undefined;
+            let knowledgeId: string | undefined;
+            let skillConfig: string | undefined;
+            let knowledgeConfig: string | undefined;
+
+            for (let i = 3; i < args.length; i++) {
+              const arg = args[i];
+              if (arg.startsWith('--skill=')) {
+                skillId = arg.split('=').slice(1).join('=');
+              } else if (arg.startsWith('--knowledge=')) {
+                knowledgeId = arg.split('=').slice(1).join('=');
+              } else if (arg.startsWith('--skill-config=')) {
+                skillConfig = arg.split('=').slice(1).join('=');
+              } else if (arg.startsWith('--knowledge-config=')) {
+                knowledgeConfig = arg.split('=').slice(1).join('=');
+              }
+            }
+
+            if (skillId) {
+              await bindSkill(id, skillId, skillConfig);
+            } else if (knowledgeId) {
+              await bindKnowledge(id, knowledgeId, knowledgeConfig);
+            } else {
+              console.error('用法: arm agent bind <id> --skill=<skillId> 或 --knowledge=<knowledgeId>');
+              process.exit(1);
+            }
+          }
+          break;
+        case 'unbind':
+          if (!args[2]) {
+            console.error('用法: arm agent unbind <id> --skill=<skillId> 或 --knowledge=<knowledgeId> [--json]');
+            process.exit(1);
+          }
+          {
+            const id = args[2];
+            let skillId: string | undefined;
+            let knowledgeId: string | undefined;
+
+            for (let i = 3; i < args.length; i++) {
+              const arg = args[i];
+              if (arg.startsWith('--skill=')) {
+                skillId = arg.split('=').slice(1).join('=');
+              } else if (arg.startsWith('--knowledge=')) {
+                knowledgeId = arg.split('=').slice(1).join('=');
+              }
+            }
+
+            if (skillId) {
+              await unbindSkill(id, skillId);
+            } else if (knowledgeId) {
+              await unbindKnowledge(id, knowledgeId);
+            } else {
+              console.error('用法: arm agent unbind <id> --skill=<skillId> 或 --knowledge=<knowledgeId>');
+              process.exit(1);
+            }
+          }
+          break;
         default:
           console.log(`
 可用命令:
@@ -193,6 +340,14 @@ async function main() {
   arm agent search <keyword>          搜索 Agent
   arm agent info <name>               查看 Agent 详情
   arm agent download <name> [dir]     下载 Agent
+  arm agent create <name>             创建 Agent (--description, --prompt, --avatar, --skill, --knowledge)
+  arm agent update <id>               更新 Agent (--name, --description, --prompt, --avatar, --status)
+  arm agent delete <id>                删除 Agent
+  arm agent bind <id> --skill=<id>    绑定 Skill 到 Agent
+  arm agent unbind <id> --skill=<id>  解绑 Skill
+  arm agent bind <id> --knowledge=<id> 绑定 Knowledge 到 Agent
+  arm agent unbind <id> --knowledge=<id> 解绑 Knowledge
+  所有命令支持 --json 参数获取机器可读输出
 `);
       }
       break;
@@ -223,8 +378,16 @@ Agent Resource Management (arm)
   arm agent search <keyword>          搜索 Agent
   arm agent info <name>               查看 Agent 详情
   arm agent download <name> [dir]     下载 Agent
+  arm agent create <name>             创建 Agent
+  arm agent update <id>               更新 Agent
+  arm agent delete <id>                删除 Agent
+  arm agent bind <id> --skill=<id>    绑定 Skill
+  arm agent unbind <id> --skill=<id>  解绑 Skill
+  arm agent bind <id> --knowledge=<id> 绑定 Knowledge
+  arm agent unbind <id> --knowledge=<id> 解绑 Knowledge
   arm server                          显示当前服务端
   arm server set <url>                设置服务端
+  使用 arm <entity> -h 查看详细帮助
 `);
   }
 }
