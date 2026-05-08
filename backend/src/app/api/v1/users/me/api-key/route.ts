@@ -1,10 +1,9 @@
 import { NextRequest } from 'next/server';
-import crypto from 'crypto';
 import prisma from '@/lib/db';
-import { hashApiKey, encryptApiKey } from '@/lib/auth';
+import { decryptApiKey } from '@/lib/auth';
 import { successResponse, errorResponse } from '@/lib/api-response';
 
-export async function POST(request: NextRequest) {
+export async function GET(request: NextRequest) {
   try {
     const accessToken = request.cookies.get('access_token')?.value;
     if (!accessToken) {
@@ -21,25 +20,21 @@ export async function POST(request: NextRequest) {
     const ssoUserId = userInfoResult.user.id;
     const user = await prisma.user.findUnique({
       where: { ssoUserId },
-      select: { id: true },
+      select: { id: true, encryptedApiKey: true },
     });
 
     if (!user) {
       return errorResponse('用户不存在', 404);
     }
 
-    const apiKey = crypto.randomUUID().replace(/-/g, '');
-    const apiKeyHash = hashApiKey(apiKey);
-    const encryptedApiKey = encryptApiKey(apiKey);
+    if (!user.encryptedApiKey) {
+      return successResponse({ hasApiKey: false, apiKey: null }, '未生成API Key');
+    }
 
-    await prisma.user.update({
-      where: { id: user.id },
-      data: { apiKeyHash, encryptedApiKey },
-    });
-
-    return successResponse({ apiKey }, 'API Key 已生成，请妥善保管');
+    const apiKey = decryptApiKey(user.encryptedApiKey);
+    return successResponse({ hasApiKey: true, apiKey }, 'API Key获取成功');
   } catch (err) {
-    console.error('[api-key/generate] error:', err);
-    return errorResponse('生成失败');
+    console.error('[api-key/get] error:', err);
+    return errorResponse('获取失败');
   }
 }

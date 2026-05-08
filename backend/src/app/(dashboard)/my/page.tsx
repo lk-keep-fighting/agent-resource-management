@@ -59,8 +59,10 @@ export default function MyPage() {
   const [user, setUser] = useState<UserInfo | null>(null);
 
   const [apiKey, setApiKey] = useState<string | null>(null);
+  const [hasApiKey, setHasApiKey] = useState(false);
   const [showApiKey, setShowApiKey] = useState(false);
   const [apiKeyLoading, setApiKeyLoading] = useState(false);
+  const [apiKeyCopied, setApiKeyCopied] = useState(false);
 
   const [skills, setSkills] = useState<Skill[]>([]);
   const [skillsLoading, setSkillsLoading] = useState(true);
@@ -92,6 +94,48 @@ export default function MyPage() {
       });
   }, []);
 
+  useEffect(() => {
+    setApiKeyLoading(true);
+    fetch("/api/v1/users/me/api-key", { credentials: "include" })
+      .then(res => res.json())
+      .then(data => {
+        if (data.ok && data.data?.apiKey) {
+          setApiKey(data.data.apiKey);
+          setHasApiKey(true);
+        } else {
+          setApiKey(null);
+          setHasApiKey(false);
+        }
+      })
+      .catch(err => console.error("Failed to fetch API Key:", err))
+      .finally(() => setApiKeyLoading(false));
+  }, []);
+
+  const fetchApiKey = useCallback(async (showAfterFetch = true) => {
+    setApiKeyLoading(true);
+    try {
+      const res = await fetch("/api/v1/users/me/api-key", {
+        credentials: "include",
+      });
+      const data = await res.json();
+      if (data.ok && data.data?.apiKey) {
+        setApiKey(data.data.apiKey);
+        setHasApiKey(true);
+        if (showAfterFetch) {
+          setShowApiKey(true);
+        }
+      } else {
+        setApiKey(null);
+        setHasApiKey(false);
+        setShowApiKey(false);
+      }
+    } catch (err) {
+      console.error("Failed to fetch API Key:", err);
+    } finally {
+      setApiKeyLoading(false);
+    }
+  }, []);
+
   const generateApiKey = async () => {
     setApiKeyLoading(true);
     try {
@@ -111,9 +155,24 @@ export default function MyPage() {
     }
   };
 
-  const copyApiKey = () => {
-    if (apiKey) {
-      navigator.clipboard.writeText(apiKey);
+  const copyApiKey = async () => {
+    if (!apiKey) return;
+    try {
+      await navigator.clipboard.writeText(apiKey);
+      setApiKeyCopied(true);
+      setTimeout(() => setApiKeyCopied(false), 2000);
+    } catch (err) {
+      console.error("Failed to copy:", err);
+      const textarea = document.createElement("textarea");
+      textarea.value = apiKey;
+      textarea.style.position = "fixed";
+      textarea.style.opacity = "0";
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand("copy");
+      document.body.removeChild(textarea);
+      setApiKeyCopied(true);
+      setTimeout(() => setApiKeyCopied(false), 2000);
     }
   };
 
@@ -544,7 +603,7 @@ export default function MyPage() {
             <CardHeader>
               <CardTitle>API Key</CardTitle>
               <CardDescription>
-                用于 CLI 和 API 访问。生成后请妥善保管，无法再次查看。
+                用于 CLI 和 API 访问。
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -553,17 +612,30 @@ export default function MyPage() {
                   <div className="flex gap-2">
                     <Input value={apiKey} readOnly className="font-mono text-sm" />
                     <Button variant="outline" onClick={copyApiKey}>
-                      复制
+                      {apiKeyCopied ? "已复制" : "复制"}
                     </Button>
                   </div>
-                  <p className="text-xs text-amber-600">
-                    请立即复制并妥善保管此 Key，之后将无法再次查看。
-                  </p>
+                  <div className="flex gap-2">
+                    <Button variant="outline" size="sm" onClick={() => { setShowApiKey(false); }}>
+                      隐藏
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={generateApiKey} disabled={apiKeyLoading}>
+                      重新生成
+                    </Button>
+                  </div>
                 </div>
               ) : (
-                <Button onClick={generateApiKey} disabled={apiKeyLoading}>
-                  {apiKeyLoading ? "生成中..." : "生成 API Key"}
-                </Button>
+                <div className="space-y-3">
+                  {hasApiKey ? (
+                    <Button onClick={() => fetchApiKey(true)} variant="outline" disabled={apiKeyLoading}>
+                      查看已生成的 API Key
+                    </Button>
+                  ) : (
+                    <Button onClick={generateApiKey} disabled={apiKeyLoading}>
+                      {apiKeyLoading ? "生成中..." : "生成 API Key"}
+                    </Button>
+                  )}
+                </div>
               )}
             </CardContent>
           </Card>

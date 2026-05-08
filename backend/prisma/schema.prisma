@@ -13,7 +13,8 @@ model User {
   feishuUnionId String?  @unique @map("feishu_union_id")
   name          String?
   email         String?  @unique
-  apiKeyHash    String?  @unique @map("api_key_hash")
+  apiKeyHash       String?  @unique @map("api_key_hash")
+  encryptedApiKey  String?  @map("encrypted_api_key")
   role          String   @default("USER")
   avatarUrl     String?  @map("avatar_url")
   createdAt     DateTime @default(now()) @map("created_at")

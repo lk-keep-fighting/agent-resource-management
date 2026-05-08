@@ -9,6 +9,45 @@ export function hashApiKey(apiKey: string): string {
   return crypto.createHash('sha256').update(apiKey).digest('hex');
 }
 
+function getMasterKey(): Buffer {
+  const key = process.env.API_KEY_MASTER_KEY;
+  if (!key) {
+    throw new Error('API_KEY_MASTER_KEY environment variable is not set');
+  }
+  return Buffer.from(key, 'hex');
+}
+
+export function encryptApiKey(apiKey: string): string {
+  const masterKey = getMasterKey();
+  const iv = crypto.randomBytes(16);
+  const cipher = crypto.createCipheriv('aes-256-gcm', masterKey, iv);
+
+  let encrypted = cipher.update(apiKey, 'utf8', 'hex');
+  encrypted += cipher.final('hex');
+  const authTag = cipher.getAuthTag();
+
+  return `${iv.toString('hex')}:${encrypted}:${authTag.toString('hex')}`;
+}
+
+export function decryptApiKey(encryptedData: string): string {
+  const masterKey = getMasterKey();
+  const [ivHex, encrypted, authTagHex] = encryptedData.split(':');
+
+  if (!ivHex || !encrypted || !authTagHex) {
+    throw new Error('Invalid encrypted API key format');
+  }
+
+  const iv = Buffer.from(ivHex, 'hex');
+  const authTag = Buffer.from(authTagHex, 'hex');
+  const decipher = crypto.createDecipheriv('aes-256-gcm', masterKey, iv);
+  decipher.setAuthTag(authTag);
+
+  let decrypted = decipher.update(encrypted, 'hex', 'utf8');
+  decrypted += decipher.final('utf8');
+
+  return decrypted;
+}
+
 async function authenticateBySSO(request: NextRequest): Promise<User | null> {
   const accessToken = request.cookies.get('access_token')?.value
   if (!accessToken) return null;
