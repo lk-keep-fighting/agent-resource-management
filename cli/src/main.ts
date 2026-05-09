@@ -3,6 +3,7 @@ import { listSkills, searchSkills, infoSkill, downloadSkill, uploadSkill, mySkil
 import { listAgents, searchAgents, infoAgent, downloadAgent, createAgent, updateAgent, deleteAgent, bindSkill, unbindSkill, bindKnowledge, unbindKnowledge } from './cmd/agent';
 import { listKnowledge, searchKnowledge, infoKnowledge, downloadKnowledge, uploadKnowledge, myKnowledge, deleteKnowledge } from './cmd/knowledge';
 import { showServer, setServer } from './cmd/server';
+import { getOutputMode, setOutputMode } from './lib/output';
 
 const args = process.argv.slice(2);
 const command = args[0];
@@ -158,6 +159,16 @@ async function main() {
 
     case 'me':
       await getCurrentUser();
+      break;
+
+    case 'output':
+      if (subCommand === 'json' || subCommand === 'text') {
+        setOutputMode(subCommand);
+        console.log(`输出模式已设置为: ${subCommand}`);
+      } else {
+        const mode = getOutputMode();
+        console.log(`当前输出模式: ${mode}`);
+      }
       break;
 
     case 'agent':
@@ -359,6 +370,7 @@ Agent Resource Management (arm)
 用法:
   arm login <server-url> <api-key>   登录
   arm logout                          登出
+  arm output [json|text]              设置/查看输出模式 (默认json)
   arm skill ls                        列出所有 Skill
   arm skill search <keyword>          搜索 Skill
   arm skill info <name>               查看 Skill 详情

@@ -1,6 +1,7 @@
 import { ApiClient } from '../lib/client';
 import { loadConfig } from '../lib/storage';
 import { formatSkill, formatSkillDetail, success, error, info } from '../lib/formatter';
+import { shouldOutputJson, outputJson } from '../lib/output';
 import { validateZip, validateSkillDir } from '../lib/validate';
 import { writeFileSync, createWriteStream, existsSync, mkdirSync, statSync } from 'fs';
 import { join, basename, dirname } from 'path';
@@ -12,6 +13,10 @@ import { mkdtempSync, rmSync } from 'fs';
 export async function listSkills(): Promise<void> {
   const config = loadConfig();
   if (!config?.token) {
+    if (shouldOutputJson()) {
+      outputJson({ success: false, error: { code: 'NOT_LOGGED_IN', message: '未登录，请先运行 arm login' } });
+      process.exit(1);
+    }
     error('未登录，请先运行 arm login');
     process.exit(1);
   }
@@ -19,6 +24,10 @@ export async function listSkills(): Promise<void> {
   const client = new ApiClient(config.serverUrl, config.token);
   try {
     const result = await client.listSkills();
+    if (shouldOutputJson()) {
+      outputJson({ success: true, data: result });
+      return;
+    }
     if (result.skills.length === 0) {
       info('暂无 Skill');
       return;
@@ -29,6 +38,10 @@ export async function listSkills(): Promise<void> {
       console.log('');
     }
   } catch (err) {
+    if (shouldOutputJson()) {
+      outputJson({ success: false, error: { code: 'LIST_FAILED', message: err instanceof Error ? err.message : '未知错误' } });
+      process.exit(1);
+    }
     error(`获取列表失败: ${err instanceof Error ? err.message : '未知错误'}`);
     process.exit(1);
   }
@@ -37,6 +50,10 @@ export async function listSkills(): Promise<void> {
 export async function searchSkills(keyword: string): Promise<void> {
   const config = loadConfig();
   if (!config?.token) {
+    if (shouldOutputJson()) {
+      outputJson({ success: false, error: { code: 'NOT_LOGGED_IN', message: '未登录，请先运行 arm login' } });
+      process.exit(1);
+    }
     error('未登录，请先运行 arm login');
     process.exit(1);
   }
@@ -44,6 +61,10 @@ export async function searchSkills(keyword: string): Promise<void> {
   const client = new ApiClient(config.serverUrl, config.token);
   try {
     const result = await client.listSkills(keyword);
+    if (shouldOutputJson()) {
+      outputJson({ success: true, data: result });
+      return;
+    }
     if (result.skills.length === 0) {
       info(`没有找到包含 "${keyword}" 的 Skill`);
       return;
@@ -54,6 +75,10 @@ export async function searchSkills(keyword: string): Promise<void> {
       console.log('');
     }
   } catch (err) {
+    if (shouldOutputJson()) {
+      outputJson({ success: false, error: { code: 'SEARCH_FAILED', message: err instanceof Error ? err.message : '未知错误' } });
+      process.exit(1);
+    }
     error(`搜索失败: ${err instanceof Error ? err.message : '未知错误'}`);
     process.exit(1);
   }
@@ -62,6 +87,10 @@ export async function searchSkills(keyword: string): Promise<void> {
 export async function infoSkill(name: string): Promise<void> {
   const config = loadConfig();
   if (!config?.token) {
+    if (shouldOutputJson()) {
+      outputJson({ success: false, error: { code: 'NOT_LOGGED_IN', message: '未登录，请先运行 arm login' } });
+      process.exit(1);
+    }
     error('未登录，请先运行 arm login');
     process.exit(1);
   }
@@ -69,8 +98,16 @@ export async function infoSkill(name: string): Promise<void> {
   const client = new ApiClient(config.serverUrl, config.token);
   try {
     const skill = await client.getSkill(name);
+    if (shouldOutputJson()) {
+      outputJson({ success: true, data: skill });
+      return;
+    }
     console.log(formatSkillDetail(skill));
   } catch (err) {
+    if (shouldOutputJson()) {
+      outputJson({ success: false, error: { code: 'INFO_FAILED', message: err instanceof Error ? err.message : '未知错误' } });
+      process.exit(1);
+    }
     error(`获取详情失败: ${err instanceof Error ? err.message : '未知错误'}`);
     process.exit(1);
   }
@@ -79,18 +116,32 @@ export async function infoSkill(name: string): Promise<void> {
 export async function downloadSkill(name: string, outputDir?: string): Promise<void> {
   const config = loadConfig();
   if (!config?.token) {
+    if (shouldOutputJson()) {
+      outputJson({ success: false, error: { code: 'NOT_LOGGED_IN', message: '未登录，请先运行 arm login' } });
+      process.exit(1);
+    }
     error('未登录，请先运行 arm login');
     process.exit(1);
   }
 
   const client = new ApiClient(config.serverUrl, config.token);
   try {
-    info(`正在下载 ${name}...`);
+    if (shouldOutputJson()) {
+      info(`正在下载 ${name}...`);
+    }
     const buffer = await client.downloadSkill(name);
     const outputPath = join(outputDir || '.', `${name}.zip`);
     writeFileSync(outputPath, Buffer.from(buffer));
+    if (shouldOutputJson()) {
+      outputJson({ success: true, data: { path: outputPath } });
+      return;
+    }
     success(`已下载到 ${outputPath}`);
   } catch (err) {
+    if (shouldOutputJson()) {
+      outputJson({ success: false, error: { code: 'DOWNLOAD_FAILED', message: err instanceof Error ? err.message : '未知错误' } });
+      process.exit(1);
+    }
     error(`下载失败: ${err instanceof Error ? err.message : '未知错误'}`);
     process.exit(1);
   }
@@ -99,11 +150,19 @@ export async function downloadSkill(name: string, outputDir?: string): Promise<v
 export async function uploadSkill(filePath: string): Promise<void> {
   const config = loadConfig();
   if (!config?.token) {
+    if (shouldOutputJson()) {
+      outputJson({ success: false, error: { code: 'NOT_LOGGED_IN', message: '未登录，请先运行 arm login' } });
+      process.exit(1);
+    }
     error('未登录，请先运行 arm login');
     process.exit(1);
   }
 
   if (!existsSync(filePath)) {
+    if (shouldOutputJson()) {
+      outputJson({ success: false, error: { code: 'FILE_NOT_FOUND', message: `上传失败: 目录不存在: ${filePath}` } });
+      process.exit(1);
+    }
     error(`上传失败: 目录不存在: ${filePath}`);
     process.exit(1);
   }
@@ -111,6 +170,10 @@ export async function uploadSkill(filePath: string): Promise<void> {
   const isZip = filePath.toLowerCase().endsWith('.zip');
   const validation = isZip ? validateZip(filePath) : validateSkillDir(filePath);
   if (!validation.valid) {
+    if (shouldOutputJson()) {
+      outputJson({ success: false, error: { code: 'VALIDATION_FAILED', message: validation.errors.join(', ') } });
+      process.exit(1);
+    }
     error(`上传失败: ${validation.errors.join(', ')}`);
     process.exit(1);
   }
@@ -127,11 +190,21 @@ export async function uploadSkill(filePath: string): Promise<void> {
     }
 
     const client = new ApiClient(config.serverUrl, config.token);
-    info(`正在上传 ${filePath}...`);
+    if (shouldOutputJson()) {
+      info(`正在上传 ${filePath}...`);
+    }
     const skill = await client.uploadSkill(zipPath);
+    if (shouldOutputJson()) {
+      outputJson({ success: true, data: skill });
+      return;
+    }
     success(`上传成功! Skill: ${skill.name}`);
   } catch (err) {
     console.error('DEBUG upload error:', err);
+    if (shouldOutputJson()) {
+      outputJson({ success: false, error: { code: 'UPLOAD_FAILED', message: err instanceof Error ? err.message : '未知错误' } });
+      process.exit(1);
+    }
     error(`上传失败: ${err instanceof Error ? err.message : '未知错误'}`);
     process.exit(1);
   } finally {
@@ -142,6 +215,10 @@ export async function uploadSkill(filePath: string): Promise<void> {
 export async function mySkills(): Promise<void> {
   const config = loadConfig();
   if (!config?.token) {
+    if (shouldOutputJson()) {
+      outputJson({ success: false, error: { code: 'NOT_LOGGED_IN', message: '未登录，请先运行 arm login' } });
+      process.exit(1);
+    }
     error('未登录，请先运行 arm login');
     process.exit(1);
   }
@@ -149,6 +226,10 @@ export async function mySkills(): Promise<void> {
   const client = new ApiClient(config.serverUrl, config.token);
   try {
     const skills = await client.getMySkills();
+    if (shouldOutputJson()) {
+      outputJson({ success: true, data: skills });
+      return;
+    }
     if (skills.length === 0) {
       info('您还没有发布任何 Skill');
       return;
@@ -159,6 +240,10 @@ export async function mySkills(): Promise<void> {
       console.log('');
     }
   } catch (err) {
+    if (shouldOutputJson()) {
+      outputJson({ success: false, error: { code: 'LIST_FAILED', message: err instanceof Error ? err.message : '未知错误' } });
+      process.exit(1);
+    }
     error(`获取列表失败: ${err instanceof Error ? err.message : '未知错误'}`);
     process.exit(1);
   }
@@ -167,6 +252,10 @@ export async function mySkills(): Promise<void> {
 export async function deleteSkill(name: string): Promise<void> {
   const config = loadConfig();
   if (!config?.token) {
+    if (shouldOutputJson()) {
+      outputJson({ success: false, error: { code: 'NOT_LOGGED_IN', message: '未登录，请先运行 arm login' } });
+      process.exit(1);
+    }
     error('未登录，请先运行 arm login');
     process.exit(1);
   }
@@ -174,8 +263,16 @@ export async function deleteSkill(name: string): Promise<void> {
   const client = new ApiClient(config.serverUrl, config.token);
   try {
     await client.deleteSkill(name);
+    if (shouldOutputJson()) {
+      outputJson({ success: true, data: { name } });
+      return;
+    }
     success(`已删除 ${name}`);
   } catch (err) {
+    if (shouldOutputJson()) {
+      outputJson({ success: false, error: { code: 'DELETE_FAILED', message: err instanceof Error ? err.message : '未知错误' } });
+      process.exit(1);
+    }
     error(`删除失败: ${err instanceof Error ? err.message : '未知错误'}`);
     process.exit(1);
   }
@@ -184,6 +281,22 @@ export async function deleteSkill(name: string): Promise<void> {
 export async function validateSkill(filePath: string): Promise<void> {
   const isDir = existsSync(filePath) && statSync(filePath).isDirectory();
   const result = isDir ? validateSkillDir(filePath) : validateZip(filePath);
+
+  if (shouldOutputJson()) {
+    outputJson({
+      success: result.valid,
+      data: {
+        valid: result.valid,
+        errors: result.errors,
+        warnings: result.warnings,
+        metadata: result.metadata,
+      },
+    });
+    if (!result.valid) {
+      process.exit(1);
+    }
+    return;
+  }
 
   if (result.valid) {
     success('验证通过!');

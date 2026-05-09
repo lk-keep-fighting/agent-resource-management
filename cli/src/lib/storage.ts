@@ -12,6 +12,7 @@ interface Config {
     name: string;
     email: string;
   };
+  outputMode?: 'json' | 'text';
 }
 
 function ensureConfigDir() {
