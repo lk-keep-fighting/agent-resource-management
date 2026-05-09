@@ -13,7 +13,7 @@ SSO_JWT_SECRET=xuanwu-sso-super-secret-jwt-key-2024
 NEXT_PUBLIC_SSO_URL=http://localhost:3000
 
 # OAuth2 客户端配置
-SSO_CLIENT_ID=agent-skill-system
+SSO_CLIENT_ID=agent-resource-management
 SSO_CLIENT_SECRET=your-client-secret
 SSO_REDIRECT_URI=http://localhost:3001/api/auth/callback
 ```

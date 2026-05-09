@@ -1,6 +1,6 @@
 #!/bin/bash
 
-CLI_DIR="/Users/lk/Documents/Dev/aims/xuanwu/xuanwu-agents/agent-sdk/agent-skill-system/cli"
+CLI_DIR="/Users/lk/Documents/Dev/aims/xuanwu/xuanwu-agents/agent-sdk/agent-resource-management/cli"
 DATA_DIR="$CLI_DIR/data/skills"
 SERVER_URL="http://localhost:3000"
 API_KEY="4567c9e607564e91b3898c46d89cb68dc4e40ec4a52b456699b695cf800fd446"

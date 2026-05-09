@@ -191,7 +191,7 @@ interface ApiResponse<T> {
 ## 项目结构
 
 ```
-agent-skill-system/
+agent-resource-management/
 ├── cli/                        # Bun CLI
 │   ├── src/
 │   │   ├── cmd/

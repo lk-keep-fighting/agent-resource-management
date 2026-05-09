@@ -15,7 +15,7 @@ echo ""
 echo ">>> 启动后端服务 (如果未运行) <<<"
 lsof -i :3000 | grep -q LISTEN || {
   echo "后端未运行，正在启动..."
-  cd /Users/lk/Documents/Dev/aims/xuanwu/xuanwu-agents/agent-sdk/agent-skill-system/backend
+  cd /Users/lk/Documents/Dev/aims/xuanwu/xuanwu-agents/agent-sdk/agent-resource-management/backend
   pnpm dev > /tmp/backend-dev.log 2>&1 &
   sleep 5
   echo "后端已启动"

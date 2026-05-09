@@ -35,7 +35,7 @@
 ## 项目结构
 
 ```
-agent-skill-system/
+agent-resource-management/
 ├── backend/                      # ARM 主服务
 │   ├── prisma/
 │   │   └── schema.prisma         # Prisma 数据模型

@@ -2,7 +2,7 @@
 
 BASE_URL="${API_BASE_URL:-http://localhost:3000}"
 API_KEY="${TEST_API_KEY:-admin-api-key-1775132551672}"
-CLI_CMD="${CLI_CMD:-bun run /Users/lk/Documents/Dev/aims/xuanwu/xuanwu-agents/agent-sdk/agent-skill-system/cli/src/main.ts}"
+CLI_CMD="${CLI_CMD:-bun run /Users/lk/Documents/Dev/aims/xuanwu/xuanwu-agents/agent-sdk/agent-resource-management/cli/src/main.ts}"
 TESTS_PASSED=0
 TESTS_FAILED=0
 TEST_DIR="/tmp/adk-agent-test"

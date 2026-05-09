@@ -20,13 +20,13 @@
 ```
 CASDOOR_SERVER_URL=http://sso.infra.dev.aimstek.cn/
 CASDOOR_CLIENT_ID=6b62d31c4b0475ccba42
-CASDOOR_APP_NAME=agent-skill-system
+CASDOOR_APP_NAME=agent-resource-management
 CASDOOR_ORGANIZATION_NAME=built-in
 CASDOOR_REDIRECT_PATH=/api/auth/casdoor-callback
 CASDOOR_SIGNIN_PATH=/api/auth/signin
 NEXT_PUBLIC_CASDOOR_SERVER_URL=http://sso.infra.dev.aimstek.cn/
 NEXT_PUBLIC_CASDOOR_CLIENT_ID=6b62d31c4b0475ccba42
-NEXT_PUBLIC_CASDOOR_APP_NAME=agent-skill-system
+NEXT_PUBLIC_CASDOOR_APP_NAME=agent-resource-management
 NEXT_PUBLIC_CASDOOR_ORGANIZATION_NAME=built-in
 NEXT_PUBLIC_CASDOOR_REDIRECT_PATH=/api/auth/casdoor-callback
 ```
