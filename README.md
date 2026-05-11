@@ -1,6 +1,7 @@
 # ARM - Agent Resource Management
 
 借鉴**人力资源管理 (HRM)** 思想的 Agent 资源管理系统。将 AI Agent 视为"数字员工"，对 Skill、Knowledge 等资源进行全生命周期管理，实现资源的**获取、配置、调度与绩效评估**。
+让智能体的每一次工作都有价值，每一次经验都不被丢失。
 
 ## 核心概念
 

@@ -13,6 +13,7 @@ Agent Resource Management CLI 是一个用于管理 Skills、Knowledges 和 Agen
 - 上传/下载/删除
 - 本地验证
 - 多服务端支持
+- **JSON 输出模式** - 便于 AI Agent 集成
 
 ## 安装
 
@@ -96,10 +97,10 @@ arm agent download workspace-assistant ./agents
 ### 6. 上传
 
 ```bash
-# 上传本地 Skill 目录
+# 上传本地 Skill 目录或 ZIP 文件
 arm skill upload ./my-skills/pdf-tool
 
-# 上传本地 Knowledge 目录
+# 上传本地 Knowledge 文件或目录
 arm knowledge upload ./my-knowledges/api-doc
 ```
 
@@ -111,6 +112,39 @@ arm skill validate ./my-skills/pdf-tool
 
 # 验证 Skill ZIP 文件
 arm skill validate ./my-skills/pdf-tool.zip
+```
+
+### 8. JSON 输出模式
+
+CLI 默认输出 JSON 格式，便于 AI Agent 解析和集成：
+
+```bash
+# 查看当前输出模式
+arm output
+
+# 切换为文本模式（人类可读）
+arm output text
+
+# 切换为 JSON 模式（默认）
+arm output json
+
+# 所有命令都支持 --json 参数强制输出 JSON
+arm agent create my-agent --json
+arm skill ls --json
+```
+
+JSON 输出格式：
+
+```json
+{
+  "success": true,
+  "data": { ... }
+}
+// 或
+{
+  "success": false,
+  "error": { "code": "ERROR_CODE", "message": "错误信息" }
+}
 ```
 
 ## 命令参考
@@ -131,7 +165,7 @@ arm skill validate ./my-skills/pdf-tool.zip
 | `arm skill search <keyword>` | 搜索 Skills |
 | `arm skill info <name>` | 查看 Skill 详情 |
 | `arm skill download <name> [dir]` | 下载 Skill 到指定目录 |
-| `arm skill upload <path>` | 上传本地 Skill 目录 |
+| `arm skill upload <path>` | 上传本地 Skill 目录或 ZIP 文件 |
 | `arm skill my` | 查看我发布的 Skills |
 | `arm skill delete <name>` | 删除我发布的 Skill |
 | `arm skill validate <path>` | 验证 Skill 格式（支持目录和 ZIP） |
@@ -144,7 +178,7 @@ arm skill validate ./my-skills/pdf-tool.zip
 | `arm knowledge search <keyword>` | 搜索 Knowledges |
 | `arm knowledge info <name>` | 查看 Knowledge 详情 |
 | `arm knowledge download <name> [dir]` | 下载 Knowledge 到指定目录 |
-| `arm knowledge upload <path>` | 上传本地 Knowledge 目录 |
+| `arm knowledge upload <path>` | 上传本地 Knowledge 文件或目录 |
 | `arm knowledge my` | 查看我发布的 Knowledges |
 | `arm knowledge delete <name>` | 删除我发布的 Knowledge |
 
@@ -163,6 +197,26 @@ arm skill validate ./my-skills/pdf-tool.zip
 |------|------|
 | `arm server` | 显示当前服务端 |
 | `arm server set <url>` | 设置默认服务端 |
+
+### 输出模式命令
+
+| 命令 | 说明 |
+|------|------|
+| `arm output` | 查看当前输出模式 |
+| `arm output json` | 设置为 JSON 模式（默认） |
+| `arm output text` | 设置为文本模式 |
+
+### 输出格式说明
+
+所有命令都支持 `--json` 或 `-j` 参数强制输出 JSON 格式。当默认模式为 `json` 时，所有命令直接返回 JSON。
+
+**Agent 命令（创建/更新/删除/绑定/解绑）** 始终支持 `--json`：
+```bash
+arm agent create my-agent --json
+arm agent update <id> --name=new-name --json
+arm agent delete <id> --json
+arm agent bind <id> --skill=<id> --json
+```
 
 ## Skill 格式规范
 
@@ -202,9 +256,12 @@ allowed-tools: tool1 tool2 # 可选，空格分隔
     "id": "user-id",
     "name": "username",
     "email": "user@example.com"
-  }
+  },
+  "outputMode": "json"
 }
 ```
+
+其中 `outputMode` 可选值为 `json`（默认）或 `text`。
 
 ## 开发
 
