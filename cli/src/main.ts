@@ -1,4 +1,4 @@
-import { login, logout, getCurrentUser } from './cmd/auth';
+import { login, logout, getCurrentUser, register } from './cmd/auth';
 import { listSkills, searchSkills, infoSkill, downloadSkill, uploadSkill, mySkills, deleteSkill, validateSkill } from './cmd/skill';
 import { listAgents, searchAgents, infoAgent, downloadAgent, createAgent, updateAgent, deleteAgent, bindSkill, unbindSkill, bindKnowledge, unbindKnowledge } from './cmd/agent';
 import { listKnowledge, searchKnowledge, infoKnowledge, downloadKnowledge, uploadKnowledge, myKnowledge, deleteKnowledge } from './cmd/knowledge';
@@ -11,6 +11,22 @@ const subCommand = args[1];
 
 async function main() {
   switch (command) {
+    case 'register':
+      if (args[1] && args[1].startsWith('--')) {
+        const options: Record<string, string | undefined> = {};
+        for (let i = 1; i < args.length; i++) {
+          const arg = args[i];
+          if (arg.startsWith('--')) {
+            const [key, value] = arg.slice(2).split('=');
+            options[key] = value;
+          }
+        }
+        await register(options.name, options.email, options.password);
+      } else {
+        await register(args[1], args[2], args[3]);
+      }
+      break;
+
     case 'login':
       if (!args[1] || !args[2]) {
         console.error('用法: arm login <server-url> <api-key>');
@@ -368,6 +384,7 @@ async function main() {
 Agent Resource Management (arm)
 
 用法:
+  arm register [--name=<name>] [--email=<email>] [--password=<password>]  注册 (交互式或参数)
   arm login <server-url> <api-key>   登录
   arm logout                          登出
   arm output [json|text]              设置/查看输出模式 (默认json)

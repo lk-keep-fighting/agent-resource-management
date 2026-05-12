@@ -2,6 +2,56 @@ import { ApiClient } from '../lib/client';
 import { loadConfig, saveConfig } from '../lib/storage';
 import { success, error, info } from '../lib/formatter';
 
+export async function register(name?: string, email?: string, password?: string): Promise<void> {
+  const { readline } = await import('readline');
+  const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+
+  const ask = (question: string): Promise<string> =>
+    new Promise((resolve) => rl.question(question, resolve));
+
+  let finalEmail = email;
+  let finalPassword = password;
+  let finalName = name;
+
+  if (!finalEmail) {
+    finalEmail = await ask('请输入邮箱: ');
+  }
+  if (!finalPassword) {
+    finalPassword = await ask('请输入密码: ');
+  }
+  if (!finalName) {
+    finalName = await ask('请输入用户名: ');
+  }
+  rl.close();
+
+  if (!finalEmail || !finalPassword || !finalName) {
+    error('邮箱、密码和用户名都不能为空');
+    process.exit(1);
+  }
+
+  if (finalPassword.length < 8) {
+    error('密码至少需要 8 个字符');
+    process.exit(1);
+  }
+
+  const config = loadConfig();
+  const serverUrl = config?.serverUrl || 'http://localhost:3000';
+  const client = new ApiClient(serverUrl);
+
+  try {
+    const result = await client.register(finalEmail, finalPassword, finalName);
+    saveConfig({
+      serverUrl,
+      token: result.token,
+      user: result.user,
+    });
+    success(`注册成功! 欢迎, ${result.user.name}`);
+  } catch (err) {
+    error(`注册失败: ${err instanceof Error ? err.message : '未知错误'}`);
+    process.exit(1);
+  }
+}
+
 export async function login(serverUrl: string, apiKey: string): Promise<void> {
   try {
     const client = new ApiClient(serverUrl);

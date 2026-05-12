@@ -1,4 +1,4 @@
-import type { User, Skill, SkillListResponse, ApiResponse, LoginResponse, Agent, AgentListResponse } from '@pkg/types/skill';
+import type { User, Skill, SkillListResponse, ApiResponse, LoginResponse, RegisterResponse, Agent, AgentListResponse } from '@pkg/types/skill';
 
 export class ApiClient {
   private token: string | null = null;
@@ -42,6 +42,17 @@ export class ApiClient {
     const res = await this.request<LoginResponse>('/auth/login', {
       method: 'POST',
       body: JSON.stringify({ apiKey }),
+    });
+    if (!res.ok) {
+      throw new Error(res.msg);
+    }
+    return res.data;
+  }
+
+  async register(email: string, password: string, name: string): Promise<RegisterResponse> {
+    const res = await this.request<RegisterResponse>('/auth/register', {
+      method: 'POST',
+      body: JSON.stringify({ email, password, name }),
     });
     if (!res.ok) {
       throw new Error(res.msg);

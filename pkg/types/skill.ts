@@ -55,6 +55,17 @@ export interface LoginResponse {
   token: string;
 }
 
+export interface RegisterRequest {
+  email: string;
+  password: string;
+  name: string;
+}
+
+export interface RegisterResponse {
+  user: User;
+  token: string;
+}
+
 export interface Agent {
   id: string;
   name: string;
