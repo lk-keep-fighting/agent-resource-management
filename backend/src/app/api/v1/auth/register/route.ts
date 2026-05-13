@@ -42,7 +42,8 @@ export async function POST(request: NextRequest) {
         name: name || email.split('@')[0],
         passwordHash: hashPassword(password),
         apiKeyHash: hashApiKey(apiKey),
-      },
+        ssoUserId: '',
+      } as any,
       select: {
         id: true,
         name: true,
