@@ -6,7 +6,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { TagFilter, SelectedTagsDisplay } from "@/components/ui/tag-filter";
-import { Search, X, Edit, Save } from "lucide-react";
+import Link from "next/link";
+import { Search, X, Edit, Save, ExternalLink } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import {
   Dialog,
@@ -365,7 +366,15 @@ export default function KnowledgesPage() {
                     onClick={() => handleKnowledgeClick(knowledge)}
                   >
                     <td className="px-4 py-3">
-                      <span className="font-medium text-blue-600">{knowledge.name}</span>
+                      <Link
+                        href={`/knowledges/${knowledge.id}`}
+                        target="_blank"
+                        className="inline-flex items-center gap-1 font-medium text-blue-600 hover:text-blue-800"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        {knowledge.name}
+                        <ExternalLink className="h-3 w-3" />
+                      </Link>
                     </td>
                     <td className="px-4 py-3">
                       <div className="text-sm text-gray-500 max-w-xs truncate">{knowledge.description || "-"}</div>

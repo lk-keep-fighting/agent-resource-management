@@ -185,6 +185,9 @@ export async function uploadKnowledge(filePath: string): Promise<void> {
       return;
     }
     success(`上传成功! Knowledge: ${knowledge.name}`);
+    if (knowledge.shareUrl) {
+      info(`分享链接: ${knowledge.shareUrl}`);
+    }
   } catch (err) {
     if (shouldOutputJson()) {
       outputJson({ success: false, error: { code: 'UPLOAD_FAILED', message: err instanceof Error ? err.message : '未知错误' } });

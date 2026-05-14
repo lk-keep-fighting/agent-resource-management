@@ -5,6 +5,9 @@ import prisma from '@/lib/db';
 import { authenticate } from '@/lib/auth';
 import type { KnowledgeListResponse } from '@/lib/types';
 import { Prisma } from '@prisma/client';
+import path from 'path';
+import { promises as fs } from 'fs';
+import { v4 as uuidv4 } from 'uuid';
 
 export const dynamic = 'force-dynamic';
 
@@ -74,8 +77,43 @@ export async function POST(request: NextRequest) {
       return errorResponse('未授权', 401);
     }
 
-    const body = await request.json();
-    const { name, description, content, tags } = body;
+    const contentType = request.headers.get('content-type') || '';
+    let name = '';
+    let description: string | null = null;
+    let content: string | null = null;
+    let tags: string[] = [];
+
+    console.log('DEBUG contentType:', contentType);
+
+    if (contentType.includes('multipart/form-data')) {
+      const formData = await request.formData();
+      const file = formData.get('file') as File | null;
+
+      console.log('DEBUG formData file:', file, file?.name);
+      if (file) {
+        name = file.name.replace(/\.(md|zip)$/i, '');
+        const buffer = Buffer.from(await file.arrayBuffer());
+        content = buffer.toString('utf-8');
+      } else {
+        name = (formData.get('name') as string) || '';
+        description = (formData.get('description') as string) || null;
+        content = (formData.get('content') as string) || null;
+      }
+      console.log('DEBUG parsed name:', name);
+    } else {
+      let body;
+      try {
+        body = await request.json();
+      } catch {
+        return errorResponse('请求格式错误，请检查 JSON 格式');
+      }
+      name = body?.name || '';
+      description = body?.description;
+      content = body?.content;
+      tags = body?.tags || [];
+    }
+
+    console.log('DEBUG final name:', name);
 
     if (!name || typeof name !== 'string' || name.trim().length === 0) {
       return errorResponse('请输入知识名称');
@@ -109,6 +147,10 @@ export async function POST(request: NextRequest) {
       return created;
     });
 
+    const host = request.headers.get('host') || 'localhost:3000';
+    const protocol = request.headers.get('x-forwarded-proto') || (host.includes('localhost') ? 'http' : 'https');
+    const shareUrl = `${protocol}://${host}/knowledges/${knowledge.id}`;
+
     const knowledgeWithTags = await prisma.knowledge.findUnique({
       where: { id: knowledge.id },
       include: {
@@ -124,9 +166,13 @@ export async function POST(request: NextRequest) {
       tags: knowledgeWithTags!.knowledgeTags.map((kt) => kt.tag.name),
       createdAt: knowledgeWithTags!.createdAt.toISOString(),
       updatedAt: knowledgeWithTags!.updatedAt.toISOString(),
+      shareUrl,
     }, '创建成功');
-  } catch (err) {
+  } catch (err: any) {
     console.error('Create knowledge error:', err);
-    return errorResponse('创建失败');
+    if (err?.code === 'P2002') {
+      return errorResponse('知识名称已存在，请使用其他名称');
+    }
+    return errorResponse(`创建失败: ${err?.message || String(err)}`);
   }
 }
