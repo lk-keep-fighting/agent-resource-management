@@ -1,4 +1,4 @@
-FROM node:20 AS base
+FROM nexus.aimstek.cn/node:20 AS base
 
 FROM base AS deps
 RUN npm install -g pnpm
