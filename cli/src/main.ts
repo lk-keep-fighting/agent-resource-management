@@ -5,11 +5,21 @@ import { listKnowledge, searchKnowledge, infoKnowledge, downloadKnowledge, uploa
 import { showServer, setServer } from './cmd/server';
 import { getOutputMode, setOutputMode } from './lib/output';
 
+import { readFileSync } from 'fs';
+import { join } from 'path';
+
 const args = process.argv.slice(2);
 const command = args[0];
 const subCommand = args[1];
 
+const VERSION = JSON.parse(readFileSync(join(__dirname, '../package.json'), 'utf-8')).version;
+
 async function main() {
+  if (command === '--version' || command === '-v') {
+    console.log(`arm v${VERSION}`);
+    return;
+  }
+
   switch (command) {
     case 'register':
       if (args[1] && args[1].startsWith('--')) {
