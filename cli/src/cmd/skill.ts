@@ -130,13 +130,40 @@ export async function downloadSkill(name: string, outputDir?: string): Promise<v
       info(`正在下载 ${name}...`);
     }
     const buffer = await client.downloadSkill(name);
-    const outputPath = join(outputDir || '.', `${name}.zip`);
-    writeFileSync(outputPath, Buffer.from(buffer));
+
+    const tempDir = mkdtempSync('/tmp/skill-download-');
+    const zipPath = join(tempDir, `${name}.zip`);
+    writeFileSync(zipPath, Buffer.from(buffer));
+
+    execSync(`unzip -q "${zipPath}" -d "${tempDir}"`, { stdio: 'pipe' });
+
+    const targetDir = join(outputDir || '.', name);
+    execSync(`mkdir -p "${targetDir}"`, { stdio: 'pipe' });
+
+    const entries = execSync(`ls -1 "${tempDir}"`, { encoding: 'utf-8' }).split('\n').filter(e => e.trim());
+
+    const nonZipEntries = entries.filter(e => e !== `${name}.zip`);
+
+    if (nonZipEntries.length === 1) {
+      const onlyEntry = join(tempDir, nonZipEntries[0]);
+      if (statSync(onlyEntry).isDirectory()) {
+        execSync(`cp -r "${onlyEntry}"/* "${targetDir}/"`, { stdio: 'pipe' });
+      } else {
+        execSync(`cp -r "${onlyEntry}" "${targetDir}/"`, { stdio: 'pipe' });
+      }
+    } else {
+      for (const entry of nonZipEntries) {
+        execSync(`cp -r "${join(tempDir, entry)}" "${targetDir}/"`, { stdio: 'pipe' });
+      }
+    }
+
+    rmSync(tempDir, { recursive: true, force: true });
+
     if (shouldOutputJson()) {
-      outputJson({ success: true, data: { path: outputPath } });
+      outputJson({ success: true, data: { path: targetDir } });
       return;
     }
-    success(`已下载到 ${outputPath}`);
+    success(`已下载到 ${targetDir}`);
   } catch (err) {
     if (shouldOutputJson()) {
       outputJson({ success: false, error: { code: 'DOWNLOAD_FAILED', message: err instanceof Error ? err.message : '未知错误' } });
