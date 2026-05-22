@@ -2,8 +2,9 @@ import { ApiClient } from '../lib/client';
 import { loadConfig } from '../lib/storage';
 import { formatAgent, formatAgentDetail, success, error, info } from '../lib/formatter';
 import { shouldOutputJson, outputJson } from '../lib/output';
-import { writeFileSync, existsSync } from 'fs';
-import { join } from 'path';
+import { validateAgentDir } from '../lib/validate';
+import { writeFileSync, existsSync, readFileSync } from 'fs';
+import { join, basename } from 'path';
 import { execSync } from 'child_process';
 import { mkdtempSync, rmSync } from 'fs';
 
@@ -461,6 +462,166 @@ export async function downloadAgent(name: string, outputDir?: string): Promise<v
       process.exit(1);
     }
     error(`下载失败: ${err instanceof Error ? err.message : '未知错误'}`);
+    process.exit(1);
+  }
+}
+
+export async function createAgentFromFolder(folderPath: string): Promise<void> {
+  const config = loadConfig();
+  if (!config?.token) {
+    if (shouldOutputJson()) {
+      outputJson({ success: false, error: { code: 'NOT_LOGGED_IN', message: '未登录，请先运行 arm login' } });
+      process.exit(1);
+    }
+    error('未登录，请先运行 arm login');
+    process.exit(1);
+  }
+
+  if (!existsSync(folderPath)) {
+    if (shouldOutputJson()) {
+      outputJson({ success: false, error: { code: 'FILE_NOT_FOUND', message: `目录不存在: ${folderPath}` } });
+      process.exit(1);
+    }
+    error(`目录不存在: ${folderPath}`);
+    process.exit(1);
+  }
+
+  const validation = validateAgentDir(folderPath);
+  if (!validation.valid) {
+    if (shouldOutputJson()) {
+      outputJson({ success: false, error: { code: 'VALIDATION_FAILED', message: validation.errors.join(', ') } });
+      process.exit(1);
+    }
+    error(`验证失败: ${validation.errors.join(', ')}`);
+    process.exit(1);
+  }
+
+  if (shouldOutputJson()) {
+    info('正在解析 Agent 文件夹...');
+  }
+
+  const metadata = validation.metadata!;
+  const client = new ApiClient(config.serverUrl, config.token);
+
+  const uploadedSkills: { name: string; id: string }[] = [];
+  const uploadedKnowledges: { title: string; id: string }[] = [];
+
+  const skillsDir = join(folderPath, 'skills');
+  if (existsSync(skillsDir) && statSync(skillsDir).isDirectory()) {
+    const skillDirs = execSync(`ls -1 "${skillsDir}"`, { encoding: 'utf-8' })
+      .split('\n')
+      .filter(l => l.trim() && existsSync(join(skillsDir, l)) && statSync(join(skillsDir, l)).isDirectory());
+
+    for (const skillDir of skillDirs) {
+      const skillPath = join(skillsDir, skillDir);
+      try {
+        const existingSkill = await client.getSkill(skillDir).catch(() => null);
+        if (existingSkill) {
+          if (shouldOutputJson()) {
+            info(`技能 ${skillDir} 已存在，将仅绑定`);
+          }
+          uploadedSkills.push({ name: skillDir, id: existingSkill.id });
+        } else {
+          if (shouldOutputJson()) {
+            info(`上传新技能: ${skillDir}`);
+          }
+          const skillTempDir = mkdtempSync('/tmp/skill-upload-');
+          const zipPath = join(skillTempDir, `${skillDir}.zip`);
+          execSync(`cd "${skillPath}" && zip -r "${zipPath}" . -x ".*"`, { stdio: 'pipe' });
+          const uploadedSkill = await client.uploadSkill(zipPath);
+          uploadedSkills.push({ name: skillDir, id: uploadedSkill.id });
+          rmSync(skillTempDir, { recursive: true, force: true });
+        }
+      } catch (err) {
+        if (shouldOutputJson()) {
+          outputJson({ success: false, error: { code: 'SKILL_UPLOAD_FAILED', message: `处理技能 ${skillDir} 失败: ${err instanceof Error ? err.message : '未知错误'}` } });
+          process.exit(1);
+        }
+        error(`处理技能 ${skillDir} 失败: ${err instanceof Error ? err.message : '未知错误'}`);
+        process.exit(1);
+      }
+    }
+  }
+
+  const knowledgesDir = join(folderPath, 'knowledges');
+  if (existsSync(knowledgesDir) && statSync(knowledgesDir).isDirectory()) {
+    const mdFiles = execSync(`ls -1 "${knowledgesDir}"`, { encoding: 'utf-8' })
+      .split('\n')
+      .filter(l => l.trim().endsWith('.md'));
+
+    for (const mdFile of mdFiles) {
+      const mdPath = join(knowledgesDir, mdFile);
+      const knowledgeName = mdFile.replace('.md', '');
+      try {
+        const existingKnowledge = await client.getKnowledge(knowledgeName).catch(() => null);
+        if (existingKnowledge) {
+          if (shouldOutputJson()) {
+            info(`知识 ${knowledgeName} 已存在，将仅绑定`);
+          }
+          uploadedKnowledges.push({ title: knowledgeName, id: existingKnowledge.id });
+        } else {
+          if (shouldOutputJson()) {
+            info(`上传新知识: ${knowledgeName}`);
+          }
+          const uploadedKnowledge = await client.uploadKnowledge(mdPath);
+          uploadedKnowledges.push({ title: knowledgeName, id: uploadedKnowledge.id });
+        }
+      } catch (err) {
+        if (shouldOutputJson()) {
+          outputJson({ success: false, error: { code: 'KNOWLEDGE_UPLOAD_FAILED', message: `处理知识 ${knowledgeName} 失败: ${err instanceof Error ? err.message : '未知错误'}` } });
+          process.exit(1);
+        }
+        error(`处理知识 ${knowledgeName} 失败: ${err instanceof Error ? err.message : '未知错误'}`);
+        process.exit(1);
+      }
+    }
+  }
+
+  if (shouldOutputJson()) {
+    info(`创建 Agent: ${metadata.name}`);
+  }
+
+  try {
+    const agent = await client.createAgent({
+      name: metadata.name!,
+      description: metadata.description,
+      prompt: metadata.prompt,
+    });
+
+    for (const skill of uploadedSkills) {
+      if (shouldOutputJson()) {
+        info(`绑定技能: ${skill.name}`);
+      }
+      await client.bindSkillToAgent(agent.id, skill.id);
+    }
+
+    for (const knowledge of uploadedKnowledges) {
+      if (shouldOutputJson()) {
+        info(`绑定知识: ${knowledge.title}`);
+      }
+      await client.bindKnowledgeToAgent(agent.id, knowledge.id);
+    }
+
+    if (shouldOutputJson()) {
+      outputJson({
+        success: true,
+        data: {
+          id: agent.id,
+          name: agent.name,
+          skillsCount: uploadedSkills.length,
+          knowledgesCount: uploadedKnowledges.length,
+        },
+      });
+      return;
+    }
+    success(`Agent "${metadata.name}" 创建成功 (ID: ${agent.id})`);
+    success(`已绑定 ${uploadedSkills.length} 个技能和 ${uploadedKnowledges.length} 个知识`);
+  } catch (err) {
+    if (shouldOutputJson()) {
+      outputJson({ success: false, error: { code: 'CREATE_FAILED', message: err instanceof Error ? err.message : '未知错误' } });
+      process.exit(1);
+    }
+    error(`创建失败: ${err instanceof Error ? err.message : '未知错误'}`);
     process.exit(1);
   }
 }

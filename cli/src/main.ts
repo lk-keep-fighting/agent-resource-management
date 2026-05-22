@@ -1,6 +1,6 @@
 import { login, logout, getCurrentUser, register } from './cmd/auth';
 import { listSkills, searchSkills, infoSkill, downloadSkill, uploadSkill, mySkills, deleteSkill, validateSkill } from './cmd/skill';
-import { listAgents, searchAgents, infoAgent, downloadAgent, createAgent, updateAgent, deleteAgent, bindSkill, unbindSkill, bindKnowledge, unbindKnowledge } from './cmd/agent';
+import { listAgents, searchAgents, infoAgent, downloadAgent, createAgent, updateAgent, deleteAgent, bindSkill, unbindSkill, bindKnowledge, unbindKnowledge, createAgentFromFolder } from './cmd/agent';
 import { listKnowledge, searchKnowledge, infoKnowledge, downloadKnowledge, uploadKnowledge, myKnowledge, deleteKnowledge } from './cmd/knowledge';
 import { showServer, setServer } from './cmd/server';
 import { getOutputMode, setOutputMode } from './lib/output';
@@ -215,7 +215,7 @@ async function main() {
           break;
         case 'create':
           if (!args[2]) {
-            console.error('用法: arm agent create <name> [--description="..."] [--prompt="..."] [--avatar="..."] [--skill=id] [--knowledge=id] [--skill-config=\'{...}\'] [--knowledge-config=\'{...}\'] [--json]');
+            console.error('用法: arm agent create <name> [--description="..."] [--prompt="..."] [--avatar="..."] [--skill=id] [--knowledge=id] [--skill-config=\'{...}\'] [--knowledge-config=\'{...}\'] [--from=<folder-path>] [--json]');
             process.exit(1);
           }
           {
@@ -225,6 +225,7 @@ async function main() {
             const knowledges: string[] = [];
             const skillConfigs: string[] = [];
             const knowledgeConfigs: string[] = [];
+            let fromFolder: string | undefined;
 
             for (let i = 3; i < args.length; i++) {
               const arg = args[i];
@@ -242,18 +243,24 @@ async function main() {
                 skillConfigs.push(arg.split('=').slice(1).join('='));
               } else if (arg.startsWith('--knowledge-config=')) {
                 knowledgeConfigs.push(arg.split('=').slice(1).join('='));
+              } else if (arg.startsWith('--from=')) {
+                fromFolder = arg.split('=').slice(1).join('=');
               }
             }
 
-            await createAgent(name, {
-              description: options.description,
-              prompt: options.prompt,
-              avatar: options.avatar,
-              skills,
-              knowledges,
-              skillConfigs,
-              knowledgeConfigs,
-            });
+            if (fromFolder) {
+              await createAgentFromFolder(fromFolder);
+            } else {
+              await createAgent(name, {
+                description: options.description,
+                prompt: options.prompt,
+                avatar: options.avatar,
+                skills,
+                knowledges,
+                skillConfigs,
+                knowledgeConfigs,
+              });
+            }
           }
           break;
         case 'update':
@@ -368,6 +375,7 @@ async function main() {
   arm agent info <name>               查看 Agent 详情
   arm agent download <name> [dir]     下载 Agent
   arm agent create <name>             创建 Agent (--description, --prompt, --avatar, --skill, --knowledge)
+  arm agent create --from=<folder>    从本地文件夹创建 Agent
   arm agent update <id>               更新 Agent (--name, --description, --prompt, --avatar, --status)
   arm agent delete <id>                删除 Agent
   arm agent bind <id> --skill=<id>    绑定 Skill 到 Agent
