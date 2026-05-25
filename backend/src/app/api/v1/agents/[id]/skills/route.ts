@@ -55,7 +55,7 @@ export async function POST(
     } else {
       const existingBinding = await prisma.agentSkillBinding.findUnique({
         where: {
-          agentId_skillId_version: {
+          uq_agent_skill_version: {
             agentId,
             skillId: body.skillId,
             version,

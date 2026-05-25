@@ -49,7 +49,7 @@ export async function POST(
     } else {
       const existingBinding = await prisma.agentKnowledgeBinding.findUnique({
         where: {
-          agentId_knowledgeId_version: {
+          uq_agent_knowledge_version: {
             agentId,
             knowledgeId: body.knowledgeId,
             version,
