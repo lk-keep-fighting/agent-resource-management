@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server';
 import { authenticate } from '@/lib/auth';
 import { successResponse, errorResponse } from '@/lib/api-response';
 import prisma from '@/lib/db';
+import { Prisma } from '@prisma/client';
 
 interface BindKnowledgeRequest {
   knowledgeId: string;
@@ -67,7 +68,7 @@ export async function POST(
         agentId,
         knowledgeId: body.knowledgeId,
         version,
-        retrievalConfig: body.retrievalConfig as Record<string, unknown> || {},
+        retrievalConfig: body.retrievalConfig as Prisma.InputJsonValue || {},
       },
     });
 
