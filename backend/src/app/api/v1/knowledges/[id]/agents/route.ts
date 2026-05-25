@@ -9,8 +9,8 @@ export async function GET(
   try {
     const { id: knowledgeId } = await params;
 
-    const agentKnowledges = await prisma.agentKnowledge.findMany({
-      where: { knowledgeId },
+    const agentKnowledges = await prisma.agentKnowledgeBinding.findMany({
+      where: { knowledgeId, deletedAt: null },
       include: {
         agent: {
           select: {
@@ -32,6 +32,7 @@ export async function GET(
         topK?: number;
         similarityThreshold?: number;
       } | undefined,
+      bindingVersion: ak.version,
     }));
 
     return successResponse(agents, '获取成功');

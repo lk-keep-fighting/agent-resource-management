@@ -33,8 +33,12 @@ export async function GET(request: NextRequest) {
         take: pageSize,
         orderBy: { createdAt: 'desc' },
         include: {
-          agentSkills: true,
-          agentKnowledges: true,
+          skillBindings: {
+            where: { deletedAt: null },
+          },
+          knowledgeBindings: {
+            where: { deletedAt: null },
+          },
         },
       }),
       prisma.agent.count({ where }),
@@ -52,8 +56,8 @@ export async function GET(request: NextRequest) {
         createdAt: agent.createdAt.toISOString(),
         updatedAt: agent.updatedAt.toISOString(),
         createdBy: agent.createdBy,
-        skillsCount: agent.agentSkills.length,
-        knowledgesCount: agent.agentKnowledges.length,
+        skillsCount: agent.skillBindings.length,
+        knowledgesCount: agent.knowledgeBindings.length,
       })),
       total,
       page: pageNum,

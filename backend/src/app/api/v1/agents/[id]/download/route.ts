@@ -11,6 +11,7 @@ const DATA_DIR = process.env.DATA_DIR || path.join(process.cwd(), 'data');
 
 interface SkillInfo {
   skillId: string;
+  version: string;
   skill: {
     id: string;
     name: string;
@@ -22,6 +23,7 @@ interface SkillInfo {
 
 interface KnowledgeInfo {
   knowledgeId: string;
+  version: string;
   title: string;
   filename: string;
   retrievalConfig?: {
@@ -44,10 +46,13 @@ export async function GET(
     const agent = await prisma.agent.findUnique({
       where: { id },
       include: {
-        agentSkills: {
+        skillBindings: {
+          where: { deletedAt: null },
           include: { skill: true },
         },
-        agentKnowledges: true,
+        knowledgeBindings: {
+          where: { deletedAt: null },
+        },
       },
     });
 
@@ -64,9 +69,9 @@ export async function GET(
     await fs.mkdir(knowledgesDir, { recursive: true });
 
     const skillsInfo: SkillInfo[] = [];
-    for (const as of agent.agentSkills) {
-      const skillZipPath = path.join(DATA_DIR, 'skills', `${as.skill.name}.zip`);
-      const skillExtractDir = path.join(skillsDir, as.skill.name);
+    for (const sb of agent.skillBindings) {
+      const skillZipPath = path.join(DATA_DIR, 'skills', `${sb.skill.name}.zip`);
+      const skillExtractDir = path.join(skillsDir, sb.skill.name);
 
       try {
         await fs.access(skillZipPath);
@@ -75,24 +80,25 @@ export async function GET(
         execSync(`unzip -q "${skillZipPath}" -d "${skillExtractDir}"`, { stdio: 'pipe' });
 
         skillsInfo.push({
-          skillId: as.skill.id,
+          skillId: sb.skill.id,
+          version: sb.version,
           skill: {
-            id: as.skill.id,
-            name: as.skill.name,
-            description: as.skill.description,
-            allowedTools: as.skill.allowedTools as string[] | undefined,
+            id: sb.skill.id,
+            name: sb.skill.name,
+            description: sb.skill.description,
+            allowedTools: sb.skill.allowedTools as string[] | undefined,
           },
-          config: as.config as Record<string, unknown> | undefined,
+          config: sb.config as Record<string, unknown> | undefined,
         });
       } catch {
-        console.error(`Failed to extract skill: ${as.skill.name}`);
+        console.error(`Failed to extract skill: ${sb.skill.name}`);
       }
     }
 
     const knowledgesInfo: KnowledgeInfo[] = [];
-    for (const ak of agent.agentKnowledges) {
-      const knowledge = await fetchKnowledgeById(ak.knowledgeId);
-      const title = knowledge?.title || knowledge?.name || ak.knowledgeId;
+    for (const kb of agent.knowledgeBindings) {
+      const knowledge = await fetchKnowledgeById(kb.knowledgeId);
+      const title = knowledge?.title || knowledge?.name || kb.knowledgeId;
       const filename = `${sanitizeFilename(title)}.md`;
       const filePath = path.join(knowledgesDir, filename);
 
@@ -103,10 +109,11 @@ export async function GET(
       }
 
       knowledgesInfo.push({
-        knowledgeId: ak.knowledgeId,
+        knowledgeId: kb.knowledgeId,
+        version: kb.version,
         title,
         filename,
-        retrievalConfig: ak.retrievalConfig as { topK?: number; similarityThreshold?: number } | undefined,
+        retrievalConfig: kb.retrievalConfig as { topK?: number; similarityThreshold?: number } | undefined,
       });
     }
 

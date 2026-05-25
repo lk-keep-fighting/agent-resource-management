@@ -13,10 +13,13 @@ export async function GET(
     const agent = await prisma.agent.findUnique({
       where: { id },
       include: {
-        agentSkills: {
+        skillBindings: {
+          where: { deletedAt: null },
           include: { skill: true },
         },
-        agentKnowledges: true,
+        knowledgeBindings: {
+          where: { deletedAt: null },
+        },
       },
     });
 
@@ -33,19 +36,21 @@ export async function GET(
       name: agent.name,
       description: agent.description,
       prompt: agent.prompt,
-      skills: agent.agentSkills.map((as) => ({
-        id: as.skill.id,
-        name: as.skill.name,
-        description: as.skill.description,
-        allowedTools: as.skill.allowedTools as string[] | undefined,
-        config: as.config as Record<string, unknown> || {},
+      skills: agent.skillBindings.map((sb) => ({
+        id: sb.skill.id,
+        name: sb.skill.name,
+        description: sb.skill.description,
+        allowedTools: sb.skill.allowedTools as string[] | undefined,
+        config: sb.config as Record<string, unknown> || {},
+        version: sb.version,
       })),
-      knowledges: agent.agentKnowledges.map((ak) => ({
-        id: ak.knowledgeId,
-        retrievalConfig: ak.retrievalConfig as {
+      knowledges: agent.knowledgeBindings.map((kb) => ({
+        id: kb.knowledgeId,
+        retrievalConfig: kb.retrievalConfig as {
           topK?: number;
           similarityThreshold?: number;
         } | undefined,
+        version: kb.version,
       })),
     };
 

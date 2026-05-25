@@ -122,6 +122,7 @@ export interface AgentConfig {
     description: string;
     allowedTools?: string[];
     config: Record<string, unknown>;
+    version: string;
   }>;
   knowledges: Array<{
     id: string;
@@ -129,6 +130,7 @@ export interface AgentConfig {
       topK?: number;
       similarityThreshold?: number;
     };
+    version: string;
   }>;
 }
 
