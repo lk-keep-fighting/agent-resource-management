@@ -3,7 +3,7 @@ import { loadConfig } from '../lib/storage';
 import { formatAgent, formatAgentDetail, success, error, info } from '../lib/formatter';
 import { shouldOutputJson, outputJson } from '../lib/output';
 import { validateAgentDir } from '../lib/validate';
-import { writeFileSync, existsSync, readFileSync } from 'fs';
+import { writeFileSync, existsSync, readFileSync, statSync } from 'fs';
 import { join, basename } from 'path';
 import { execSync } from 'child_process';
 import { mkdtempSync, rmSync } from 'fs';
@@ -156,7 +156,7 @@ export async function deleteAgent(id: string): Promise<void> {
   }
 }
 
-export async function bindSkill(id: string, skillId: string, config?: string): Promise<void> {
+export async function bindSkill(id: string, skillId: string, version: string = '1.0.0', config?: string): Promise<void> {
   const configStore = loadConfig();
   if (!configStore?.token) {
     if (shouldOutputJson()) {
@@ -170,13 +170,13 @@ export async function bindSkill(id: string, skillId: string, config?: string): P
   const client = new ApiClient(configStore.serverUrl, configStore.token);
   try {
     const parsedConfig = config ? JSON.parse(config) : undefined;
-    await client.bindSkillToAgent(id, skillId, parsedConfig);
+    await client.bindSkillToAgent(id, skillId, version, parsedConfig);
 
     if (shouldOutputJson()) {
-      outputJson({ success: true, data: { agentId: id, skillId, config: parsedConfig } });
+      outputJson({ success: true, data: { agentId: id, skillId, version, config: parsedConfig } });
       return;
     }
-    success(`Skill "${skillId}" 已绑定到 Agent "${id}"`);
+    success(`Skill "${skillId}@${version}" 已绑定到 Agent "${id}"`);
   } catch (err) {
     if (shouldOutputJson()) {
       outputJson({ success: false, error: { code: 'BIND_FAILED', message: err instanceof Error ? err.message : '未知错误' } });
@@ -187,7 +187,7 @@ export async function bindSkill(id: string, skillId: string, config?: string): P
   }
 }
 
-export async function unbindSkill(id: string, skillId: string): Promise<void> {
+export async function unbindSkill(id: string, skillId: string, version?: string): Promise<void> {
   const config = loadConfig();
   if (!config?.token) {
     if (shouldOutputJson()) {
@@ -200,13 +200,13 @@ export async function unbindSkill(id: string, skillId: string): Promise<void> {
 
   const client = new ApiClient(config.serverUrl, config.token);
   try {
-    await client.unbindSkillFromAgent(id, skillId);
+    await client.unbindSkillFromAgent(id, skillId, version);
 
     if (shouldOutputJson()) {
-      outputJson({ success: true, data: { agentId: id, skillId } });
+      outputJson({ success: true, data: { agentId: id, skillId, version } });
       return;
     }
-    success(`Skill "${skillId}" 已从 Agent "${id}" 解绑`);
+    success(`Skill "${skillId}${version ? '@' + version : ''}" 已从 Agent "${id}" 解绑`);
   } catch (err) {
     if (shouldOutputJson()) {
       outputJson({ success: false, error: { code: 'UNBIND_FAILED', message: err instanceof Error ? err.message : '未知错误' } });
@@ -217,7 +217,7 @@ export async function unbindSkill(id: string, skillId: string): Promise<void> {
   }
 }
 
-export async function bindKnowledge(id: string, knowledgeId: string, retrievalConfig?: string): Promise<void> {
+export async function bindKnowledge(id: string, knowledgeId: string, version: string = '1.0.0', retrievalConfig?: string): Promise<void> {
   const configStore = loadConfig();
   if (!configStore?.token) {
     if (shouldOutputJson()) {
@@ -231,13 +231,13 @@ export async function bindKnowledge(id: string, knowledgeId: string, retrievalCo
   const client = new ApiClient(configStore.serverUrl, configStore.token);
   try {
     const parsedConfig = retrievalConfig ? JSON.parse(retrievalConfig) : undefined;
-    await client.bindKnowledgeToAgent(id, knowledgeId, parsedConfig);
+    await client.bindKnowledgeToAgent(id, knowledgeId, version, parsedConfig);
 
     if (shouldOutputJson()) {
-      outputJson({ success: true, data: { agentId: id, knowledgeId, retrievalConfig: parsedConfig } });
+      outputJson({ success: true, data: { agentId: id, knowledgeId, version, retrievalConfig: parsedConfig } });
       return;
     }
-    success(`Knowledge "${knowledgeId}" 已绑定到 Agent "${id}"`);
+    success(`Knowledge "${knowledgeId}@${version}" 已绑定到 Agent "${id}"`);
   } catch (err) {
     if (shouldOutputJson()) {
       outputJson({ success: false, error: { code: 'BIND_FAILED', message: err instanceof Error ? err.message : '未知错误' } });
@@ -248,7 +248,7 @@ export async function bindKnowledge(id: string, knowledgeId: string, retrievalCo
   }
 }
 
-export async function unbindKnowledge(id: string, knowledgeId: string): Promise<void> {
+export async function unbindKnowledge(id: string, knowledgeId: string, version?: string): Promise<void> {
   const config = loadConfig();
   if (!config?.token) {
     if (shouldOutputJson()) {
@@ -261,13 +261,13 @@ export async function unbindKnowledge(id: string, knowledgeId: string): Promise<
 
   const client = new ApiClient(config.serverUrl, config.token);
   try {
-    await client.unbindKnowledgeFromAgent(id, knowledgeId);
+    await client.unbindKnowledgeFromAgent(id, knowledgeId, version);
 
     if (shouldOutputJson()) {
-      outputJson({ success: true, data: { agentId: id, knowledgeId } });
+      outputJson({ success: true, data: { agentId: id, knowledgeId, version } });
       return;
     }
-    success(`Knowledge "${knowledgeId}" 已从 Agent "${id}" 解绑`);
+    success(`Knowledge "${knowledgeId}${version ? '@' + version : ''}" 已从 Agent "${id}" 解绑`);
   } catch (err) {
     if (shouldOutputJson()) {
       outputJson({ success: false, error: { code: 'UNBIND_FAILED', message: err instanceof Error ? err.message : '未知错误' } });
@@ -592,14 +592,14 @@ export async function createAgentFromFolder(folderPath: string): Promise<void> {
       if (shouldOutputJson()) {
         info(`绑定技能: ${skill.name}`);
       }
-      await client.bindSkillToAgent(agent.id, skill.id);
+      await client.bindSkillToAgent(agent.id, skill.id, undefined);
     }
 
     for (const knowledge of uploadedKnowledges) {
       if (shouldOutputJson()) {
         info(`绑定知识: ${knowledge.title}`);
       }
-      await client.bindKnowledgeToAgent(agent.id, knowledge.id);
+      await client.bindKnowledgeToAgent(agent.id, knowledge.id, undefined);
     }
 
     if (shouldOutputJson()) {
@@ -624,4 +624,305 @@ export async function createAgentFromFolder(folderPath: string): Promise<void> {
     error(`创建失败: ${err instanceof Error ? err.message : '未知错误'}`);
     process.exit(1);
   }
+}
+
+export interface SyncOptions {
+  dryRun?: boolean;
+  force?: boolean;
+}
+
+interface LocalSkill {
+  name: string;
+  path: string;
+  version: string;
+}
+
+interface LocalKnowledge {
+  name: string;
+  path: string;
+  version: string;
+}
+
+export async function syncAgent(folderPath: string, options: SyncOptions = {}): Promise<void> {
+  const config = loadConfig();
+  if (!config?.token) {
+    if (shouldOutputJson()) {
+      outputJson({ success: false, error: { code: 'NOT_LOGGED_IN', message: '未登录，请先运行 arm login' } });
+      process.exit(1);
+    }
+    error('未登录，请先运行 arm login');
+    process.exit(1);
+  }
+
+  if (!existsSync(folderPath)) {
+    if (shouldOutputJson()) {
+      outputJson({ success: false, error: { code: 'FILE_NOT_FOUND', message: `目录不存在: ${folderPath}` } });
+      process.exit(1);
+    }
+    error(`目录不存在: ${folderPath}`);
+    process.exit(1);
+  }
+
+  const validation = validateAgentDir(folderPath);
+  if (!validation.valid) {
+    if (shouldOutputJson()) {
+      outputJson({ success: false, error: { code: 'VALIDATION_FAILED', message: validation.errors.join(', ') } });
+      process.exit(1);
+    }
+    error(`验证失败: ${validation.errors.join(', ')}`);
+    process.exit(1);
+  }
+
+  const metadata = validation.metadata!;
+  const agentName = metadata.name!;
+  const client = new ApiClient(config.serverUrl, config.token);
+
+  if (shouldOutputJson()) {
+    info(`正在同步 Agent: ${agentName}...`);
+  }
+
+  try {
+    const result = await client.listAgents(agentName, 1, 1);
+    const existingAgent = result.agents.find(a => a.name === agentName);
+
+    if (!existingAgent) {
+      if (shouldOutputJson()) {
+        outputJson({ success: false, error: { code: 'NOT_FOUND', message: `Agent "${agentName}" 不存在，请先使用 arm agent create --from 创建` } });
+        process.exit(1);
+      }
+      error(`Agent "${agentName}" 不存在，请先使用 arm agent create --from 创建`);
+      process.exit(1);
+    }
+
+    const cloudAgent = await client.getAgent(existingAgent.id);
+
+    const localSkills = await parseLocalSkills(folderPath);
+    const localKnowledges = await parseLocalKnowledges(folderPath);
+
+    const cloudSkillBindings = cloudAgent.skills || [];
+    const cloudKnowledgeBindings = cloudAgent.knowledges || [];
+
+    const changes: {
+      metadataChanged: boolean;
+      newSkills: LocalSkill[];
+      removedSkills: string[];
+      newKnowledges: LocalKnowledge[];
+      removedKnowledges: string[];
+    } = {
+      metadataChanged: false,
+      newSkills: [],
+      removedSkills: [],
+      newKnowledges: [],
+      removedKnowledges: [],
+    };
+
+    if (cloudAgent.prompt !== metadata.prompt || cloudAgent.description !== metadata.description) {
+      changes.metadataChanged = true;
+    }
+
+    const cloudSkillNames = new Set(cloudSkillBindings.map(s => s.skill?.name).filter(Boolean));
+    for (const localSkill of localSkills) {
+      const existingBinding = cloudSkillBindings.find(
+        sb => sb.skill?.name === localSkill.name && sb.version === localSkill.version
+      );
+      if (!existingBinding) {
+        changes.newSkills.push(localSkill);
+      }
+    }
+    const localSkillNames = new Set(localSkills.map(s => s.name));
+    for (const cloudBinding of cloudSkillBindings) {
+      if (cloudBinding.skill?.name && !localSkillNames.has(cloudBinding.skill.name)) {
+        changes.removedSkills.push(cloudBinding.skill.name);
+      }
+    }
+
+    const cloudKnowledgeNames = new Set(cloudKnowledgeBindings.map(k => k.knowledge?.name).filter(Boolean));
+    for (const localKnowledge of localKnowledges) {
+      const existingBinding = cloudKnowledgeBindings.find(
+        kb => kb.knowledge?.name === localKnowledge.name && kb.version === localKnowledge.version
+      );
+      if (!existingBinding) {
+        changes.newKnowledges.push(localKnowledge);
+      }
+    }
+    const localKnowledgeNames = new Set(localKnowledges.map(k => k.name));
+    for (const cloudBinding of cloudKnowledgeBindings) {
+      if (cloudBinding.knowledge?.name && !localKnowledgeNames.has(cloudBinding.knowledge.name)) {
+        changes.removedKnowledges.push(cloudBinding.knowledge.name);
+      }
+    }
+
+    if (options.dryRun) {
+      if (shouldOutputJson()) {
+        outputJson({
+          success: true,
+          data: {
+            agentName,
+            agentId: existingAgent.id,
+            changes,
+            dryRun: true,
+          },
+        });
+        return;
+      }
+      console.log(`\n[DRY-RUN] 预览 ${agentName} 的变更:\n`);
+      if (changes.metadataChanged) {
+        console.log('  元信息: 将更新 (prompt/description 变更)');
+      }
+      if (changes.newSkills.length > 0) {
+        console.log(`  新增 Skills: ${changes.newSkills.map(s => `${s.name}@${s.version}`).join(', ')}`);
+      }
+      if (changes.removedSkills.length > 0) {
+        console.log(`  移除 Skills: ${changes.removedSkills.join(', ')}`);
+      }
+      if (changes.newKnowledges.length > 0) {
+        console.log(`  新增 Knowledges: ${changes.newKnowledges.map(k => `${k.name}@${k.version}`).join(', ')}`);
+      }
+      if (changes.removedKnowledges.length > 0) {
+        console.log(`  移除 Knowledges: ${changes.removedKnowledges.join(', ')}`);
+      }
+      if (!changes.metadataChanged && changes.newSkills.length === 0 && changes.removedSkills.length === 0 &&
+          changes.newKnowledges.length === 0 && changes.removedKnowledges.length === 0) {
+        console.log('  无变更');
+      }
+      return;
+    }
+
+    if (changes.metadataChanged) {
+      if (shouldOutputJson()) {
+        info('更新 Agent 元信息...');
+      }
+      await client.updateAgent(existingAgent.id, {
+        prompt: metadata.prompt,
+        description: metadata.description,
+      });
+    }
+
+    for (const skill of changes.newSkills) {
+      if (shouldOutputJson()) {
+        info(`上传并绑定新技能: ${skill.name} (版本自动分配)`);
+      }
+      const skillTempDir = mkdtempSync('/tmp/skill-sync-');
+      const zipPath = join(skillTempDir, `${skill.name}.zip`);
+      execSync(`cd "${skill.path}" && zip -r "${zipPath}" . -x ".*"`, { stdio: 'pipe' });
+      try {
+        const uploadedSkill = await client.uploadSkill(zipPath);
+        await client.bindSkillToAgent(existingAgent.id, uploadedSkill.id, undefined);
+      } finally {
+        rmSync(skillTempDir, { recursive: true, force: true });
+      }
+    }
+
+    for (const skillName of changes.removedSkills) {
+      const binding = cloudSkillBindings.find(sb => sb.skill?.name === skillName);
+      if (binding) {
+        if (shouldOutputJson()) {
+          info(`解绑技能: ${skillName}`);
+        }
+        await client.unbindSkillFromAgent(existingAgent.id, binding.skillId, binding.version);
+      }
+    }
+
+    for (const knowledge of changes.newKnowledges) {
+      if (shouldOutputJson()) {
+        info(`上传并绑定新知识: ${knowledge.name} (版本自动分配)`);
+      }
+      const uploadedKnowledge = await client.uploadKnowledge(knowledge.path);
+      await client.bindKnowledgeToAgent(existingAgent.id, uploadedKnowledge.id, undefined);
+    }
+
+    for (const knowledgeName of changes.removedKnowledges) {
+      const binding = cloudKnowledgeBindings.find(kb => kb.knowledge?.name === knowledgeName);
+      if (binding) {
+        if (shouldOutputJson()) {
+          info(`解绑知识: ${knowledgeName}`);
+        }
+        await client.unbindKnowledgeFromAgent(existingAgent.id, binding.knowledgeId, binding.version);
+      }
+    }
+
+    if (shouldOutputJson()) {
+      outputJson({
+        success: true,
+        data: {
+          agentName,
+          agentId: existingAgent.id,
+          changes,
+        },
+      });
+      return;
+    }
+    success(`Agent "${agentName}" 同步完成`);
+    const changeCount = (changes.metadataChanged ? 1 : 0) + changes.newSkills.length +
+      changes.removedSkills.length + changes.newKnowledges.length + changes.removedKnowledges.length;
+    if (changeCount === 0) {
+      info('无变更');
+    } else {
+      console.log(`  更新了 ${changeCount} 项`);
+    }
+  } catch (err) {
+    if (shouldOutputJson()) {
+      outputJson({ success: false, error: { code: 'SYNC_FAILED', message: err instanceof Error ? err.message : '未知错误' } });
+      process.exit(1);
+    }
+    error(`同步失败: ${err instanceof Error ? err.message : '未知错误'}`);
+    process.exit(1);
+  }
+}
+
+async function parseLocalSkills(folderPath: string): Promise<LocalSkill[]> {
+  const skills: LocalSkill[] = [];
+  const skillsDir = join(folderPath, 'skills');
+
+  if (!existsSync(skillsDir) || !statSync(skillsDir).isDirectory()) {
+    return skills;
+  }
+
+  try {
+    const skillDirs = execSync(`ls -1 "${skillsDir}"`, { encoding: 'utf-8' })
+      .split('\n')
+      .filter(l => l.trim() && existsSync(join(skillsDir, l)) && statSync(join(skillsDir, l)).isDirectory());
+
+    for (const skillDir of skillDirs) {
+      const skillPath = join(skillsDir, skillDir);
+      const skillMdPath = join(skillPath, 'SKILL.md');
+
+      if (existsSync(skillMdPath)) {
+        const content = readFileSync(skillMdPath, 'utf-8');
+        const versionMatch = content.match(/^---\n[\s\S]*?version:\s*(.+)\n/);
+        const version = versionMatch ? versionMatch[1].trim() : '1.0.0';
+        skills.push({ name: skillDir, path: skillPath, version });
+      }
+    }
+  } catch {
+  }
+
+  return skills;
+}
+
+async function parseLocalKnowledges(folderPath: string): Promise<LocalKnowledge[]> {
+  const knowledges: LocalKnowledge[] = [];
+  const knowledgesDir = join(folderPath, 'knowledges');
+
+  if (!existsSync(knowledgesDir) || !statSync(knowledgesDir).isDirectory()) {
+    return knowledges;
+  }
+
+  try {
+    const mdFiles = execSync(`ls -1 "${knowledgesDir}"`, { encoding: 'utf-8' })
+      .split('\n')
+      .filter(l => l.trim().endsWith('.md'));
+
+    for (const mdFile of mdFiles) {
+      const mdPath = join(knowledgesDir, mdFile);
+      const name = mdFile.replace('.md', '');
+      const content = readFileSync(mdPath, 'utf-8');
+      const versionMatch = content.match(/^---\n[\s\S]*?version:\s*(.+)\n/);
+      const version = versionMatch ? versionMatch[1].trim() : '1.0.0';
+      knowledges.push({ name, path: mdPath, version });
+    }
+  } catch {
+  }
+
+  return knowledges;
 }

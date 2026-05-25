@@ -1,6 +1,6 @@
 import { login, logout, getCurrentUser, register } from './cmd/auth';
 import { listSkills, searchSkills, infoSkill, downloadSkill, uploadSkill, mySkills, deleteSkill, validateSkill } from './cmd/skill';
-import { listAgents, searchAgents, infoAgent, downloadAgent, createAgent, updateAgent, deleteAgent, bindSkill, unbindSkill, bindKnowledge, unbindKnowledge, createAgentFromFolder } from './cmd/agent';
+import { listAgents, searchAgents, infoAgent, downloadAgent, createAgent, updateAgent, deleteAgent, bindSkill, unbindSkill, bindKnowledge, unbindKnowledge, createAgentFromFolder, syncAgent } from './cmd/agent';
 import { listKnowledge, searchKnowledge, infoKnowledge, downloadKnowledge, uploadKnowledge, myKnowledge, deleteKnowledge } from './cmd/knowledge';
 import { showServer, setServer } from './cmd/server';
 import { getOutputMode, setOutputMode } from './lib/output';
@@ -316,6 +316,7 @@ async function main() {
         case 'bind':
           if (!args[2]) {
             console.error('用法: arm agent bind <id> --skill=<skillId> [--skill-config=\'{...}\'] 或 arm agent bind <id> --knowledge=<knowledgeId> [--knowledge-config=\'{...}\'] [--json]');
+            console.error('注意: version 缺省时自动绑定新版本');
             process.exit(1);
           }
           {
@@ -339,9 +340,9 @@ async function main() {
             }
 
             if (skillId) {
-              await bindSkill(id, skillId, skillConfig);
+              await bindSkill(id, skillId, undefined, skillConfig);
             } else if (knowledgeId) {
-              await bindKnowledge(id, knowledgeId, knowledgeConfig);
+              await bindKnowledge(id, knowledgeId, undefined, knowledgeConfig);
             } else {
               console.error('用法: arm agent bind <id> --skill=<skillId> 或 --knowledge=<knowledgeId>');
               process.exit(1);
@@ -350,13 +351,15 @@ async function main() {
           break;
         case 'unbind':
           if (!args[2]) {
-            console.error('用法: arm agent unbind <id> --skill=<skillId> 或 --knowledge=<knowledgeId> [--json]');
+            console.error('用法: arm agent unbind <id> --skill=<skillId> [--version=<ver>] 或 --knowledge=<knowledgeId> [--version=<ver>] [--json]');
             process.exit(1);
           }
           {
             const id = args[2];
             let skillId: string | undefined;
             let knowledgeId: string | undefined;
+            let skillVersion: string | undefined;
+            let knowledgeVersion: string | undefined;
 
             for (let i = 3; i < args.length; i++) {
               const arg = args[i];
@@ -364,17 +367,51 @@ async function main() {
                 skillId = arg.split('=').slice(1).join('=');
               } else if (arg.startsWith('--knowledge=')) {
                 knowledgeId = arg.split('=').slice(1).join('=');
+              } else if (arg.startsWith('--version=')) {
+                const ver = arg.split('=').slice(1).join('=');
+                if (skillId) skillVersion = ver;
+                if (knowledgeId) knowledgeVersion = ver;
               }
             }
 
             if (skillId) {
-              await unbindSkill(id, skillId);
+              await unbindSkill(id, skillId, skillVersion);
             } else if (knowledgeId) {
-              await unbindKnowledge(id, knowledgeId);
+              await unbindKnowledge(id, knowledgeId, knowledgeVersion);
             } else {
               console.error('用法: arm agent unbind <id> --skill=<skillId> 或 --knowledge=<knowledgeId>');
               process.exit(1);
             }
+          }
+          break;
+        case 'sync':
+          if (!args[2]) {
+            console.error('用法: arm agent sync <folder> [--dry-run] [--force] [--json]');
+            process.exit(1);
+          }
+          {
+            const folder = args[2];
+            const syncOptions: { dryRun?: boolean; force?: boolean } = {};
+
+            for (let i = 3; i < args.length; i++) {
+              const arg = args[i];
+              if (arg === '--dry-run') {
+                syncOptions.dryRun = true;
+              } else if (arg === '--force') {
+                syncOptions.force = true;
+              }
+            }
+
+            await syncAgent(folder, syncOptions);
+          }
+          break;
+        case 'bindings':
+          if (!args[2]) {
+            console.error('用法: arm agent bindings <name> [--history] [--json]');
+            process.exit(1);
+          }
+          if (subCommand === 'history') {
+            console.log('bindings history 需要通过 info 命令查看');
           }
           break;
         default:
@@ -388,10 +425,11 @@ async function main() {
   arm agent create --from=<folder>    从本地文件夹创建 Agent
   arm agent update <id>               更新 Agent (--name, --description, --prompt, --avatar, --status)
   arm agent delete <id>                删除 Agent
-  arm agent bind <id> --skill=<id>    绑定 Skill 到 Agent
-  arm agent unbind <id> --skill=<id>  解绑 Skill
-  arm agent bind <id> --knowledge=<id> 绑定 Knowledge 到 Agent
-  arm agent unbind <id> --knowledge=<id> 解绑 Knowledge
+  arm agent bind <id> --skill=<id> [--version=<ver>]  绑定 Skill 到 Agent
+  arm agent unbind <id> --skill=<id> [--version=<ver>]  解绑 Skill
+  arm agent bind <id> --knowledge=<id> [--version=<ver>]  绑定 Knowledge 到 Agent
+  arm agent unbind <id> --knowledge=<id> [--version=<ver>] 解绑 Knowledge
+  arm agent sync <folder> [--dry-run]  同步本地文件夹到云端 Agent
   所有命令支持 --json 参数获取机器可读输出
 `);
       }

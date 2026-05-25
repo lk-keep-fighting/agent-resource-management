@@ -49,7 +49,7 @@ model Skill {
 
   publisher User @relation(fields: [publishedBy], references: [id], onDelete: Cascade)
   skillTags SkillTag[]
-  agentSkills AgentSkill[]
+  agentSkillBindings AgentSkillBinding[]
 
   @@index([name], name: "idx_name")
   @@index([status], name: "idx_status")
@@ -98,9 +98,9 @@ model Agent {
   updatedAt   DateTime @updatedAt @map("updated_at")
   createdBy   String   @map("created_by")
 
-  creator         User            @relation(fields: [createdBy], references: [id], onDelete: Cascade)
-  agentSkills    AgentSkill[]
-  agentKnowledges AgentKnowledge[]
+  creator              User                   @relation(fields: [createdBy], references: [id], onDelete: Cascade)
+  skillBindings        AgentSkillBinding[]
+  knowledgeBindings    AgentKnowledgeBinding[]
 
   @@index([name], name: "idx_agent_name")
   @@index([createdBy], name: "idx_agent_created_by")
@@ -113,28 +113,40 @@ enum AgentStatus {
   draft
 }
 
-model AgentSkill {
+model AgentSkillBinding {
+  id        String   @id @default(uuid())
   agentId   String
   skillId   String
+  version   String
   config    Json?
+  deletedAt DateTime? @map("deleted_at")
+  createdAt DateTime @default(now())
 
   agent Agent @relation(fields: [agentId], references: [id], onDelete: Cascade)
   skill Skill @relation(fields: [skillId], references: [id], onDelete: Cascade)
 
-  @@id([agentId, skillId])
-  @@map("agent_skills")
+  @@index([agentId], name: "idx_skill_binding_agent")
+  @@index([skillId], name: "idx_skill_binding_skill")
+  @@unique([agentId, skillId, version], name: "uq_agent_skill_version")
+  @@map("agent_skill_bindings")
 }
 
-model AgentKnowledge {
+model AgentKnowledgeBinding {
+  id              String    @id @default(uuid())
   agentId         String
-  knowledgeId     String   @map("knowledge_id")
-  retrievalConfig Json?    @map("retrieval_config")
-  createdAt       DateTime @default(now()) @map("created_at")
+  knowledgeId     String    @map("knowledge_id")
+  version         String
+  retrievalConfig Json?     @map("retrieval_config")
+  deletedAt       DateTime? @map("deleted_at")
+  createdAt       DateTime  @default(now()) @map("created_at")
 
-  agent Agent @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  agent     Agent     @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  knowledge Knowledge @relation(fields: [knowledgeId], references: [id], onDelete: Cascade)
 
-  @@id([agentId, knowledgeId])
-  @@map("agent_knowledges")
+  @@index([agentId], name: "idx_knowledge_binding_agent")
+  @@index([knowledgeId], name: "idx_knowledge_binding_knowledge")
+  @@unique([agentId, knowledgeId, version], name: "uq_agent_knowledge_version")
+  @@map("agent_knowledge_bindings")
 }
 
 model Knowledge {
@@ -146,8 +158,9 @@ model Knowledge {
   updatedAt   DateTime @updatedAt @map("updated_at")
   createdBy   String   @map("created_by")
 
-  creator         User            @relation(fields: [createdBy], references: [id], onDelete: Cascade)
-  knowledgeTags   KnowledgeTag[]
+  creator           User                     @relation(fields: [createdBy], references: [id], onDelete: Cascade)
+  knowledgeTags     KnowledgeTag[]
+  knowledgeBindings AgentKnowledgeBinding[]
 
   @@index([name], name: "idx_knowledge_name")
   @@map("knowledges")

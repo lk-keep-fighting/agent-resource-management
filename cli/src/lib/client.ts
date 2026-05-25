@@ -327,18 +327,22 @@ export class ApiClient {
     }
   }
 
-  async bindSkillToAgent(agentId: string, skillId: string, config?: Record<string, unknown>): Promise<void> {
+  async bindSkillToAgent(agentId: string, skillId: string, version: string, config?: Record<string, unknown>): Promise<void> {
     const res = await this.request<null>(`/agents/${agentId}/skills`, {
       method: 'POST',
-      body: JSON.stringify({ skillId, config }),
+      body: JSON.stringify({ skillId, version, config }),
     });
     if (!res.ok) {
       throw new Error(res.msg);
     }
   }
 
-  async unbindSkillFromAgent(agentId: string, skillId: string): Promise<void> {
-    const res = await this.request<null>(`/agents/${agentId}/skills?skillId=${skillId}`, {
+  async unbindSkillFromAgent(agentId: string, skillId: string, version?: string): Promise<void> {
+    let path = `/agents/${agentId}/skills?skillId=${skillId}`;
+    if (version) {
+      path += `&version=${version}`;
+    }
+    const res = await this.request<null>(path, {
       method: 'DELETE',
     });
     if (!res.ok) {
@@ -346,18 +350,22 @@ export class ApiClient {
     }
   }
 
-  async bindKnowledgeToAgent(agentId: string, knowledgeId: string, retrievalConfig?: { topK?: number; similarityThreshold?: number }): Promise<void> {
+  async bindKnowledgeToAgent(agentId: string, knowledgeId: string, version: string, retrievalConfig?: { topK?: number; similarityThreshold?: number }): Promise<void> {
     const res = await this.request<null>(`/agents/${agentId}/knowledges`, {
       method: 'POST',
-      body: JSON.stringify({ knowledgeId, retrievalConfig }),
+      body: JSON.stringify({ knowledgeId, version, retrievalConfig }),
     });
     if (!res.ok) {
       throw new Error(res.msg);
     }
   }
 
-  async unbindKnowledgeFromAgent(agentId: string, knowledgeId: string): Promise<void> {
-    const res = await this.request<null>(`/agents/${agentId}/knowledges?knowledgeId=${knowledgeId}`, {
+  async unbindKnowledgeFromAgent(agentId: string, knowledgeId: string, version?: string): Promise<void> {
+    let path = `/agents/${agentId}/knowledges?knowledgeId=${knowledgeId}`;
+    if (version) {
+      path += `&version=${version}`;
+    }
+    const res = await this.request<null>(path, {
       method: 'DELETE',
     });
     if (!res.ok) {
@@ -368,5 +376,32 @@ export class ApiClient {
   async getAgentByName(name: string): Promise<Agent | null> {
     const result = await this.listAgents(name, 1, 1);
     return result.agents.find(a => a.name === name) || null;
+  }
+
+  async getAgentBindingsHistory(agentId: string): Promise<{
+    skillBindings: Array<{
+      id: string;
+      skillId: string;
+      skillName: string;
+      version: string;
+      config: Record<string, unknown> | null;
+      createdAt: string;
+      deletedAt: string | null;
+    }>;
+    knowledgeBindings: Array<{
+      id: string;
+      knowledgeId: string;
+      knowledgeName: string;
+      version: string;
+      retrievalConfig: Record<string, unknown> | null;
+      createdAt: string;
+      deletedAt: string | null;
+    }>;
+  }> {
+    const res = await this.request<any>(`/agents/${agentId}/bindings/history`);
+    if (!res.ok) {
+      throw new Error(res.msg);
+    }
+    return res.data;
   }
 }

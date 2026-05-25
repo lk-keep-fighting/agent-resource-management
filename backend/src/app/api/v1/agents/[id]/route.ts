@@ -13,17 +13,24 @@ export async function GET(
 
     const agent = await prisma.agent.findUnique({
       where: { id },
-      include: {
-        agentSkills: {
-          include: { skill: true },
-        },
-        agentKnowledges: true,
-      },
     });
 
     if (!agent) {
       return errorResponse('Agent不存在', 404);
     }
+
+    const [skillBindings, knowledgeBindings] = await Promise.all([
+      prisma.agentSkillBinding.findMany({
+        where: { agentId: id, deletedAt: null },
+        include: { skill: true },
+        orderBy: { createdAt: 'desc' },
+      }),
+      prisma.agentKnowledgeBinding.findMany({
+        where: { agentId: id, deletedAt: null },
+        include: { knowledge: true },
+        orderBy: { createdAt: 'desc' },
+      }),
+    ]);
 
     return successResponse({
       id: agent.id,
@@ -36,8 +43,10 @@ export async function GET(
       createdAt: agent.createdAt.toISOString(),
       updatedAt: agent.updatedAt.toISOString(),
       createdBy: agent.createdBy,
-      skills: agent.agentSkills.map((as) => ({
+      skills: skillBindings.map((as) => ({
+        id: as.id,
         skillId: as.skillId,
+        version: as.version,
         skill: {
           id: as.skill.id,
           name: as.skill.name,
@@ -46,8 +55,15 @@ export async function GET(
         },
         config: as.config as Record<string, unknown> | undefined,
       })),
-      knowledges: agent.agentKnowledges.map((ak) => ({
+      knowledges: knowledgeBindings.map((ak) => ({
+        id: ak.id,
         knowledgeId: ak.knowledgeId,
+        version: ak.version,
+        knowledge: {
+          id: ak.knowledge.id,
+          name: ak.knowledge.name,
+          description: ak.knowledge.description,
+        },
         retrievalConfig: ak.retrievalConfig as {
           topK?: number;
           similarityThreshold?: number;
