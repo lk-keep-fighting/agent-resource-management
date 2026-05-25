@@ -464,12 +464,14 @@ Agent Resource Management (arm)
   arm agent info <name>               查看 Agent 详情
   arm agent download <name> [dir]     下载 Agent
   arm agent create <name>             创建 Agent
+  arm agent create --from=<folder>    从本地文件夹创建 Agent
   arm agent update <id>               更新 Agent
   arm agent delete <id>                删除 Agent
-  arm agent bind <id> --skill=<id>    绑定 Skill
-  arm agent unbind <id> --skill=<id>  解绑 Skill
-  arm agent bind <id> --knowledge=<id> 绑定 Knowledge
-  arm agent unbind <id> --knowledge=<id> 解绑 Knowledge
+  arm agent bind <id> --skill=<id> [--version=<ver>]  绑定 Skill
+  arm agent unbind <id> --skill=<id> [--version=<ver>]  解绑 Skill
+  arm agent bind <id> --knowledge=<id> [--version=<ver>] 绑定 Knowledge
+  arm agent unbind <id> --knowledge=<id> [--version=<ver>] 解绑 Knowledge
+  arm agent sync <folder> [--dry-run]  同步本地文件夹到云端 Agent
   arm server                          显示当前服务端
   arm server set <url>                设置服务端
   使用 arm <entity> -h 查看详细帮助
