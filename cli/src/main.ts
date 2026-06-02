@@ -224,10 +224,6 @@ async function main() {
           await downloadAgent(args[2], args[3]);
           break;
         case 'create':
-          if (!args[2]) {
-            console.error('用法: arm agent create <name> [--description="..."] [--prompt="..."] [--avatar="..."] [--skill=id] [--knowledge=id] [--skill-config=\'{...}\'] [--knowledge-config=\'{...}\'] [--from=<folder-path>] [--json]');
-            process.exit(1);
-          }
           {
             const name = args[2];
             const options: Record<string, string | undefined> = {};
@@ -236,6 +232,13 @@ async function main() {
             const skillConfigs: string[] = [];
             const knowledgeConfigs: string[] = [];
             let fromFolder: string | undefined;
+
+            if (name?.startsWith('--from=')) {
+              fromFolder = name.split('=').slice(1).join('=');
+            } else if (!name) {
+              console.error('用法: arm agent create <name> [--description="..."] [--prompt="..."] [--avatar="..."] [--skill=id] [--knowledge=id] [--skill-config=\'{...}\'] [--knowledge-config=\'{...}\'] [--from=<folder-path>] [--json]');
+              process.exit(1);
+            }
 
             for (let i = 3; i < args.length; i++) {
               const arg = args[i];

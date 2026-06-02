@@ -118,7 +118,6 @@ export class ApiClient {
     });
 
     const data = await res.json();
-    console.error('DEBUG server response:', JSON.stringify(data));
     if (!data.ok) {
       throw new Error(data.msg);
     }

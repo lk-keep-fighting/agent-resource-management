@@ -283,7 +283,7 @@ export function validateAgentDir(dirPath: string): AgentValidationResult {
       }
 
       const contentAfterFrontmatter = agentMdContent.replace(/^---[\s\S]*?---\n/, '');
-      const promptMatch = contentAfterFrontmatter.match(/#\s*System\s*Prompt\n([\s\S]*?)$/);
+      const promptMatch = contentAfterFrontmatter.match(/#\s*System\s*Prompt\n+([\s\S]*?)$/);
       if (promptMatch) {
         result.metadata.prompt = promptMatch[1].trim();
       } else if (contentAfterFrontmatter.trim()) {
