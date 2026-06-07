@@ -1,12 +1,8 @@
 import { NextRequest } from 'next/server';
 import prisma from '@/lib/db';
-import { hashApiKey } from '@/lib/auth';
+import { hashApiKey, hashPassword, encryptApiKey } from '@/lib/auth';
 import { successResponse, errorResponse } from '@/lib/api-response';
 import crypto from 'crypto';
-
-function hashPassword(password: string): string {
-  return crypto.createHash('sha256').update(password).digest('hex');
-}
 
 export async function POST(request: NextRequest) {
   try {
@@ -42,6 +38,7 @@ export async function POST(request: NextRequest) {
         name: name || email.split('@')[0],
         passwordHash: hashPassword(password),
         apiKeyHash: hashApiKey(apiKey),
+        encryptedApiKey: encryptApiKey(apiKey),
         ssoUserId: '',
       } as any,
       select: {

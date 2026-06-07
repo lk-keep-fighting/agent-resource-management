@@ -1,7 +1,9 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { LoginForm } from "./login-form";
+import { SsoAndApiKeyForm } from "./login-form";
+import { EmailPasswordForm } from "./email-password-form";
 import { Brain } from "lucide-react";
 import Link from "next/link";
+import { LoginTabs } from "./login-tabs";
 
 interface LoginPageProps {
   searchParams: Promise<{ error?: string }>;
@@ -39,7 +41,10 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
               {errorMessage}
             </div>
           )}
-          <LoginForm />
+          <LoginTabs
+            ssoSlot={<SsoAndApiKeyForm />}
+            passwordSlot={<EmailPasswordForm />}
+          />
         </CardContent>
       </Card>
 

@@ -1,12 +1,32 @@
 import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/db'
 import { getUserInfo } from 'xuanwu-sso-sdk'
+import { hashApiKey } from '@/lib/auth'
 
 export async function GET(request: NextRequest) {
   const accessToken = request.cookies.get('access_token')?.value
 
   if (!accessToken) {
     return NextResponse.json({ user: null })
+  }
+
+  const isJwt = accessToken.includes('.')
+
+  if (!isJwt) {
+    try {
+      const apiKeyHash = hashApiKey(accessToken)
+      const localUser = await prisma.user.findUnique({
+        where: { apiKeyHash },
+        select: { id: true, name: true, email: true, avatarUrl: true, role: true }
+      })
+      if (localUser) {
+        return NextResponse.json({ user: localUser })
+      }
+      return NextResponse.json({ user: null })
+    } catch (error) {
+      console.error('Session api-key error:', error)
+      return NextResponse.json({ user: null })
+    }
   }
 
   try {
@@ -30,7 +50,7 @@ export async function GET(request: NextRequest) {
         select: { id: true, name: true, email: true, avatarUrl: true, role: true }
       })
       console.log('[Session] found by email:', byEmail)
-      
+
       if (byEmail) {
         localUser = await prisma.user.update({
           where: { id: byEmail.id },

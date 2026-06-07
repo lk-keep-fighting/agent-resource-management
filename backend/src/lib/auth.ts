@@ -9,6 +9,10 @@ export function hashApiKey(apiKey: string): string {
   return crypto.createHash('sha256').update(apiKey).digest('hex');
 }
 
+export function hashPassword(password: string): string {
+  return crypto.createHash('sha256').update(password).digest('hex');
+}
+
 function getMasterKey(): Buffer {
   const key = process.env.API_KEY_MASTER_KEY;
   if (!key) {
@@ -114,11 +118,19 @@ async function authenticateBySSO(request: NextRequest): Promise<User | null> {
 
 async function authenticateByApiKey(request: NextRequest): Promise<User | null> {
   const authHeader = request.headers.get('Authorization');
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return null;
+  let token: string | undefined;
+
+  if (authHeader?.startsWith('Bearer ')) {
+    token = authHeader.slice(7);
+  } else {
+    const cookieToken = request.cookies.get('access_token')?.value;
+    if (cookieToken && !cookieToken.includes('.')) {
+      token = cookieToken;
+    }
   }
 
-  const token = authHeader.slice(7);
+  if (!token) return null;
+
   const apiKeyHash = hashApiKey(token);
 
   const user = await prisma.user.findUnique({

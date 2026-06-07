@@ -51,6 +51,17 @@ export interface LoginRequest {
   apiKey: string;
 }
 
+export interface PasswordLoginRequest {
+  email: string;
+  password: string;
+}
+
+export interface RegisterRequest {
+  email: string;
+  password: string;
+  name?: string;
+}
+
 export interface LoginResponse {
   user: User;
   token: string;

@@ -4,11 +4,12 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { saveSession } from "@/lib/session";
 import { useSSO } from "xuanwu-sso-sdk";
 
-const ssoUrl = process.env.NEXT_PUBLIC_SSO_URL || 'http://localhost:3000'
+const ssoUrl = process.env.NEXT_PUBLIC_SSO_URL || "http://localhost:3000";
 
-export function LoginForm() {
+export function SsoAndApiKeyForm() {
   const [apiKey, setApiKey] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -33,6 +34,7 @@ export function LoginForm() {
 
       const data = await res.json();
       if (data.ok) {
+        saveSession({ token: data.data.token, user: data.data.user });
         router.push("/skills");
       } else {
         setError(data.msg || "登录失败");
@@ -45,7 +47,7 @@ export function LoginForm() {
   };
 
   return (
-    <>
+    <div className="space-y-4">
       <Button
         onClick={handleSSOLogin}
         className="w-full h-11 bg-gradient-to-r from-blue-600 to-purple-600 hover:opacity-90"
@@ -74,6 +76,6 @@ export function LoginForm() {
           {loading ? "登录中..." : "使用 API Key 登录"}
         </Button>
       </form>
-    </>
+    </div>
   );
 }

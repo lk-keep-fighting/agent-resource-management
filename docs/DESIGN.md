@@ -255,6 +255,8 @@ interface User {
 | Method | Endpoint | 说明 |
 |--------|----------|------|
 | POST | `/api/v1/auth/login` | 登录 (验证 API Key) |
+| POST | `/api/v1/auth/password-login` | 登录 (邮箱+密码) |
+| POST | `/api/v1/auth/register` | 注册 (邮箱+密码+昵称) |
 | GET | `/api/v1/auth/me` | 获取当前用户 |
 
 ### 6.2 Skills
@@ -642,7 +644,7 @@ CREATE TABLE agent_knowledge_bindings (
 
 ### Phase 3: Web UI 🚧
 - [x] 3.1 搭建 Next.js + shadcn/ui 项目
-- [ ] 3.2 登录页 (API Key 登录)
+- [x] 3.2 登录页 (SSO + API Key + 邮箱+密码注册/登录)
 - [ ] 3.3 布局 (侧边栏 + 导航)
 - [ ] 3.4 Skill 市场列表页
 - [ ] 3.5 Skill 详情页 (下载按钮)
