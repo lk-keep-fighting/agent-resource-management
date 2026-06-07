@@ -171,8 +171,38 @@ model KnowledgeTag {
   tagId       String
 
   knowledge Knowledge @relation(fields: [knowledgeId], references: [id], onDelete: Cascade)
-  tag       Tag       @relation(fields: [tagId], references: [id], onDelete: Cascade)
+  tag       Tag   @relation(fields: [tagId], references: [id], onDelete: Cascade)
 
   @@id([knowledgeId, tagId])
   @@map("knowledge_tags")
+}
+
+model ExternalKnowledgeSource {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  description String?  @db.VarChar(512)
+  status      String   @default("active")
+  
+  endpoint    String   @db.VarChar(1024)
+  authType    String   @default("none")
+  authHeader  String?  @map("auth_header")
+  authValue   String?  @map("auth_value")
+  
+  idField     String   @default("id")
+  titleField  String   @default("title")
+  contentField String  @default("content")
+  descField   String?  @map("desc_field")
+  updatedField String? @map("updated_field")
+  contentType String   @default("markdown")
+  
+  method      String   @default("GET")
+  headers     Json?
+  
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  createdBy   String   @map("created_by")
+
+  @@index([status], name: "idx_external_source_status")
+  @@index([createdBy], name: "idx_external_source_created_by")
+  @@map("external_knowledge_sources")
 }
