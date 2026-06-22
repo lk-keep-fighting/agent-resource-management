@@ -33,6 +33,17 @@ export async function GET(
       return successResponse(marketKnowledge, '获取成功');
     }
 
+    // 聚合反馈
+    const feedbacks = await prisma.knowledgeFeedback.findMany({
+      where: { knowledgeId: knowledge.id },
+      select: { rating: true, isHelpful: true },
+    });
+    const ratings = feedbacks.map((f) => f.rating).filter((r): r is number => typeof r === "number");
+    const avgRating =
+      ratings.length === 0
+        ? null
+        : Math.round((ratings.reduce((a, b) => a + b, 0) / ratings.length) * 10) / 10;
+
     return successResponse({
       id: knowledge.id,
       name: knowledge.name,
@@ -41,6 +52,12 @@ export async function GET(
       tags: knowledge.knowledgeTags.map((kt) => kt.tag.name),
       createdAt: knowledge.createdAt.toISOString(),
       updatedAt: knowledge.updatedAt.toISOString(),
+      feedbackSummary: {
+        total: feedbacks.length,
+        avgRating,
+        helpfulCount: feedbacks.filter((f) => f.isHelpful === true).length,
+        unhelpfulCount: feedbacks.filter((f) => f.isHelpful === false).length,
+      },
     }, '获取成功');
   } catch (err) {
     console.error('Get knowledge error:', err);

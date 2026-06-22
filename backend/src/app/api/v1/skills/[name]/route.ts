@@ -47,6 +47,17 @@ export async function GET(
       return errorResponse('Skill 不存在', 404);
     }
 
+    // 聚合反馈
+    const feedbacks = await prisma.skillFeedback.findMany({
+      where: { skillId: skill.id },
+      select: { rating: true, isHelpful: true },
+    });
+    const ratings = feedbacks.map((f) => f.rating).filter((r): r is number => typeof r === "number");
+    const avgRating =
+      ratings.length === 0
+        ? null
+        : Math.round((ratings.reduce((a, b) => a + b, 0) / ratings.length) * 10) / 10;
+
     const response = {
       id: skill.id,
       name: skill.name,
@@ -64,6 +75,12 @@ export async function GET(
       downloadCount: skill.downloadCount,
       status: skill.status,
       tags: skill.skillTags.map((st) => st.tag.name),
+      feedbackSummary: {
+        total: feedbacks.length,
+        avgRating,
+        helpfulCount: feedbacks.filter((f) => f.isHelpful === true).length,
+        unhelpfulCount: feedbacks.filter((f) => f.isHelpful === false).length,
+      },
     };
 
     return successResponse(response, '获取成功');

@@ -19,7 +19,7 @@ export async function GET(
       return errorResponse('Agent不存在', 404);
     }
 
-    const [skillBindings, knowledgeBindings] = await Promise.all([
+    const [skillBindings, knowledgeBindings, feedbacks] = await Promise.all([
       prisma.agentSkillBinding.findMany({
         where: { agentId: id, deletedAt: null },
         include: { skill: true },
@@ -30,7 +30,18 @@ export async function GET(
         include: { knowledge: true },
         orderBy: { createdAt: 'desc' },
       }),
+      prisma.agentFeedback.findMany({
+        where: { agentId: id },
+        select: { rating: true, isHelpful: true },
+      }),
     ]);
+
+    const ratings = feedbacks.map((f) => f.rating).filter((r): r is number => typeof r === 'number');
+    const avgRating = ratings.length === 0
+      ? null
+      : Math.round((ratings.reduce((a, b) => a + b, 0) / ratings.length) * 10) / 10;
+    const helpfulCount = feedbacks.filter((f) => f.isHelpful === true).length;
+    const unhelpfulCount = feedbacks.filter((f) => f.isHelpful === false).length;
 
     return successResponse({
       id: agent.id,
@@ -43,6 +54,12 @@ export async function GET(
       createdAt: agent.createdAt.toISOString(),
       updatedAt: agent.updatedAt.toISOString(),
       createdBy: agent.createdBy,
+      feedbackSummary: {
+        total: feedbacks.length,
+        avgRating,
+        helpfulCount,
+        unhelpfulCount,
+      },
       skills: skillBindings.map((as) => ({
         id: as.id,
         skillId: as.skillId,
