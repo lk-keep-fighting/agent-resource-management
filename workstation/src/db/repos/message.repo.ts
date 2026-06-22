@@ -34,6 +34,23 @@ export const messageRepo = {
     return rows.map(rowToWs);
   },
 
+  /**
+   * 拉某 workspace 全部历史 message（按时间序），用于跨 run 连续对话。
+   * 排除 role='tool'（工具调用结果独立存于 ws_event/tool 事件，
+   * 不参与 system prompt 的对话上下文；如需恢复工具调用链路，扩展本方法）
+   */
+  listByWorkspace(workspaceId: string): WsMessage[] {
+    const rows = getDb()
+      .prepare(
+        `SELECT m.* FROM ws_message m
+         INNER JOIN ws_run r ON r.id = m.run_id
+         WHERE r.workspace_id = ? AND m.role IN ('user', 'assistant')
+         ORDER BY r.created_at ASC, m.seq ASC`,
+      )
+      .all(workspaceId) as MessageRow[];
+    return rows.map(rowToWs);
+  },
+
   nextSeq(runId: string): number {
     const row = getDb()
       .prepare(`SELECT COALESCE(MAX(seq), 0) + 1 AS next FROM ws_message WHERE run_id = ?`)

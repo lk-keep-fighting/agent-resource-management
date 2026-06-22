@@ -45,7 +45,7 @@ import { eventRepo } from "../db/repos/event.repo.ts";
 import { runRepo } from "../db/repos/run.repo.ts";
 import { workspaceRepo } from "../db/repos/workspace.repo.ts";
 import { arm } from "../arm-client/client.ts";
-import type { ArmAgentDetail, WsRun } from "../types.ts";
+import type { ArmAgentDetail, WsRun, WsMessage } from "../types.ts";
 import { buildSystemPrompt } from "./context-builder.ts";
 import { armCliTool } from "./tools/arm-cli.ts";
 import { buildSkillHintTool } from "./skill-tools.ts";
@@ -57,6 +57,14 @@ interface RunOptions {
   userMessage: string;
   sender: SseSender;
   abortSignal?: AbortSignal;
+  /**
+   * 历史消息加载模式：
+   * - 'continue' (续接已存在 run)：用该 run 自己的消息历史
+   * - 'fresh'    (新建 run)         ：用 workspace 全部历史消息
+   *
+   * 决定传给 Agent 的 initialState.messages
+   */
+  historyMode: "continue" | "fresh";
 }
 
 interface ExecuteResult {
@@ -246,6 +254,57 @@ export class AgentRunner {
 }
 
 /**
+ * 把 ws_message 转换为 pi-agent-core 期望的 AgentMessage[]（用于连续对话）。
+ *
+ * 当前只重建 user / assistant 纯文本消息：
+ * - user: { role: "user", content, timestamp }
+ * - assistant: { role: "assistant", content: [{type:"text", text}], api, provider, model, usage, stopReason, timestamp }
+ *
+ * 工具调用历史暂不传（ws_message 没存 assistant 消息的 tool_calls 字段），
+ * 后续可扩展：ws_message 加 tool_calls_json 列 + tool 消息保留调用上下文。
+ */
+function buildMessageHistory(
+  messages: WsMessage[],
+  model: Model<"openai-completions">,
+): any[] {
+  const result: any[] = [];
+  let ts = Date.now() - messages.length * 1000; // 兜底时间戳（按消息顺序递增）
+  for (const m of messages) {
+    ts += 1000;
+    if (m.role === "user") {
+      const text = m.content ?? "";
+      if (!text) continue;
+      result.push({
+        role: "user",
+        content: text,
+        timestamp: m.createdAt ?? ts,
+      });
+    } else if (m.role === "assistant") {
+      const text = m.content ?? "";
+      if (!text) continue;
+      result.push({
+        role: "assistant",
+        content: [{ type: "text", text }],
+        api: model.api,
+        provider: model.provider,
+        model: model.id,
+        usage: {
+          input: 0,
+          output: 0,
+          cacheRead: 0,
+          cacheWrite: 0,
+          total: 0,
+        },
+        stopReason: "stop",
+        timestamp: m.createdAt ?? ts,
+      });
+    }
+    // role='tool' 暂不传（缺 tool_calls 上下文）
+  }
+  return result;
+}
+
+/**
  * 单次 Run 编排：拉 Agent、组装 prompt、建 Agent 实例、跑用户消息。
  */
 export async function executeRun(opts: RunOptions): Promise<ExecuteResult> {
@@ -300,12 +359,24 @@ export async function executeRun(opts: RunOptions): Promise<ExecuteResult> {
     return { status: "failed", error: msg };
   }
 
+  // 加载历史消息（连续对话）
+  // - 'continue' (POST /runs/:id/messages 续接该 run)：用该 run 的所有 user/assistant
+  // - 'fresh'    (POST /workspaces/:workspaceId/runs 新建)：用 workspace 全部历史
+  const historyMessages = (() => {
+    if (opts.historyMode === "continue") {
+      // 续接：用该 run 自己的消息（不含当前 userMessage，它会通过 agent.prompt() 追加）
+      return buildMessageHistory(messageRepo.listByRun(run.id), model);
+    }
+    // 新建：用 workspace 全部历史
+    return buildMessageHistory(messageRepo.listByWorkspace(run.workspaceId), model);
+  })();
+
   const agent = new Agent({
     initialState: {
       systemPrompt,
       model,
       tools,
-      messages: [],
+      messages: historyMessages,
     },
     getApiKey: async () => config.llm.apiKey,
   });

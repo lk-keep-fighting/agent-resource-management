@@ -70,6 +70,7 @@ runsRoute.post("/workspaces/:workspaceId/runs", async (c) => {
       run,
       userMessage: body.message!.trim(),
       sender: send,
+      historyMode: "fresh",  // 新 run：注入 workspace 全部历史消息
     });
 
     send("run.done", { status: result.status, durationMs: result.durationMs });
@@ -103,6 +104,7 @@ runsRoute.post("/runs/:id/messages", async (c) => {
       run,
       userMessage: body.message!.trim(),
       sender: send,
+      historyMode: "continue",  // 续接该 run 已有消息
     });
     send("run.done", { status: result.status, durationMs: result.durationMs });
   });
