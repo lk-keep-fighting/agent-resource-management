@@ -10,7 +10,7 @@
 # ───── Stage 1: deps ─────
 # 单独缓存依赖层（lockfile 变化才重装）
 # 用 oven/bun:1.2+ 支持 lockfile v1（与项目 Bun 1.3+ 对齐）
-FROM oven/bun:1.2 AS deps
+FROM nexus.aimstek.cn/xuanwu-factory/common/bun:1.2 AS deps
 WORKDIR /app
 
 # 复制 lockfile + package.json
@@ -35,7 +35,7 @@ RUN bun run typecheck
 
 # ───── Stage 3: runtime ─────
 # 精简运行镜像：只装 prod 依赖 + 必要文件
-FROM oven/bun:1.2-slim AS runtime
+FROM nexus.aimstek.cn/xuanwu-factory/common/bun:1.2-slim AS runtime
 WORKDIR /app
 
 # 系统工具（健康检查用 wget + curl）
