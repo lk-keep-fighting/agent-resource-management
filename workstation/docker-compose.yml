@@ -1,0 +1,53 @@
+# Docker Compose 部署
+#
+# 启动：docker compose up -d
+# 停止：docker compose down
+# 日志：docker compose logs -f workstation
+# 数据保留在 named volume `ws-data`
+
+services:
+  workstation:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: agent-workstation:0.1.0
+    container_name: agent-workstation
+    restart: unless-stopped
+    ports:
+      - "4000:4000"
+    environment:
+      # ─── 必填 ───
+      WS_LLM_API_KEY: ${WS_LLM_API_KEY:?WS_LLM_API_KEY 必填（智谱 GLM）}
+      WS_ARM_BASE_URL: ${WS_ARM_BASE_URL:-http://host.docker.internal:3000}
+      # ─── LLM ───
+      WS_LLM_PROVIDER: ${WS_LLM_PROVIDER:-openai}
+      WS_LLM_BASE_URL: ${WS_LLM_BASE_URL:-https://open.bigmodel.cn/api/coding/paas/v4}
+      WS_LLM_MODEL: ${WS_LLM_MODEL:-glm-4.5}
+      # ─── ARM ───
+      WS_ARM_API_KEY: ${WS_ARM_API_KEY:-}
+      # ─── Server ───
+      WS_HOST: 0.0.0.0
+      WS_PORT: 4000
+      # ─── DB ───
+      WS_DB_PATH: /app/data/workstation.db
+      # ─── SSO ───
+      NEXT_PUBLIC_SSO_URL: ${NEXT_PUBLIC_SSO_URL:-http://sso.agent-platform.dev.aimstek.cn}
+      # ─── ARM CLI Tool ───
+      WS_ARM_CLI_ENABLED: ${WS_ARM_CLI_ENABLED:-true}
+      WS_ARM_CLI_PATH: ${WS_ARM_CLI_PATH:-arm}
+      WS_ARM_CLI_TIMEOUT_MS: ${WS_ARM_CLI_TIMEOUT_MS:-60000}
+    volumes:
+      - ws-data:/app/data
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:4000/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    # macOS 上访问 host 上的 ARM backend
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+volumes:
+  ws-data:
+    name: agent-workstation-data

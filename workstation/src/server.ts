@@ -1,0 +1,133 @@
+import { Hono } from "hono";
+import { serve } from "@hono/node-server";
+import { serveStatic } from "@hono/node-server/serve-static";
+import { config, ensureConfig } from "./config.ts";
+import { runMigrations } from "./db/migrate.ts";
+import { arm } from "./arm-client/client.ts";
+import { workspacesRoute } from "./routes/workspaces.ts";
+import { agentsRoute } from "./routes/agents.ts";
+import { runsRoute } from "./routes/runs.ts";
+import { feedbackRoute } from "./routes/feedback.ts";
+import { contributeRoute } from "./routes/contribute.ts";
+import { configRoute } from "./routes/config.ts";
+import { miscRoute } from "./routes/misc.ts";
+import { authRoute } from "./routes/auth.ts";
+import { requireAuth } from "./middleware/auth.ts";
+import { readFileSync } from "node:fs";
+import { resolve, dirname } from "node:path";
+import { fileURLToPath } from "node:url";
+
+ensureConfig();
+runMigrations();
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+
+const app = new Hono();
+
+// ─────────── 中间件 ───────────
+app.use("*", async (c, next) => {
+  await next();
+  c.header("Access-Control-Allow-Origin", "*");
+  c.header("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE,OPTIONS");
+  c.header("Access-Control-Allow-Headers", "Content-Type,Authorization");
+});
+app.options("*", (c) => c.body(null, 204));
+
+app.use("*", async (c, next) => {
+  const start = Date.now();
+  await next();
+  const ms = Date.now() - start;
+  console.log(`[${c.req.method}] ${c.req.path} ${c.res.status} ${ms}ms`);
+});
+
+// ─────────── 健康检查 ───────────
+app.get("/health", async (c) => {
+  const armReachable = await arm().health().catch(() => false);
+  return c.json({
+    ok: true,
+    data: {
+      service: "agent-workstation",
+      version: "0.1.0",
+      armReachable,
+      llmConfigured: !!config.llm.apiKey,
+    },
+    msg: "ok",
+  });
+});
+
+// ─────────── SSO 配置（公开） ───────────
+// 注意：必须在 requireAuth 之外定义
+app.get("/api/ws/config/sso", (c) => {
+  // 流程：workstation → ARM dashboard /login?next=WS_CALLBACK
+  //   → ARM dashboard 走 useSSO 跳 SSO → SSO 回跳 /auth/callback?next=WS_CALLBACK&sso_token=...
+  //   → ARM callback page 验 token + 跳 <next>#sso=...
+  //   → workstation 解析 hash，存 {token, user} 跳首页
+  const wsOrigin = process.env.WS_PUBLIC_ORIGIN || "http://localhost:4000";
+  const wsCallback = `${wsOrigin}/#/auth/sso-callback`;
+  const armLogin = `${config.arm.baseUrl.replace(/\/+$/, "")}/login?next=${encodeURIComponent(wsCallback)}`;
+
+  return c.json({
+    ok: true,
+    data: {
+      ssoUrl: config.arm.ssoUrl,
+      armBaseUrl: config.arm.baseUrl,
+      wsCallback,
+      // 浏览器跳这个 URL 就触发 SSO（经 ARM dashboard 中转）
+      loginUrl: armLogin,
+    },
+    msg: "ok",
+  });
+});
+
+// ─────────── API 路由 ───────────
+const api = new Hono();
+// 公开：auth/login + auth/me（验证 token）
+api.route("/auth", authRoute);
+// 其他全部要求鉴权
+api.use("/agents", requireAuth);
+api.use("/workspaces", requireAuth);
+api.use("/runs", requireAuth);
+api.use("/feedback", requireAuth);
+api.use("/contribute", requireAuth);
+api.use("/my-agents", requireAuth);
+api.use("/notifications", requireAuth);
+api.use("/skills", requireAuth);
+api.use("/knowledges", requireAuth);
+api.route("/agents", agentsRoute);
+api.route("/workspaces", workspacesRoute);
+// /api/ws/runs/* 和 /api/ws/workspaces/:id/runs
+api.route("/", runsRoute);
+api.route("/", feedbackRoute);
+api.route("/", contributeRoute);
+api.route("/", miscRoute);
+api.route("/config", configRoute);
+app.route("/api/ws", api);
+
+// ─────────── 前端静态资源 ───────────
+const publicDir = resolve(__dirname, "../public");
+try {
+  const indexHtml = readFileSync(resolve(publicDir, "index.html"), "utf8");
+  app.get("/", (c) => c.html(indexHtml));
+} catch {
+  app.get("/", (c) => c.text("workstation public/index.html missing"));
+}
+app.use(
+  "/*",
+  serveStatic({
+    root: publicDir,
+  }),
+);
+
+// ─────────── 启动 ───────────
+const port = config.server.port;
+const host = config.server.host;
+
+console.log(`[workstation] starting on http://${host}:${port}`);
+console.log(`[workstation] ARM baseUrl: ${config.arm.baseUrl}`);
+console.log(`[workstation] LLM: ${config.llm.provider} ${config.llm.defaultModel}`);
+
+serve({
+  fetch: app.fetch,
+  port,
+  hostname: host,
+});

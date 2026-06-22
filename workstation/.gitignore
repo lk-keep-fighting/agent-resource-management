@@ -1,0 +1,15 @@
+node_modules/
+data/
+*.db
+*.db-shm
+*.db-wal
+
+# 敏感配置
+.env
+.env.local
+.env.*.local
+config.yaml
+!config.example.yaml
+
+# 日志
+*.log

@@ -1,0 +1,25 @@
+# ─── Agent Workstation 配置 ───
+# 注意：不要把 apiKey 写进此文件，使用 .env 或环境变量注入
+# 复制为 config.yaml 后保持 apiKey 留空
+
+llm:
+  provider: openai
+  baseUrl: https://open.bigmodel.cn/api/coding/paas/v4
+  apiKey: ""
+  defaultModel: glm-4.5
+
+arm:
+  baseUrl: http://localhost:3000
+  apiKey: ""
+
+server:
+  port: 4000
+  host: 0.0.0.0
+
+db:
+  path: ./data/workstation.db
+
+armCliTool:
+  enabled: true
+  cliPath: arm
+  timeoutMs: 60000
