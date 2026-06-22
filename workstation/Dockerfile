@@ -13,11 +13,12 @@
 FROM nexus.aimstek.cn/xuanwu-factory/common/bun:1.2 AS deps
 WORKDIR /app
 
-# 复制 lockfile + package.json
-COPY package.json bun.lock ./
+# 复制 lockfile + package.json（可选：lockfile 不存在也能 build）
+COPY package.json* bun.lock* ./
 
 # 装全量依赖（含 dev 用于 typecheck；build 阶段会用到）
-RUN bun install --frozen-lockfile
+# 不加 --frozen-lockfile：CI 上 build context 可能不含 bun.lock
+RUN bun install
 
 # ───── Stage 2: build ─────
 # 类型检查 + 准备生产源码
@@ -44,12 +45,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates curl wget tini \
     && rm -rf /var/lib/apt/lists/*
 
-# 复制 package.json + lockfile（只装 prod 依赖）
-COPY --chown=root:root package.json bun.lock ./
+# 复制 package.json + lockfile（只装 prod 依赖，lockfile 可选）
+COPY --chown=root:root package.json* bun.lock* ./
 
 # 装 prod 依赖（用 root，bun 用户没权限 mkdir）
-RUN bun install --frozen-lockfile --production \
-    && chown -R bun:bun /app/node_modules /app/package.json /app/bun.lock
+RUN bun install --production \
+    && chown -R bun:bun /app/node_modules /app/package.json
 
 # 复制构建产物（源码 + public + config 示例）
 COPY --chown=bun:bun --from=build /app/src ./src
