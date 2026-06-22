@@ -131,6 +131,11 @@ async function authenticateByApiKey(request: NextRequest): Promise<User | null> 
 
   if (!token) return null;
 
+  // SSO JWT 路径：跨域客户端用 Authorization: Bearer <sso_token> 调用 ARM 业务 API
+  if (token.includes('.')) {
+    return await authenticateBySSOToken(token);
+  }
+
   const apiKeyHash = hashApiKey(token);
 
   const user = await prisma.user.findUnique({
@@ -156,6 +161,63 @@ async function authenticateByApiKey(request: NextRequest): Promise<User | null> 
     role: user.role,
     createdAt: user.createdAt.toISOString(),
   };
+}
+
+/**
+ * 验证 SSO JWT token 并返回/同步本地 user
+ * 用于跨域客户端（workstation 等）通过 Authorization header 调用 ARM 业务 API
+ */
+async function authenticateBySSOToken(token: string): Promise<User | null> {
+  try {
+    const userInfoResult = await getUserInfo(token);
+    if (!userInfoResult.valid || !userInfoResult.user) {
+      return null;
+    }
+    const u = userInfoResult.user;
+
+    let localUser = await prisma.user.findUnique({
+      where: { ssoUserId: u.id },
+      select: { id: true, name: true, email: true, role: true, createdAt: true },
+    });
+
+    if (!localUser && u.email) {
+      const byEmail = await prisma.user.findUnique({
+        where: { email: u.email },
+        select: { id: true, name: true, email: true, role: true, createdAt: true },
+      });
+      if (byEmail) {
+        localUser = await prisma.user.update({
+          where: { id: byEmail.id },
+          data: { ssoUserId: u.id },
+          select: { id: true, name: true, email: true, role: true, createdAt: true },
+        });
+      }
+    }
+
+    if (!localUser) {
+      localUser = await prisma.user.create({
+        data: {
+          id: crypto.randomUUID(),
+          ssoUserId: u.id,
+          name: u.name || 'SSO User',
+          email: u.email || null,
+        },
+        select: { id: true, name: true, email: true, role: true, createdAt: true },
+      });
+    }
+
+    return {
+      id: localUser.id,
+      name: localUser.name || '',
+      email: localUser.email || '',
+      apiKey: token, // JWT 直接当 apiKey 字段返回
+      role: localUser.role,
+      createdAt: localUser.createdAt.toISOString(),
+    };
+  } catch (err) {
+    console.error('[auth] SSO token auth error:', err);
+    return null;
+  }
 }
 
 export async function authenticate(

@@ -3,42 +3,41 @@ import { ssoClient } from '@/lib/sso'
 
 const appUrl = process.env.NEXT_PUBLIC_APP_URL || ''
 
+/**
+ * SSO 回调处理（OAuth2 / PKCE 流程）
+ *
+ * ARM dashboard 的 SSO 登录由前端 useSSO + /auth/callback 页面处理（client-side）。
+ * 本 API 路由是 OAuth2 标准流程的回调端点（code_verifier + exchangeCode），
+ * 当前 ARM dashboard 不走本端点，本端点保留供标准 OAuth2 流程使用。
+ */
 export async function GET(request: NextRequest) {
   const code = request.nextUrl.searchParams.get('code')
-  const state = request.nextUrl.searchParams.get('state')
   const error = request.nextUrl.searchParams.get('error')
 
   const baseUrl = appUrl || request.url
 
-  console.log('[OAuth Callback] Received callback:', { code: code?.substring(0, 20) + '...', state, error })
-
   if (error) {
-    console.log('[OAuth Callback] Error from SSO:', error)
     return NextResponse.redirect(new URL(`/login?error=${encodeURIComponent(error)}`, baseUrl))
   }
 
   if (!code) {
-    console.log('[OAuth Callback] No code provided')
     return NextResponse.redirect(new URL('/login?error=no_code', baseUrl))
   }
 
   try {
     const codeVerifier = request.cookies.get('code_verifier')?.value
-    console.log('[OAuth Callback] Code verifier present:', !!codeVerifier)
-
     if (!codeVerifier) {
-      console.log('[OAuth Callback] Missing code verifier')
       return NextResponse.redirect(new URL('/login?error=no_verifier', baseUrl))
     }
 
-    console.log('[OAuth Callback] Exchanging code for tokens...')
     const tokens = await ssoClient.exchangeCode(code, codeVerifier)
-    console.log('[OAuth Callback] Token received:', tokens.access_token?.substring(0, 20) + '...')
+    const accessToken = tokens.access_token
+    if (!accessToken) throw new Error('No access_token from exchange')
 
     const redirectUrl = new URL('/skills', baseUrl)
     const response = NextResponse.redirect(redirectUrl)
 
-    response.cookies.set('access_token', tokens.access_token, {
+    response.cookies.set('access_token', accessToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',

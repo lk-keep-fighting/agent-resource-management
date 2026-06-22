@@ -17,7 +17,12 @@ export function SsoAndApiKeyForm() {
   const { loginWithSSO } = useSSO(ssoUrl);
 
   const handleSSOLogin = () => {
-    loginWithSSO(`${window.location.origin}/auth/callback`);
+    const url = new URL(window.location.href);
+    const next = url.searchParams.get("next");
+    const redirectUri = next
+      ? `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`
+      : `${window.location.origin}/auth/callback`;
+    loginWithSSO(redirectUri);
   };
 
   const handleApiKeyLogin = async (e: React.FormEvent) => {
