@@ -8,7 +8,7 @@
     "start": "bun run --env-file=.env src/server.ts",
     "migrate": "bun run --env-file=.env src/db/migrate.ts",
     "mock-arm": "bun run scripts/mock-arm.ts",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "bun --bun tsc --noEmit"
   },
   "dependencies": {
     "@dicebear/collection": "^9.4.2",
