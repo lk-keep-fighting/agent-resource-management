@@ -41,6 +41,7 @@ docker compose up -d
 
 | 变量 | 默认值 | 说明 |
 |------|--------|------|
+| `WS_PUBLIC_ORIGIN` | 自动检测 | Workstation 公网 URL（用于 SSO 回调地址拼接）。**生产环境必须设**：`https://ws.example.com`。不设时从请求头 `X-Forwarded-Proto` + `Host` 自动检测（反代场景可用），否则 fallback `http://localhost:4000` |
 | `WS_PORT` | `4000` | HTTP 端口 |
 | `WS_HOST` | `0.0.0.0` | 监听地址 |
 | `WS_DB_PATH` | `/app/data/workstation.db` | SQLite 文件路径 |

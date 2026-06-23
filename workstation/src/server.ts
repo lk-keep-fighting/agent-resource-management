@@ -62,7 +62,18 @@ app.get("/api/ws/config/sso", (c) => {
   //   → ARM dashboard 走 useSSO 跳 SSO → SSO 回跳 /auth/callback?next=WS_CALLBACK&sso_token=...
   //   → ARM callback page 验 token + 跳 <next>#sso=...
   //   → workstation 解析 hash，存 {token, user} 跳首页
-  const wsOrigin = process.env.WS_PUBLIC_ORIGIN || "http://localhost:4000";
+  //
+  // WS_PUBLIC_ORIGIN 优先级（决定 SSO 回调地址的 host）：
+  //   1. WS_PUBLIC_ORIGIN 环境变量（生产部署强制设置）
+  //   2. 从当前请求自动检测（X-Forwarded-Proto + Host，反向代理场景）
+  //   3. 兜底 http://localhost:4000（仅本地开发）
+  const envOrigin = process.env.WS_PUBLIC_ORIGIN;
+  const fwdProto = c.req.header("x-forwarded-proto");
+  const fwdHost = c.req.header("x-forwarded-host") ?? c.req.header("host");
+  const detectedOrigin = fwdProto && fwdHost
+    ? `${fwdProto}://${fwdHost}`
+    : `${new URL(c.req.url).protocol}//${fwdHost ?? "localhost:4000"}`;
+  const wsOrigin = envOrigin || detectedOrigin;
   const wsCallback = `${wsOrigin}/#/auth/sso-callback`;
   const armLogin = `${config.arm.baseUrl.replace(/\/+$/, "")}/login?next=${encodeURIComponent(wsCallback)}`;
 
@@ -74,6 +85,8 @@ app.get("/api/ws/config/sso", (c) => {
       wsCallback,
       // 浏览器跳这个 URL 就触发 SSO（经 ARM dashboard 中转）
       loginUrl: armLogin,
+      // 调试用：当前生效的 origin 来源
+      originSource: envOrigin ? "env" : (fwdHost ? "request" : "fallback"),
     },
     msg: "ok",
   });
