@@ -1,19 +1,22 @@
 # ──────────────────────────────────────────────────────────
 # Agent Workstation Dockerfile
 #
-# 镜像：基于内网 nexus oven/bun 镜像
-# 入口：bun src/server.ts
-# 健康：GET /health
-# 数据：/app/data（挂载卷持久化）
+# 假设 CI build context 是仓库根目录（包含 workstation/ 子目录）。
+# 所有 workstation 文件都从 ./workstation/ 显式复制到 /app/。
 # ──────────────────────────────────────────────────────────
 
 # ───── Stage 1: prepare ─────
-# 准备依赖 + 类型检查（合并 deps 和 build，避免分阶段 COPY 找不到文件）
 FROM nexus.aimstek.cn/xuanwu-factory/common/bun:1.2 AS prepare
 WORKDIR /app
 
-# 一次性复制整个 build context（.dockerignore 已排除 node_modules/data/.env 等）
-COPY . .
+# 从 build context 的 workstation/ 子目录复制（CI 场景）
+# 本地 build 也兼容（相对路径）
+COPY workstation/package.json ./
+COPY workstation/tsconfig.json ./
+COPY workstation/bun.lock* ./
+COPY workstation/src ./src
+COPY workstation/public ./public
+COPY workstation/config.example.yaml ./
 
 # 装全量依赖（含 dev 用于 typecheck）
 # 不加 --frozen-lockfile：CI build context 可能不含 bun.lock
@@ -23,23 +26,22 @@ RUN bun install
 RUN bun run typecheck
 
 # ───── Stage 2: runtime ─────
-# 精简运行镜像
 FROM nexus.aimstek.cn/xuanwu-factory/common/bun:1.2-slim AS runtime
 WORKDIR /app
 
-# 系统工具（健康检查用 wget + curl）
+# 系统工具
 USER root
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates curl wget tini \
     && rm -rf /var/lib/apt/lists/*
 
-# 从 prepare 阶段复制需要的产物
+# 从 prepare 阶段显式 COPY 需要的产物
 COPY --chown=bun:bun --from=prepare /app/node_modules /app/node_modules
 COPY --chown=bun:bun --from=prepare /app/src /app/src
 COPY --chown=bun:bun --from=prepare /app/public /app/public
 COPY --chown=bun:bun --from=prepare /app/package.json /app/package.json
 
-# 数据目录（运行时挂卷或本地持久化）
+# 数据目录
 RUN mkdir -p /app/data && chown -R bun:bun /app/data
 
 USER bun
@@ -59,7 +61,6 @@ ENV NODE_ENV=production \
 
 EXPOSE 4000
 
-# tini 负责僵尸进程回收 + 信号转发
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
     CMD wget --no-verbose --tries=1 --spider http://127.0.0.1:${WS_PORT}/health || exit 1
 
