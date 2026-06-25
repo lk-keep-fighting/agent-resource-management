@@ -557,9 +557,6 @@ function currentPath() {
 }
 
 async function render() {
-  // 路由切换 → 强清 hover tooltip（防止"跳页还显示"的 bug）
-  if (typeof hideHoverTooltip === "function") hideHoverTooltip();
-
   const path = currentPath();
   // 找匹配的路由，提取 public 标记
   const matched = routes.find((r) => path.match(r.path));
@@ -723,12 +720,10 @@ function renderAgentCard(a) {
   const fs = a.feedbackSummary;
   const hasRating = fs && fs.total > 0;
   const avg = hasRating ? fs.avgRating : null;
-  const card = el("div", {
+  return el("div", {
     class: "card agent-card" + (avg != null ? ` rating-${ratingTier(avg)}` : ""),
     onclick: () => navigate(`/agents/${a.id}`),
     "data-agent-id": a.id,
-    onmouseenter: () => scheduleHoverTooltip(a, card),
-    onmouseleave: () => scheduleHoverTooltipHide(),
   }, [
     el("div", { style: { display: "flex", alignItems: "center", gap: "10px", marginBottom: "6px" } }, [
       renderAgentAvatar(a, 32),
@@ -750,7 +745,6 @@ function renderAgentCard(a) {
       el("span", { class: "muted", style: { fontSize: "12px" } }, "暂无评分"),
     ]),
   ]);
-  return card;
 }
 
 /** 根据平均分给卡片左 border 染色：≥4 绿、3-4 黄、<3 红 */
@@ -758,113 +752,6 @@ function ratingTier(avg) {
   if (avg >= 4) return "high";
   if (avg >= 3) return "mid";
   return "low";
-}
-
-/**
- * Hover tooltip（极简版，只显示评分聚合）
- *
- * 设计原则：
- * - 轻量：只显示 avg + 👍/👎 + 总数，不显示评论内容（评论在详情页里有完整空间）
- * - 防误触：500ms 延迟显示
- * - 防卡住：路由切换时（render 重入）强清；移到 tooltip 上时不消失
- * - 防 race：连续 hover 多卡用 grace period + 双向 clearTimeout
- */
-let _hoverTip = null;
-let _hoverTipShowTimer = null;
-let _hoverTipHideTimer = null;
-
-const HOVER_SHOW_DELAY_MS = 500;
-const HOVER_HIDE_GRACE_MS = 200;
-
-function getHoverTip() {
-  if (_hoverTip) return _hoverTip;
-  _hoverTip = el("div", { class: "hover-tip", id: "agent-hover-tip" });
-  // 自身接管 hover：cursor 移到 tooltip 上时清掉 hide 计时器
-  _hoverTip.addEventListener("mouseenter", () => {
-    clearTimeout(_hoverTipHideTimer);
-  });
-  _hoverTip.addEventListener("mouseleave", () => {
-    hideHoverTooltip();
-  });
-  document.body.appendChild(_hoverTip);
-  return _hoverTip;
-}
-
-function scheduleHoverTooltip(a, cardEl) {
-  // 任何 enter 都把 hide 计时器清掉（grace period 没用上就跳过 hide）
-  clearTimeout(_hoverTipHideTimer);
-  clearTimeout(_hoverTipShowTimer);
-  _hoverTipShowTimer = setTimeout(() => {
-    const tip = getHoverTip();
-    renderHoverTip(tip, a);
-    positionHoverTip(cardEl);
-    tip.style.display = "block";
-  }, HOVER_SHOW_DELAY_MS);
-}
-
-function scheduleHoverTooltipHide() {
-  // grace period：允许 cursor 从卡片移到 tooltip 上（不闪现消失）
-  clearTimeout(_hoverTipHideTimer);
-  _hoverTipHideTimer = setTimeout(() => {
-    hideHoverTooltip();
-  }, HOVER_HIDE_GRACE_MS);
-}
-
-function hideHoverTooltip() {
-  clearTimeout(_hoverTipShowTimer);
-  clearTimeout(_hoverTipHideTimer);
-  if (_hoverTip) _hoverTip.style.display = "none";
-}
-
-function renderHoverTip(tip, a) {
-  tip.innerHTML = "";
-  const fs = a.feedbackSummary;
-  const hasRating = fs && fs.total > 0;
-  tip.appendChild(el("div", { class: "hover-tip-head" }, [
-    el("div", { class: "hover-tip-title" }, a.name),
-    hasRating
-      ? el("div", { class: "hover-tip-sub" },
-          `★ ${fs.avgRating} · ${fs.total} 条反馈`)
-      : el("div", { class: "hover-tip-sub muted" }, "暂无反馈"),
-  ]));
-  if (hasRating) {
-    tip.appendChild(el("div", { class: "hover-tip-summary" }, [
-      el("span", { class: "hover-tip-good" }, `👍 有用 ${fs.helpfulCount || 0}`),
-      el("span", { class: "hover-tip-bad" }, `👎 没用 ${fs.unhelpfulCount || 0}`),
-    ]));
-  } else {
-    tip.appendChild(el("div", { class: "hover-tip-empty muted" },
-      "还没有评分"));
-  }
-  tip.appendChild(el("div", { class: "hover-tip-foot" },
-    "点击卡片查看完整反馈流 →"));
-}
-
-function positionHoverTip(cardEl) {
-  const tip = getHoverTip();
-  const rect = cardEl.getBoundingClientRect();
-  const tipW = 220;
-  const tipH = tip.offsetHeight || 100;
-  // 优先在卡片右侧显示；右侧空间不够则放左侧
-  const spaceRight = window.innerWidth - rect.right;
-  const spaceLeft = rect.left;
-  let left;
-  if (spaceRight >= tipW + 12) {
-    left = rect.right + 8;
-  } else if (spaceLeft >= tipW + 12) {
-    left = rect.left - tipW - 8;
-  } else {
-    // 都没空间就放卡片下方
-    left = Math.max(8, Math.min(window.innerWidth - tipW - 8, rect.left));
-  }
-  let top = rect.top;
-  // 下方空间不够则上挪
-  if (top + tipH > window.innerHeight - 8) {
-    top = Math.max(8, window.innerHeight - tipH - 8);
-  }
-  tip.style.position = "fixed";
-  tip.style.left = left + "px";
-  tip.style.top = top + "px";
 }
 
 async function renderAgents() {

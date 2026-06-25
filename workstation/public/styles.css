@@ -449,46 +449,6 @@ textarea { resize: vertical; min-height: 60px; }
 .card-rating .rating-good  { color: #00b42a; }
 .card-rating .rating-bad   { color: #f53f3f; }
 
-/* Agent 列表 hover tooltip —— 极简版，只显示评分聚合 */
-.hover-tip {
-  display: none;
-  width: 220px;
-  background: #fff;
-  border: 1px solid #e5e6eb;
-  border-radius: 8px;
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.12);
-  z-index: 1100;
-  padding: 0;
-  overflow: hidden;
-  font-size: 13px;
-  pointer-events: auto;  /* 自身可接收 hover（让 cursor 移上来时不消失） */
-}
-.hover-tip-head {
-  padding: 10px 12px;
-  background: #fafbfc;
-  border-bottom: 1px solid #f2f3f5;
-}
-.hover-tip-title { font-weight: 600; color: #1f2329; margin-bottom: 2px; }
-.hover-tip-sub { font-size: 12px; }
-.hover-tip-summary {
-  display: flex;
-  gap: 12px;
-  padding: 10px 12px;
-  font-size: 13px;
-}
-.hover-tip-good { color: #00b42a; }
-.hover-tip-bad  { color: #f53f3f; }
-.hover-tip-empty { padding: 10px 12px; font-size: 12px; }
-.hover-tip-foot {
-  padding: 8px 12px;
-  font-size: 11px;
-  background: #fafbfc;
-  border-top: 1px solid #f2f3f5;
-  text-align: center;
-  color: #165dff;
-  cursor: pointer;
-}
-
 /* Agent 详情页：完整反馈流 */
 .fb-summary {
   display: flex;
