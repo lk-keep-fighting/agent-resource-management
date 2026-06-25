@@ -976,19 +976,20 @@ async function renderWorkspaceChat(workspaceId) {
   ta.addEventListener("input", autoresize);
   inputArea.appendChild(ta);
 
-  // 按钮组（垂直堆叠在文本框右侧）
+  // 按钮组（水平排列，紧凑）
   const btnGroup = el("div", { class: "chat-input-btns" });
   inputArea.appendChild(btnGroup);
 
-  // 上下文操作按钮（🧠）—— 弹出"总结 / 清空"下拉菜单
+  // 上下文操作按钮（···）—— 弹出"总结 / 清空"下拉菜单
   const ctxMenuBtn = el("button", {
     class: "ctx-btn",
-    title: "上下文管理（总结为知识 / 清空）",
+    title: "更多（总结为知识 / 清空）",
+    "aria-label": "更多操作",
     onclick: (e) => {
       e.stopPropagation();
       toggleContextMenu();
     },
-  }, "🧠");
+  }, "···");
   btnGroup.appendChild(ctxMenuBtn);
 
   // 发送 / 停止按钮 —— 两态切换：流式时变红色 ⏹ 停止
@@ -1135,9 +1136,27 @@ async function renderWorkspaceChat(workspaceId) {
     if (!m || !btn) return;
     if (m.style.display === "none" || !m.style.display) {
       const rect = btn.getBoundingClientRect();
+      // 先临时显示（visibility:hidden 不影响布局）测出实际尺寸
       m.style.position = "fixed";
-      m.style.right = (window.innerWidth - rect.right) + "px";
-      m.style.top = (rect.bottom + 6) + "px";
+      m.style.visibility = "hidden";
+      m.style.display = "block";
+      const menuH = m.offsetHeight;
+      const menuW = m.offsetWidth;
+      m.style.visibility = "";
+
+      // 智能选方向：优先向下；下方空间不够且上方更多 → 向上
+      const MARGIN = 6;
+      const spaceBelow = window.innerHeight - rect.bottom - MARGIN;
+      const spaceAbove = rect.top - MARGIN;
+      const showAbove = spaceBelow < menuH && spaceAbove > spaceBelow;
+
+      // right 对齐按钮右边缘；左侧溢出时左挪
+      const wantedRight = window.innerWidth - rect.right;
+      const maxRight = window.innerWidth - menuW - 8;
+      m.style.right = Math.min(wantedRight, maxRight) + "px";
+      m.style.top = (showAbove
+        ? rect.top - menuH - MARGIN
+        : rect.bottom + MARGIN) + "px";
       m.style.display = "block";
     } else {
       m.style.display = "none";

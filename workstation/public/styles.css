@@ -294,14 +294,13 @@ textarea { resize: vertical; min-height: 60px; }
 
 .chat-input-btns {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   gap: 6px;
-  align-items: stretch;
+  align-items: flex-end;
   flex-shrink: 0;
 }
 .chat-input-btns button {
   height: 36px;
-  min-width: 80px;
   padding: 0 14px;
   font-weight: 500;
   display: inline-flex;
@@ -310,17 +309,25 @@ textarea { resize: vertical; min-height: 60px; }
   gap: 4px;
 }
 .chat-input-btns .ctx-btn {
-  height: 36px;
-  min-width: 36px;
-  width: 36px;
+  width: 32px;
+  min-width: 32px;
   padding: 0;
-  font-size: 16px;
-  background: #f7f8fa;
+  font-size: 18px;
+  line-height: 1;
+  letter-spacing: 1px;
+  color: #86909c;
+  background: transparent;
+  border-color: transparent;
 }
-.chat-input-btns .ctx-btn:hover:not(:disabled) { background: #e8f4ff; }
-.chat-input-btns .ctx-btn:disabled { cursor: not-allowed; }
+.chat-input-btns .ctx-btn:hover:not(:disabled) {
+  background: #f2f3f5;
+  color: #1f2329;
+  border-color: #dcdfe6;
+}
+.chat-input-btns .ctx-btn:disabled { cursor: not-allowed; opacity: 0.4; }
 
 /* 发送 / 停止 两态切换 */
+.chat-input-btns #send-btn { min-width: 72px; }
 .chat-input-btns #send-btn.primary { background: #165dff; color: #fff; border-color: #165dff; }
 .chat-input-btns #send-btn.primary:hover { background: #0e42d2; }
 .chat-input-btns #send-btn.danger {
@@ -336,13 +343,15 @@ textarea { resize: vertical; min-height: 60px; }
 .ctx-menu {
   display: none;
   min-width: 260px;
+  max-width: 320px;
+  max-height: calc(100vh - 80px);
+  overflow-y: auto;
   background: #fff;
   border: 1px solid #e5e6eb;
   border-radius: 8px;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
   z-index: 1000;
   padding: 4px;
-  overflow: hidden;
 }
 .ctx-menu-item {
   display: block;
