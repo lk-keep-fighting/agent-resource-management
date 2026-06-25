@@ -449,10 +449,10 @@ textarea { resize: vertical; min-height: 60px; }
 .card-rating .rating-good  { color: #00b42a; }
 .card-rating .rating-bad   { color: #f53f3f; }
 
-/* Agent 列表 hover tooltip —— 卡片外悬浮显示最近 1-2 条反馈评论 */
+/* Agent 列表 hover tooltip —— 极简版，只显示评分聚合 */
 .hover-tip {
   display: none;
-  width: 280px;
+  width: 220px;
   background: #fff;
   border: 1px solid #e5e6eb;
   border-radius: 8px;
@@ -461,6 +461,7 @@ textarea { resize: vertical; min-height: 60px; }
   padding: 0;
   overflow: hidden;
   font-size: 13px;
+  pointer-events: auto;  /* 自身可接收 hover（让 cursor 移上来时不消失） */
 }
 .hover-tip-head {
   padding: 10px 12px;
@@ -469,33 +470,23 @@ textarea { resize: vertical; min-height: 60px; }
 }
 .hover-tip-title { font-weight: 600; color: #1f2329; margin-bottom: 2px; }
 .hover-tip-sub { font-size: 12px; }
-.hover-tip-empty { padding: 10px 12px; font-size: 12px; }
-.hover-tip-item {
-  padding: 10px 12px;
-  border-bottom: 1px solid #f7f8fa;
-}
-.hover-tip-item:last-of-type { border-bottom: none; }
-.hover-tip-item-meta {
+.hover-tip-summary {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 4px;
+  gap: 12px;
+  padding: 10px 12px;
+  font-size: 13px;
 }
-.hover-tip-stars { color: #ff7d00; font-size: 12px; letter-spacing: -1px; }
-.hover-tip-comment {
-  color: #1f2329;
-  line-height: 1.5;
-  display: -webkit-box;
-  -webkit-line-clamp: 3;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
+.hover-tip-good { color: #00b42a; }
+.hover-tip-bad  { color: #f53f3f; }
+.hover-tip-empty { padding: 10px 12px; font-size: 12px; }
 .hover-tip-foot {
   padding: 8px 12px;
   font-size: 11px;
   background: #fafbfc;
   border-top: 1px solid #f2f3f5;
   text-align: center;
+  color: #165dff;
+  cursor: pointer;
 }
 
 /* Agent 详情页：完整反馈流 */

@@ -557,6 +557,9 @@ function currentPath() {
 }
 
 async function render() {
+  // 路由切换 → 强清 hover tooltip（防止"跳页还显示"的 bug）
+  if (typeof hideHoverTooltip === "function") hideHoverTooltip();
+
   const path = currentPath();
   // 找匹配的路由，提取 public 标记
   const matched = routes.find((r) => path.match(r.path));
@@ -725,7 +728,7 @@ function renderAgentCard(a) {
     onclick: () => navigate(`/agents/${a.id}`),
     "data-agent-id": a.id,
     onmouseenter: () => scheduleHoverTooltip(a, card),
-    onmouseleave: () => hideHoverTooltip(),
+    onmouseleave: () => scheduleHoverTooltipHide(),
   }, [
     el("div", { style: { display: "flex", alignItems: "center", gap: "10px", marginBottom: "6px" } }, [
       renderAgentAvatar(a, 32),
@@ -757,81 +760,91 @@ function ratingTier(avg) {
   return "low";
 }
 
-/** hover tooltip 全局单例（避免每次重渲染都新建） */
+/**
+ * Hover tooltip（极简版，只显示评分聚合）
+ *
+ * 设计原则：
+ * - 轻量：只显示 avg + 👍/👎 + 总数，不显示评论内容（评论在详情页里有完整空间）
+ * - 防误触：500ms 延迟显示
+ * - 防卡住：路由切换时（render 重入）强清；移到 tooltip 上时不消失
+ * - 防 race：连续 hover 多卡用 grace period + 双向 clearTimeout
+ */
 let _hoverTip = null;
-let _hoverTipTimer = null;
-let _hoverTipCache = new Map();  // agentId -> items[]
+let _hoverTipShowTimer = null;
+let _hoverTipHideTimer = null;
+
+const HOVER_SHOW_DELAY_MS = 500;
+const HOVER_HIDE_GRACE_MS = 200;
 
 function getHoverTip() {
   if (_hoverTip) return _hoverTip;
   _hoverTip = el("div", { class: "hover-tip", id: "agent-hover-tip" });
+  // 自身接管 hover：cursor 移到 tooltip 上时清掉 hide 计时器
+  _hoverTip.addEventListener("mouseenter", () => {
+    clearTimeout(_hoverTipHideTimer);
+  });
+  _hoverTip.addEventListener("mouseleave", () => {
+    hideHoverTooltip();
+  });
   document.body.appendChild(_hoverTip);
   return _hoverTip;
 }
 
 function scheduleHoverTooltip(a, cardEl) {
-  // 500ms 防误触：用户只是划过，不该加载
-  clearTimeout(_hoverTipTimer);
-  _hoverTipTimer = setTimeout(async () => {
+  // 任何 enter 都把 hide 计时器清掉（grace period 没用上就跳过 hide）
+  clearTimeout(_hoverTipHideTimer);
+  clearTimeout(_hoverTipShowTimer);
+  _hoverTipShowTimer = setTimeout(() => {
     const tip = getHoverTip();
-    // 缓存命中则直接渲染
-    let items = _hoverTipCache.get(a.id);
-    if (!items) {
-      tip.innerHTML = '<div class="muted" style="padding:8px 12px;font-size:12px;">加载反馈…</div>';
-      positionHoverTip(cardEl);
-      tip.style.display = "block";
-      try {
-        const data = await api(`/agents/${encodeURIComponent(a.id)}/feedback?limit=2`);
-        items = (data?.items ?? []).filter((it) => it.comment);
-        _hoverTipCache.set(a.id, items);
-      } catch (e) {
-        tip.innerHTML = `<div class="muted" style="padding:8px 12px;font-size:12px;">加载失败: ${escapeHtml(e.message)}</div>`;
-        return;
-      }
-    }
-    renderHoverTip(tip, a, items);
+    renderHoverTip(tip, a);
     positionHoverTip(cardEl);
     tip.style.display = "block";
-  }, 500);
+  }, HOVER_SHOW_DELAY_MS);
+}
+
+function scheduleHoverTooltipHide() {
+  // grace period：允许 cursor 从卡片移到 tooltip 上（不闪现消失）
+  clearTimeout(_hoverTipHideTimer);
+  _hoverTipHideTimer = setTimeout(() => {
+    hideHoverTooltip();
+  }, HOVER_HIDE_GRACE_MS);
 }
 
 function hideHoverTooltip() {
-  clearTimeout(_hoverTipTimer);
+  clearTimeout(_hoverTipShowTimer);
+  clearTimeout(_hoverTipHideTimer);
   if (_hoverTip) _hoverTip.style.display = "none";
 }
 
-function renderHoverTip(tip, a, items) {
+function renderHoverTip(tip, a) {
   tip.innerHTML = "";
+  const fs = a.feedbackSummary;
+  const hasRating = fs && fs.total > 0;
   tip.appendChild(el("div", { class: "hover-tip-head" }, [
     el("div", { class: "hover-tip-title" }, a.name),
-    a.feedbackSummary?.total > 0
+    hasRating
       ? el("div", { class: "hover-tip-sub" },
-          `★ ${a.feedbackSummary.avgRating} · ${a.feedbackSummary.total} 条反馈`)
+          `★ ${fs.avgRating} · ${fs.total} 条反馈`)
       : el("div", { class: "hover-tip-sub muted" }, "暂无反馈"),
   ]));
-  if (items.length === 0) {
-    tip.appendChild(el("div", { class: "hover-tip-empty muted" },
-      "还没有人写过评论"));
+  if (hasRating) {
+    tip.appendChild(el("div", { class: "hover-tip-summary" }, [
+      el("span", { class: "hover-tip-good" }, `👍 有用 ${fs.helpfulCount || 0}`),
+      el("span", { class: "hover-tip-bad" }, `👎 没用 ${fs.unhelpfulCount || 0}`),
+    ]));
   } else {
-    for (const it of items) {
-      tip.appendChild(el("div", { class: "hover-tip-item" }, [
-        el("div", { class: "hover-tip-item-meta" }, [
-          el("span", { class: "hover-tip-stars" }, "★".repeat(it.rating || 0) + "☆".repeat(5 - (it.rating || 0))),
-          el("span", { class: "muted" }, fmtTime(it.createdAt ? new Date(it.createdAt).getTime() : null)),
-        ]),
-        el("div", { class: "hover-tip-comment" }, it.comment),
-      ]));
-    }
+    tip.appendChild(el("div", { class: "hover-tip-empty muted" },
+      "还没有评分"));
   }
-  tip.appendChild(el("div", { class: "hover-tip-foot muted" },
+  tip.appendChild(el("div", { class: "hover-tip-foot" },
     "点击卡片查看完整反馈流 →"));
 }
 
 function positionHoverTip(cardEl) {
   const tip = getHoverTip();
   const rect = cardEl.getBoundingClientRect();
-  const tipW = 280;
-  const tipH = tip.offsetHeight || 120;
+  const tipW = 220;
+  const tipH = tip.offsetHeight || 100;
   // 优先在卡片右侧显示；右侧空间不够则放左侧
   const spaceRight = window.innerWidth - rect.right;
   const spaceLeft = rect.left;
