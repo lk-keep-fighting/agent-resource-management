@@ -556,6 +556,87 @@ textarea { resize: vertical; min-height: 60px; }
 .fb-tag-good { background: #e8ffea; color: #00b42a; }
 .fb-tag-bad  { background: #fff1f0; color: #f53f3f; }
 
+/* Agent 编辑页：双栏布局 + 右侧反馈面板 */
+.edit-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(320px, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+@media (max-width: 900px) {
+  .edit-layout { grid-template-columns: 1fr; }
+}
+.edit-form-col { min-width: 0; }
+.edit-side-col { min-width: 0; }
+
+.edit-fb-panel {
+  position: sticky;
+  top: 72px;
+  max-height: calc(100vh - 88px);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.edit-fb-critical {
+  background: #fffbe6;
+  border: 1px solid #ffe58f;
+  border-radius: 8px;
+  padding: 10px 12px 12px;
+}
+.edit-fb-critical-head {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 8px;
+  font-size: 13px;
+}
+.edit-fb-critical-title {
+  font-weight: 600;
+  color: #d46b08;
+}
+.edit-fb-critical .fb-list { gap: 6px; }
+.edit-fb-critical .fb-item {
+  background: #fff;
+  border-color: #ffe58f;
+  border-left: 3px solid #ff7d00;
+  padding: 10px 12px;
+}
+.edit-fb-critical .fb-item-head { margin-bottom: 4px; }
+.edit-fb-critical .fb-item-comment { font-size: 13px; }
+.fb-item-critical { /* 单独使用时的 fallback 样式 */
+  border-left: 3px solid #ff7d00 !important;
+}
+
+.edit-fb-full {
+  background: #fff;
+  border: 1px solid #f2f3f5;
+  border-radius: 8px;
+  padding: 12px;
+}
+.edit-fb-full-head {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 10px;
+  font-size: 13px;
+}
+.edit-fb-controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 10px;
+  font-size: 12.5px;
+  flex-wrap: wrap;
+}
+.edit-fb-controls label { display: inline-flex; align-items: center; gap: 4px; }
+.edit-fb-controls select {
+  width: auto;
+  padding: 2px 6px;
+  font-size: 12.5px;
+}
+
 .divider { border-top: 1px dashed #e5e6eb; margin: 16px 0; }
 .muted { color: #86909c; }
 .spinner {

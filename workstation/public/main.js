@@ -981,7 +981,7 @@ async function renderAgentDetail(agentId) {
 }
 
 /** 渲染单条 Agent 反馈 */
-function renderAgentFeedbackItem(it) {
+function renderAgentFeedbackItem(it, opts = {}) {
   const stars = it.rating
     ? "★".repeat(it.rating) + "☆".repeat(5 - it.rating)
     : "—";
@@ -990,7 +990,7 @@ function renderAgentFeedbackItem(it) {
     : it.isHelpful === false
     ? el("span", { class: "fb-tag fb-tag-bad" }, "👎 没用")
     : null;
-  return el("div", { class: "fb-item" }, [
+  return el("div", { class: "fb-item" + (opts.critical ? " fb-item-critical" : "") }, [
     el("div", { class: "fb-item-head" }, [
       el("span", { class: "fb-item-stars" }, stars),
       helpfulIcon,
@@ -2289,7 +2289,6 @@ async function renderEditAgent(id) {
     wrap.appendChild(container);
     return wrap;
   }
-  const feedbacks = detail.recentFeedbacks || [];
 
   let prompt = detail.prompt;
   let description = detail.description;
@@ -2298,6 +2297,11 @@ async function renderEditAgent(id) {
   container.appendChild(el("h2", {}, `✏️ 编辑 ${detail.name}`));
   container.appendChild(el("div", { class: "muted", style: { marginBottom: "16px" } },
     `当前版本 v${detail.version}。修改 prompt 后保存会自动递增 patch 版本号（如 1.0.0 → 1.0.1）`));
+
+  // 双栏布局：左侧编辑表单，右侧 sticky 反馈面板
+  const layout = el("div", { class: "edit-layout" });
+  const formCol = el("div", { class: "edit-form-col" });
+  const sideCol = el("div", { class: "edit-side-col" });
 
   const form = el("div", { class: "card" });
   form.appendChild(el("div", { class: "form-row" }, [
@@ -2333,14 +2337,197 @@ async function renderEditAgent(id) {
     } }, "保存（自动 +0.0.1）"),
     el("button", { onclick: () => navigate("/me/authored") }, "取消"),
   ]));
-  container.appendChild(form);
+  formCol.appendChild(form);
 
-  // 最近反馈
-  container.appendChild(el("div", { class: "section" }, [
-    el("h2", { style: { fontSize: "16px" } }, `📝 最近反馈 (${feedbacks.length})`),
-    renderFeedbackList(feedbacks),
-  ]));
+  // 右侧反馈面板：summary + 重点问题 + 全部 + 排序/筛选
+  sideCol.appendChild(renderEditFeedbackPanel(id));
+
+  layout.appendChild(formCol);
+  layout.appendChild(sideCol);
+  container.appendChild(layout);
+
   wrap.appendChild(container);
+  return wrap;
+}
+
+/**
+ * 编辑页右侧 sticky 反馈面板：
+ * - 顶部 summary（avg + 👍/👎 + 趋势）
+ * - 重点问题：rating ≤ 3 或 👎 的反馈（置顶高亮）
+ * - 全部反馈：支持按时间 / 评分排序，全部 / 仅差评筛选
+ */
+function renderEditFeedbackPanel(agentId) {
+  const panel = el("div", { class: "edit-fb-panel" });
+  panel.appendChild(el("div", { class: "muted", style: { padding: "20px", textAlign: "center" } }, "加载反馈中…"));
+
+  // 异步加载并填充
+  api(`/agents/${encodeURIComponent(agentId)}/feedback?limit=100`)
+    .then((fb) => {
+      panel.innerHTML = "";
+      const items = fb?.items ?? [];
+      const summary = {
+        total: fb?.total ?? items.length,
+        avgRating: fb?.avgRating,
+        helpfulCount: fb?.helpfulCount ?? items.filter((i) => i.isHelpful === true).length,
+        unhelpfulCount: fb?.unhelpfulCount ?? items.filter((i) => i.isHelpful === false).length,
+      };
+      panel.appendChild(buildEditFbSummary(summary, items));
+      panel.appendChild(buildEditFbCritical(items));
+      panel.appendChild(buildEditFbFullList(items));
+    })
+    .catch((e) => {
+      panel.innerHTML = "";
+      panel.appendChild(el("div", { class: "empty", style: { padding: "20px" } },
+        `反馈加载失败: ${e.message}`));
+    });
+
+  return panel;
+}
+
+/** 评分 summary 块（大字号 avg + 数量 + 趋势） */
+function buildEditFbSummary(summary, items) {
+  const wrap = el("div", { class: "fb-summary" });
+  if (summary.total === 0) {
+    wrap.appendChild(el("div", { class: "fb-empty muted" },
+      "📊 还没有反馈 —— 邀请用户试用以收集数据"));
+    return wrap;
+  }
+  const avg = summary.avgRating ?? 0;
+  const tier = ratingTier(avg);
+  wrap.appendChild(el("div", { class: "fb-summary-score" }, [
+    el("div", { class: `fb-avg tier-${tier}` }, avg.toFixed(1)),
+    el("div", { class: "fb-stars" },
+      "★".repeat(Math.round(avg)) + "☆".repeat(5 - Math.round(avg))),
+  ]));
+  wrap.appendChild(el("div", { class: "fb-breakdown" }, [
+    el("div", {}, `${summary.total} 条反馈`),
+    summary.helpfulCount > 0
+      ? el("div", { class: "fb-good" }, `👍 有用 ${summary.helpfulCount}`)
+      : null,
+    summary.unhelpfulCount > 0
+      ? el("div", { class: "fb-bad" }, `👎 没用 ${summary.unhelpfulCount}`)
+      : null,
+    computeEditFbTrend(items) ?
+      el("div", { class: "muted", style: { fontSize: "12px", marginTop: "4px" } }, computeEditFbTrend(items))
+      : null,
+  ]));
+  return wrap;
+}
+
+/**
+ * 简单趋势：把反馈按时间二分（最近一半 vs 之前一半），对比均分
+ * - 上升 → "近期均分上升 ↑"
+ * - 下降 → "近期均分下降 ↓"
+ * - 否则 → "评分稳定 —"
+ */
+function computeEditFbTrend(items) {
+  if (items.length < 4) return null;  // 数据太少不显示
+  const sorted = [...items].sort((a, b) =>
+    new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  const mid = Math.floor(sorted.length / 2);
+  const recent = sorted.slice(0, mid);
+  const older = sorted.slice(mid);
+  const avg = (arr) => {
+    const rs = arr.map((i) => i.rating).filter((r) => typeof r === "number");
+    return rs.length ? rs.reduce((a, b) => a + b, 0) / rs.length : 0;
+  };
+  const recentAvg = avg(recent);
+  const olderAvg = avg(older);
+  const diff = recentAvg - olderAvg;
+  if (Math.abs(diff) < 0.3) return "📈 近期评分稳定 —";
+  return diff > 0
+    ? `📈 近期均分上升 ↑（${olderAvg.toFixed(1)} → ${recentAvg.toFixed(1)}）`
+    : `📉 近期均分下降 ↓（${olderAvg.toFixed(1)} → ${recentAvg.toFixed(1)}）`;
+}
+
+/** 重点问题区：rating ≤ 3 或 👎 的反馈 */
+function buildEditFbCritical(items) {
+  const critical = items.filter((i) =>
+    (typeof i.rating === "number" && i.rating <= 3) || i.isHelpful === false
+  );
+  if (critical.length === 0) return el("div", {});  // 没差评就不渲染该区
+
+  const wrap = el("div", { class: "edit-fb-critical" });
+  wrap.appendChild(el("div", { class: "edit-fb-critical-head" }, [
+    el("span", { class: "edit-fb-critical-title" }, "⚠️ 需关注"),
+    el("span", { class: "muted" }, ` (${critical.length} 条差评 / 标记没用)`),
+  ]));
+  const list = el("div", { class: "fb-list" });
+  for (const it of critical.slice(0, 10)) {
+    list.appendChild(renderAgentFeedbackItem(it, { critical: true }));
+  }
+  if (critical.length > 10) {
+    list.appendChild(el("div", { class: "muted", style: { textAlign: "center", padding: "8px" } },
+      `还有 ${critical.length - 10} 条差评，请在下方"仅差评"筛选中查看`));
+  }
+  wrap.appendChild(list);
+  return wrap;
+}
+
+/** 全部反馈：带排序/筛选 */
+function buildEditFbFullList(items) {
+  const wrap = el("div", { class: "edit-fb-full" });
+  const head = el("div", { class: "edit-fb-full-head" }, [
+    el("span", { style: { fontWeight: 600 } }, "💬 全部反馈"),
+    el("span", { class: "muted" }, ` (${items.length})`),
+  ]);
+  wrap.appendChild(head);
+
+  if (items.length === 0) {
+    wrap.appendChild(el("div", { class: "empty", style: { padding: "20px" } },
+      "暂无反馈"));
+    return wrap;
+  }
+
+  // 排序 + 筛选控件
+  const sortSel = el("select", { class: "edit-fb-sort" }, [
+    el("option", { value: "time" }, "按时间（新→旧）"),
+    el("option", { value: "rating-asc" }, "按评分（低→高）"),
+    el("option", { value: "rating-desc" }, "按评分（高→低）"),
+  ]);
+  const filterSel = el("select", { class: "edit-fb-filter" }, [
+    el("option", { value: "all" }, "全部"),
+    el("option", { value: "critical" }, "仅差评 (≤3星/没用)"),
+    el("option", { value: "with-comment" }, "有评论"),
+  ]);
+  const controls = el("div", { class: "edit-fb-controls" }, [
+    el("label", {}, [el("span", { class: "muted" }, "排序 "), sortSel]),
+    el("label", {}, [el("span", { class: "muted" }, "筛选 "), filterSel]),
+  ]);
+  wrap.appendChild(controls);
+
+  const list = el("div", { class: "fb-list" });
+  const apply = () => {
+    const sort = sortSel.value;
+    const filter = filterSel.value;
+    let data = items.slice();
+    if (filter === "critical") {
+      data = data.filter((i) =>
+        (typeof i.rating === "number" && i.rating <= 3) || i.isHelpful === false);
+    } else if (filter === "with-comment") {
+      data = data.filter((i) => i.comment && i.comment.trim());
+    }
+    if (sort === "time") {
+      data.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    } else if (sort === "rating-asc") {
+      data.sort((a, b) => (a.rating ?? 99) - (b.rating ?? 99));
+    } else if (sort === "rating-desc") {
+      data.sort((a, b) => (b.rating ?? -1) - (a.rating ?? -1));
+    }
+    list.innerHTML = "";
+    if (data.length === 0) {
+      list.appendChild(el("div", { class: "muted", style: { textAlign: "center", padding: "12px" } },
+        "当前筛选下无数据"));
+      return;
+    }
+    for (const it of data) {
+      list.appendChild(renderAgentFeedbackItem(it));
+    }
+  };
+  sortSel.addEventListener("change", apply);
+  filterSel.addEventListener("change", apply);
+  wrap.appendChild(list);
+  apply();
   return wrap;
 }
 
