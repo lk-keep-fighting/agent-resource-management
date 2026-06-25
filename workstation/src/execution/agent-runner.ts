@@ -49,6 +49,7 @@ import type { ArmAgentDetail, WsRun, WsMessage } from "../types.ts";
 import { buildSystemPrompt } from "./context-builder.ts";
 import { armCliTool } from "./tools/arm-cli.ts";
 import { buildSkillHintTool } from "./skill-tools.ts";
+import { registerRunner, unregisterRunner } from "./runner-registry.ts";
 
 type SseSender = (event: string, data: unknown) => void;
 
@@ -382,6 +383,7 @@ export async function executeRun(opts: RunOptions): Promise<ExecuteResult> {
   });
 
   const runner = new AgentRunner(agent, run, sender);
+  registerRunner(run.id, runner);
 
   try {
     sender("context.loaded", {
@@ -423,5 +425,7 @@ export async function executeRun(opts: RunOptions): Promise<ExecuteResult> {
     runRepo.updateStatus(run.id, status);
     sender("run.done", { status, error: msg });
     return { status, error: msg };
+  } finally {
+    unregisterRunner(run.id);
   }
 }

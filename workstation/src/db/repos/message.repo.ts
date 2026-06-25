@@ -104,4 +104,20 @@ export const messageRepo = {
     }
     return this.append({ runId, role, content, toolCallId, toolName });
   },
+
+  /**
+   * 清空某 workspace 的所有 message（用于"清空上下文"功能）。
+   * 保留 ws_run 记录 —— run 历史、标题、状态、统计都还在；
+   * 只是消息流被清空，下次进 ws 不会再注入到 system prompt。
+   *
+   * 返回删除的条数。
+   */
+  deleteByWorkspace(workspaceId: string): number {
+    const info = getDb()
+      .prepare(
+        `DELETE FROM ws_message WHERE run_id IN (SELECT id FROM ws_run WHERE workspace_id = ?)`,
+      )
+      .run(workspaceId);
+    return info.changes;
+  },
 };

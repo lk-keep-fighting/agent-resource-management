@@ -961,10 +961,88 @@ async function renderWorkspaceChat(workspaceId) {
     messagesBox.appendChild(el("div", { class: "empty" }, "开始一段新的对话吧 👇"));
   }
 
-  const inputArea = el("div", { class: "chat-input" }, [
-    el("textarea", { id: "chat-textarea", placeholder: "输入消息，Enter 发送，Shift+Enter 换行" }),
-    el("button", { class: "primary", onclick: () => send() }, "发送"),
+  const inputArea = el("div", { class: "chat-input" });
+
+  // 文本框 —— 自适应高度（1-6 行）
+  const ta = el("textarea", {
+    id: "chat-textarea",
+    placeholder: "输入消息，Enter 发送，Shift+Enter 换行",
+    rows: 1,
+  });
+  const autoresize = () => {
+    ta.style.height = "auto";
+    ta.style.height = Math.min(ta.scrollHeight, 160) + "px";
+  };
+  ta.addEventListener("input", autoresize);
+  inputArea.appendChild(ta);
+
+  // 按钮组（垂直堆叠在文本框右侧）
+  const btnGroup = el("div", { class: "chat-input-btns" });
+  inputArea.appendChild(btnGroup);
+
+  // 上下文操作按钮（🧠）—— 弹出"总结 / 清空"下拉菜单
+  const ctxMenuBtn = el("button", {
+    class: "ctx-btn",
+    title: "上下文管理（总结为知识 / 清空）",
+    onclick: (e) => {
+      e.stopPropagation();
+      toggleContextMenu();
+    },
+  }, "🧠");
+  btnGroup.appendChild(ctxMenuBtn);
+
+  // 发送 / 停止按钮 —— 两态切换：流式时变红色 ⏹ 停止
+  const sendBtn = el("button", {
+    class: "primary",
+    id: "send-btn",
+    onclick: send,
+  }, "发送");
+  btnGroup.appendChild(sendBtn);
+
+  // 隐藏的上下文菜单（绝对定位下拉）
+  // 防止重复渲染时累积旧菜单：先清掉 body 里残留的
+  const oldMenu = document.getElementById("ctx-menu");
+  if (oldMenu) oldMenu.remove();
+  const ctxMenu = el("div", { class: "ctx-menu", id: "ctx-menu" }, [
+    el("button", {
+      class: "ctx-menu-item",
+      onclick: () => {
+        hideContextMenu();
+        handleSummarize();
+      },
+    }, [
+      el("div", { class: "ctx-menu-title" }, "📋 总结为知识"),
+      el("div", { class: "ctx-menu-sub" }, "调 LLM 压缩历史 → 上传 ARM → 绑定到 Agent"),
+    ]),
+    el("button", {
+      class: "ctx-menu-item",
+      onclick: () => {
+        hideContextMenu();
+        handleClear();
+      },
+    }, [
+      el("div", { class: "ctx-menu-title" }, "🧹 清空消息"),
+      el("div", { class: "ctx-menu-sub" }, "保留 Run 记录，丢弃所有消息"),
+    ]),
   ]);
+  document.body.appendChild(ctxMenu);  // body 末避免被 overflow:hidden 截掉
+
+  // 点击页面其他位置关闭菜单
+  // 同样要做防重复：先把上一次的 listener 注销
+  if (window.__ctxMenuDocClick) {
+    document.removeEventListener("click", window.__ctxMenuDocClick);
+  }
+  const docClick = (e) => {
+    const m = document.getElementById("ctx-menu");
+    const btn = document.querySelector(".ctx-btn");
+    if (!m || m.style.display === "none") return;
+    if (!m.contains(e.target) && e.target !== btn && !btn?.contains(e.target)) {
+      m.style.display = "none";
+    }
+  };
+  window.__ctxMenuDocClick = docClick;
+  document.addEventListener("click", docClick);
+
   main.appendChild(inputArea);
 
   const feedbackBar = el("div", { class: "feedback-bar" }, [
@@ -1004,6 +1082,143 @@ async function renderWorkspaceChat(workspaceId) {
   let currentRunId = runs[0]?.id ?? null;
   let currentRating = 0;
   let currentHelpful = null;
+  let isStreaming = false;
+
+  /**
+   * 流式状态切换：把"发送"按钮变"⏹ 停止"，把按钮绑到 stopRun()。
+   * 文本框禁用，避免在流式过程中又发新消息。
+   * 必须等流式结束（run.done / 异常 / 主动 stop）才能复位。
+   */
+  function setStreaming(s) {
+    isStreaming = s;
+    if (s) {
+      sendBtn.textContent = "⏹ 停止";
+      sendBtn.className = "danger";
+      sendBtn.onclick = stopRun;
+      ta.disabled = true;
+      ctxMenuBtn.disabled = true;
+      ctxMenuBtn.style.opacity = "0.5";
+    } else {
+      sendBtn.textContent = "发送";
+      sendBtn.className = "primary";
+      sendBtn.onclick = send;
+      ta.disabled = false;
+      ctxMenuBtn.disabled = false;
+      ctxMenuBtn.style.opacity = "1";
+    }
+  }
+
+  /** 主动停止当前 Run —— 调 abort endpoint；后端会调 runner.abort() 终止推理 */
+  async function stopRun() {
+    if (!currentRunId) {
+      setStreaming(false);
+      return;
+    }
+    try {
+      sendBtn.disabled = true;
+      await api(`/runs/${currentRunId}/abort`, { method: "POST" });
+      // 不要在这里 setStreaming(false) —— 后端会发 run.done { status: "aborted" }，
+      // 由 handleStreamEvent('run.done') 统一处理复位
+    } catch (e) {
+      flashTip("❌ 停止失败: " + e.message);
+      setStreaming(false);  // 强制复位
+    } finally {
+      sendBtn.disabled = false;
+    }
+  }
+
+  // ─────────── 上下文管理下拉菜单 ───────────
+
+  function toggleContextMenu() {
+    const m = document.getElementById("ctx-menu");
+    const btn = document.querySelector(".ctx-btn");
+    if (!m || !btn) return;
+    if (m.style.display === "none" || !m.style.display) {
+      const rect = btn.getBoundingClientRect();
+      m.style.position = "fixed";
+      m.style.right = (window.innerWidth - rect.right) + "px";
+      m.style.top = (rect.bottom + 6) + "px";
+      m.style.display = "block";
+    } else {
+      m.style.display = "none";
+    }
+  }
+  function hideContextMenu() {
+    const m = document.getElementById("ctx-menu");
+    if (m) m.style.display = "none";
+  }
+
+  /**
+   * 把当前 ws 的对话历史 → 调 LLM 总结 → 上传 ARM 为 Knowledge → 绑定到当前 Agent。
+   * 完成后本地消息会被清空（run 记录保留）。再次进入 ws 时上下文已基于被沉淀的经验。
+   */
+  async function handleSummarize() {
+    try {
+      // 1) 预览
+      const preview = await api(`/workspaces/${workspaceId}/summarize`, {
+        method: "POST",
+        body: { confirm: false },
+      });
+      const name = prompt(
+        `将总结 ${preview.turnCount} 条对话为 1 条 Knowledge，并绑定到当前 Agent。\n\n` +
+          `建议名称: ${preview.suggestedName}\n\n` +
+          `可修改名称，留空使用建议名：`,
+        preview.suggestedName,
+      );
+      if (name === null) return;  // 取消
+
+      flashTip("🧠 正在调 LLM 总结（首次会调用 ARM），请稍候...");
+      const result = await api(`/workspaces/${workspaceId}/summarize`, {
+        method: "POST",
+        body: { confirm: true, name: name.trim() || undefined },
+      });
+      const link = result.knowledge?.url
+        ? `\n\n🔗 ${result.knowledge.url}`
+        : "";
+      alert(
+        `✅ 总结完成\n\n` +
+          `· Knowledge: ${result.knowledge?.name} (${result.knowledge?.id})${link}\n` +
+          `· 绑定: ${result.binding ? `v${result.binding.version} ✓` : "❌（需手动绑定）"}\n` +
+          `· 已清空本地 ${result.deletedMessages} 条消息\n\n` +
+          `下次新建工作空间时这些经验会自动加载。`,
+      );
+      location.reload();
+    } catch (e) {
+      alert("总结失败: " + e.message);
+    }
+  }
+
+  /**
+   * 清空当前 ws 的所有消息（保留所有 run 记录）。
+   * 比"总结为知识"更轻量：直接丢弃，不调 LLM / ARM。
+   */
+  async function handleClear() {
+    try {
+      const preview = await api(`/workspaces/${workspaceId}/clear`, {
+        method: "POST",
+        body: { confirm: false },
+      });
+      if (preview.messageCount === 0) {
+        return alert("当前工作空间没有消息可清空");
+      }
+      if (!confirm(
+        `确定清空 ${preview.messageCount} 条消息吗？\n\n` +
+          `会保留：所有 Run 记录（标题、状态、统计）\n` +
+          `会删除：所有 user / assistant 消息\n\n` +
+          `此操作不可撤销！`,
+      )) return;
+
+      const result = await api(`/workspaces/${workspaceId}/clear`, {
+        method: "POST",
+        body: { confirm: true },
+      });
+      flashTip("🧹 " + result.msg);
+      // 重载页面让 history 重新渲染（清空后 messagesBox 应该显示"开始新对话"）
+      setTimeout(() => location.reload(), 600);
+    } catch (e) {
+      alert("清空失败: " + e.message);
+    }
+  }
 
   function scrollToBottom() {
     const box = document.querySelector(".chat-messages");
@@ -1070,7 +1285,9 @@ async function renderWorkspaceChat(workspaceId) {
     const ta = $("#chat-textarea");
     const text = ta.value.trim();
     if (!text) return;
+    if (isStreaming) return;  // 防御：流式时再点无效
     ta.value = "";
+    autoresize();
 
     if (messagesBox.querySelector(".empty")) messagesBox.innerHTML = "";
     appendMessage(messagesBox, { role: "user", content: text });
@@ -1094,6 +1311,7 @@ async function renderWorkspaceChat(workspaceId) {
     const runTools = []; // { name, args, result, status, startTime, endTime, toolCallId }
     toolSummary._tools = runTools;
 
+    setStreaming(true);
     try {
       const res = await fetch(`/api/ws/workspaces/${workspaceId}/runs`, {
         method: "POST",
@@ -1122,6 +1340,8 @@ async function renderWorkspaceChat(workspaceId) {
       renderer.finalize();
       renderToolSummary(toolSummary, runTools);
       scrollToBottom();
+    } finally {
+      setStreaming(false);
     }
   }
 
@@ -1159,8 +1379,16 @@ async function renderWorkspaceChat(workspaceId) {
         scrollToBottom();
         break;
       }
-      case "run.done":
+      case "run.done": {
+        // run 结束（completed / aborted / failed）—— 恢复发送按钮
+        // 主动 stop 触发的 abort 也会经过这里，data.status === "aborted"
+        if (data.status === "aborted") {
+          renderer.append(`\n\n_⏹ 已停止_`);
+          renderer.finalize();
+        }
+        setStreaming(false);
         break;
+      }
       case "error":
         renderer.append(`\n\n[错误] ${data.message ?? ""}`);
         break;

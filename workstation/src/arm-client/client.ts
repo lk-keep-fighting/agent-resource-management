@@ -304,6 +304,28 @@ export class ArmClient {
     return res.ok ? res.data : null;
   }
 
+  /**
+   * 把一个 Knowledge 绑定到 Agent（后续 Run 自动加载这条 knowledge 作为 system prompt 的一部分）。
+   * 对应 ARM backend 的 POST /api/v1/agents/:id/knowledges。
+   */
+  async bindKnowledgeToAgent(
+    agentId: string,
+    payload: {
+      knowledgeId: string;
+      version?: string;
+      retrievalConfig?: { topK?: number; similarityThreshold?: number };
+    },
+  ): Promise<{ id: string; knowledgeId: string; version: string } | null> {
+    const res = await this.request<any>(
+      `/agents/${encodeURIComponent(agentId)}/knowledges`,
+      {
+        method: "POST",
+        body: JSON.stringify(payload),
+      },
+    );
+    return res.ok && res.data ? res.data : null;
+  }
+
   // ──────────────── Health ────────────────
 
   async health(): Promise<boolean> {
