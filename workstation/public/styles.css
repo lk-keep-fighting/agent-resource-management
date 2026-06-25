@@ -393,6 +393,139 @@ textarea { resize: vertical; min-height: 60px; }
   margin-right: 4px;
   color: #4e5969;
 }
+
+/* Agent 卡片：评分底栏 + 左 border 按评分染色 */
+.agent-card {
+  position: relative;
+  border-left: 3px solid transparent;
+  padding-left: 12px;  /* 抵消 border 占据的空间，避免内容晃动 */
+  transition: border-color 0.15s;
+}
+.agent-card.rating-high { border-left-color: #00b42a; }
+.agent-card.rating-mid  { border-left-color: #ff7d00; }
+.agent-card.rating-low  { border-left-color: #f53f3f; }
+
+.card-rating {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px dashed #e5e6eb;
+  font-size: 13px;
+}
+.card-rating .rating-stars { color: #ff7d00; font-weight: 600; }
+.card-rating .rating-count { color: #86909c; }
+.card-rating .rating-good  { color: #00b42a; }
+.card-rating .rating-bad   { color: #f53f3f; }
+
+/* Agent 列表 hover tooltip —— 卡片外悬浮显示最近 1-2 条反馈评论 */
+.hover-tip {
+  display: none;
+  width: 280px;
+  background: #fff;
+  border: 1px solid #e5e6eb;
+  border-radius: 8px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.12);
+  z-index: 1100;
+  padding: 0;
+  overflow: hidden;
+  font-size: 13px;
+}
+.hover-tip-head {
+  padding: 10px 12px;
+  background: #fafbfc;
+  border-bottom: 1px solid #f2f3f5;
+}
+.hover-tip-title { font-weight: 600; color: #1f2329; margin-bottom: 2px; }
+.hover-tip-sub { font-size: 12px; }
+.hover-tip-empty { padding: 10px 12px; font-size: 12px; }
+.hover-tip-item {
+  padding: 10px 12px;
+  border-bottom: 1px solid #f7f8fa;
+}
+.hover-tip-item:last-of-type { border-bottom: none; }
+.hover-tip-item-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 4px;
+}
+.hover-tip-stars { color: #ff7d00; font-size: 12px; letter-spacing: -1px; }
+.hover-tip-comment {
+  color: #1f2329;
+  line-height: 1.5;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.hover-tip-foot {
+  padding: 8px 12px;
+  font-size: 11px;
+  background: #fafbfc;
+  border-top: 1px solid #f2f3f5;
+  text-align: center;
+}
+
+/* Agent 详情页：完整反馈流 */
+.fb-summary {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  padding: 16px;
+  background: #fafbfc;
+  border-radius: 8px;
+  margin-bottom: 12px;
+}
+.fb-summary-score { display: flex; align-items: center; gap: 12px; }
+.fb-avg {
+  font-size: 36px;
+  font-weight: 700;
+  line-height: 1;
+  color: #ff7d00;
+}
+.fb-avg.tier-high { color: #00b42a; }
+.fb-avg.tier-mid  { color: #ff7d00; }
+.fb-avg.tier-low  { color: #f53f3f; }
+.fb-stars { color: #ff7d00; font-size: 16px; letter-spacing: -1px; }
+.fb-breakdown { color: #4e5969; font-size: 13px; line-height: 1.8; }
+.fb-good { color: #00b42a; }
+.fb-bad  { color: #f53f3f; }
+
+.fb-list { display: flex; flex-direction: column; gap: 8px; }
+.fb-item {
+  padding: 12px 14px;
+  background: #fff;
+  border: 1px solid #f2f3f5;
+  border-radius: 6px;
+}
+.fb-item-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+  font-size: 12.5px;
+}
+.fb-item-stars { color: #ff7d00; letter-spacing: -1px; }
+.fb-item-time { margin-left: auto; font-size: 11.5px; }
+.fb-item-comment {
+  color: #1f2329;
+  font-size: 13.5px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+}
+.fb-item-tags { margin-top: 6px; }
+.fb-tag {
+  display: inline-block;
+  padding: 1px 6px;
+  font-size: 11px;
+  border-radius: 3px;
+  margin-right: 4px;
+}
+.fb-tag-good { background: #e8ffea; color: #00b42a; }
+.fb-tag-bad  { background: #fff1f0; color: #f53f3f; }
+
 .divider { border-top: 1px dashed #e5e6eb; margin: 16px 0; }
 .muted { color: #86909c; }
 .spinner {

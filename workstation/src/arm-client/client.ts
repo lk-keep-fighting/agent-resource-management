@@ -190,7 +190,23 @@ export class ArmClient {
     const res = await this.request<any>(
       `/knowledges/${encodeURIComponent(knowledgeId)}/feedback?limit=${limit}`,
     );
-    return res.ok && res.data ? res.data : null;
+    return res.ok ? res.data : null;
+  }
+
+  async getAgentFeedbacks(
+    agentId: string,
+    limit = 50,
+  ): Promise<{
+    total: number;
+    avgRating: number | null;
+    helpfulCount: number;
+    unhelpfulCount: number;
+    items: any[];
+  } | null> {
+    const res = await this.request<any>(
+      `/agents/${encodeURIComponent(agentId)}/feedback?limit=${limit}`,
+    );
+    return res.ok ? res.data : null;
   }
 
   async getMyAgents(createdBy: string): Promise<{ total: number; agents: any[] } | null> {

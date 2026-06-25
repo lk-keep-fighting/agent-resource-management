@@ -237,7 +237,14 @@ const feedbacks: Array<{
   source: string | null;
   externalRunId: string | null;
   createdAt: string;
-}> = [];
+}> = [
+  // seed：让 list 页 / detail 页反馈流有数据可看
+  { id: "fb-seed-1", agentId: "agent-bug-classifier", agentVersion: "1.0.0", rating: 5, isHelpful: true,  comment: "非常准，省了大量人工分诊时间。P0/P1 标准建议沉淀成 Knowledge。", tags: ["效率"], source: "agent-workstation", externalRunId: null, createdAt: new Date(Date.now() - 1000 * 60 * 60 * 3).toISOString() },
+  { id: "fb-seed-2", agentId: "agent-bug-classifier", agentVersion: "1.0.0", rating: 4, isHelpful: true,  comment: "整体方向对，但偶发把内存泄漏归到 P2，调阈值更稳。", tags: null, source: "agent-workstation", externalRunId: null, createdAt: new Date(Date.now() - 1000 * 60 * 60 * 26).toISOString() },
+  { id: "fb-seed-3", agentId: "agent-bug-classifier", agentVersion: "1.0.0", rating: 3, isHelpful: false, comment: "对冷门模块识别不准，需要补业务上下文。", tags: ["准确率"], source: "agent-workstation", externalRunId: null, createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 4).toISOString() },
+  { id: "fb-seed-4", agentId: "agent-bug-classifier", agentVersion: "1.0.0", rating: 5, isHelpful: true,  comment: "👍", tags: null, source: "agent-workstation", externalRunId: null, createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 7).toISOString() },
+  { id: "fb-seed-5", agentId: "agent-translator",    agentVersion: "1.0.0", rating: 4, isHelpful: true,  comment: "技术文档翻译质量不错，但语气偏直译。", tags: null, source: "agent-workstation", externalRunId: null, createdAt: new Date(Date.now() - 1000 * 60 * 60 * 12).toISOString() },
+];
 
 app.post("/api/v1/agents/:id/feedback", async (c) => {
   const id = c.req.param("id");

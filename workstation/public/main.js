@@ -716,9 +716,16 @@ function renderWorkspaceCard(ws) {
 }
 
 function renderAgentCard(a) {
-  return el("div", {
-    class: "card",
+  // 评分数据归一化：avgRating 可能为 null（无评分）
+  const fs = a.feedbackSummary;
+  const hasRating = fs && fs.total > 0;
+  const avg = hasRating ? fs.avgRating : null;
+  const card = el("div", {
+    class: "card agent-card" + (avg != null ? ` rating-${ratingTier(avg)}` : ""),
     onclick: () => navigate(`/agents/${a.id}`),
+    "data-agent-id": a.id,
+    onmouseenter: () => scheduleHoverTooltip(a, card),
+    onmouseleave: () => hideHoverTooltip(),
   }, [
     el("div", { style: { display: "flex", alignItems: "center", gap: "10px", marginBottom: "6px" } }, [
       renderAgentAvatar(a, 32),
@@ -730,7 +737,121 @@ function renderAgentCard(a) {
       el("span", { class: "tag" }, `v${a.version}`),
       el("span", { class: "tag" }, `${a.workspaceCount ?? 0} 个 WS`),
     ]),
+    // 评分底栏：永远渲染，没评分时显示"暂无评分"灰字
+    el("div", { class: "card-rating" }, hasRating ? [
+      el("span", { class: "rating-stars" }, `★ ${avg}`),
+      el("span", { class: "rating-count muted" }, `(${fs.total})`),
+      fs.helpfulCount > 0 ? el("span", { class: "rating-good" }, `👍 ${fs.helpfulCount}`) : null,
+      fs.unhelpfulCount > 0 ? el("span", { class: "rating-bad" }, `👎 ${fs.unhelpfulCount}`) : null,
+    ] : [
+      el("span", { class: "muted", style: { fontSize: "12px" } }, "暂无评分"),
+    ]),
   ]);
+  return card;
+}
+
+/** 根据平均分给卡片左 border 染色：≥4 绿、3-4 黄、<3 红 */
+function ratingTier(avg) {
+  if (avg >= 4) return "high";
+  if (avg >= 3) return "mid";
+  return "low";
+}
+
+/** hover tooltip 全局单例（避免每次重渲染都新建） */
+let _hoverTip = null;
+let _hoverTipTimer = null;
+let _hoverTipCache = new Map();  // agentId -> items[]
+
+function getHoverTip() {
+  if (_hoverTip) return _hoverTip;
+  _hoverTip = el("div", { class: "hover-tip", id: "agent-hover-tip" });
+  document.body.appendChild(_hoverTip);
+  return _hoverTip;
+}
+
+function scheduleHoverTooltip(a, cardEl) {
+  // 500ms 防误触：用户只是划过，不该加载
+  clearTimeout(_hoverTipTimer);
+  _hoverTipTimer = setTimeout(async () => {
+    const tip = getHoverTip();
+    // 缓存命中则直接渲染
+    let items = _hoverTipCache.get(a.id);
+    if (!items) {
+      tip.innerHTML = '<div class="muted" style="padding:8px 12px;font-size:12px;">加载反馈…</div>';
+      positionHoverTip(cardEl);
+      tip.style.display = "block";
+      try {
+        const data = await api(`/agents/${encodeURIComponent(a.id)}/feedback?limit=2`);
+        items = (data?.items ?? []).filter((it) => it.comment);
+        _hoverTipCache.set(a.id, items);
+      } catch (e) {
+        tip.innerHTML = `<div class="muted" style="padding:8px 12px;font-size:12px;">加载失败: ${escapeHtml(e.message)}</div>`;
+        return;
+      }
+    }
+    renderHoverTip(tip, a, items);
+    positionHoverTip(cardEl);
+    tip.style.display = "block";
+  }, 500);
+}
+
+function hideHoverTooltip() {
+  clearTimeout(_hoverTipTimer);
+  if (_hoverTip) _hoverTip.style.display = "none";
+}
+
+function renderHoverTip(tip, a, items) {
+  tip.innerHTML = "";
+  tip.appendChild(el("div", { class: "hover-tip-head" }, [
+    el("div", { class: "hover-tip-title" }, a.name),
+    a.feedbackSummary?.total > 0
+      ? el("div", { class: "hover-tip-sub" },
+          `★ ${a.feedbackSummary.avgRating} · ${a.feedbackSummary.total} 条反馈`)
+      : el("div", { class: "hover-tip-sub muted" }, "暂无反馈"),
+  ]));
+  if (items.length === 0) {
+    tip.appendChild(el("div", { class: "hover-tip-empty muted" },
+      "还没有人写过评论"));
+  } else {
+    for (const it of items) {
+      tip.appendChild(el("div", { class: "hover-tip-item" }, [
+        el("div", { class: "hover-tip-item-meta" }, [
+          el("span", { class: "hover-tip-stars" }, "★".repeat(it.rating || 0) + "☆".repeat(5 - (it.rating || 0))),
+          el("span", { class: "muted" }, fmtTime(it.createdAt ? new Date(it.createdAt).getTime() : null)),
+        ]),
+        el("div", { class: "hover-tip-comment" }, it.comment),
+      ]));
+    }
+  }
+  tip.appendChild(el("div", { class: "hover-tip-foot muted" },
+    "点击卡片查看完整反馈流 →"));
+}
+
+function positionHoverTip(cardEl) {
+  const tip = getHoverTip();
+  const rect = cardEl.getBoundingClientRect();
+  const tipW = 280;
+  const tipH = tip.offsetHeight || 120;
+  // 优先在卡片右侧显示；右侧空间不够则放左侧
+  const spaceRight = window.innerWidth - rect.right;
+  const spaceLeft = rect.left;
+  let left;
+  if (spaceRight >= tipW + 12) {
+    left = rect.right + 8;
+  } else if (spaceLeft >= tipW + 12) {
+    left = rect.left - tipW - 8;
+  } else {
+    // 都没空间就放卡片下方
+    left = Math.max(8, Math.min(window.innerWidth - tipW - 8, rect.left));
+  }
+  let top = rect.top;
+  // 下方空间不够则上挪
+  if (top + tipH > window.innerHeight - 8) {
+    top = Math.max(8, window.innerHeight - tipH - 8);
+  }
+  tip.style.position = "fixed";
+  tip.style.left = left + "px";
+  tip.style.top = top + "px";
 }
 
 async function renderAgents() {
@@ -794,6 +915,52 @@ async function renderAgentDetail(agentId) {
         ]),
   ]));
 
+  // 完整反馈流
+  const fbSection = el("div", { class: "section" });
+  fbSection.appendChild(el("h2", {}, "💬 反馈流"));
+  const fbList = el("div", { class: "fb-list" });
+  fbSection.appendChild(fbList);
+  container.appendChild(fbSection);
+  // 异步加载（不阻塞页面渲染）
+  api(`/agents/${encodeURIComponent(agentId)}/feedback?limit=20`)
+    .then((fb) => {
+      const items = fb?.items ?? [];
+      const summary = fb;
+      fbList.innerHTML = "";
+      // 顶部 summary 大字块
+      if (summary?.total > 0) {
+        fbList.appendChild(el("div", { class: "fb-summary" }, [
+          el("div", { class: "fb-summary-score" }, [
+            el("div", { class: `fb-avg tier-${ratingTier(summary.avgRating ?? 0)}` },
+              (summary.avgRating ?? 0).toFixed(1)),
+            el("div", { class: "fb-stars" },
+              "★".repeat(Math.round(summary.avgRating ?? 0)) +
+              "☆".repeat(5 - Math.round(summary.avgRating ?? 0))),
+          ]),
+          el("div", { class: "fb-breakdown" }, [
+            el("div", {}, `${summary.total} 条反馈`),
+            summary.helpfulCount > 0
+              ? el("div", { class: "fb-good" }, `👍 有用 ${summary.helpfulCount}`)
+              : null,
+            summary.unhelpfulCount > 0
+              ? el("div", { class: "fb-bad" }, `👎 没用 ${summary.unhelpfulCount}`)
+              : null,
+          ]),
+        ]));
+      }
+      if (items.length === 0) {
+        fbList.appendChild(el("div", { class: "empty" },
+          "还没有反馈 —— 在任意 Run 后点 👍/👎 或评分即可提交"));
+      } else {
+        for (const it of items) {
+          fbList.appendChild(renderAgentFeedbackItem(it));
+        }
+      }
+    })
+    .catch((e) => {
+      fbList.innerHTML = `<div class="empty">反馈加载失败: ${escapeHtml(e.message)}</div>`;
+    });
+
   container.appendChild(el("div", { class: "section" }, [
     el("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px" } }, [
       el("h2", { style: { margin: 0 } }, `📂 我的工作空间 (${(data.myWorkspaces ?? []).length})`),
@@ -811,6 +978,32 @@ async function renderAgentDetail(agentId) {
 
   wrap.appendChild(container);
   return wrap;
+}
+
+/** 渲染单条 Agent 反馈 */
+function renderAgentFeedbackItem(it) {
+  const stars = it.rating
+    ? "★".repeat(it.rating) + "☆".repeat(5 - it.rating)
+    : "—";
+  const helpfulIcon = it.isHelpful === true
+    ? el("span", { class: "fb-tag fb-tag-good" }, "👍 有用")
+    : it.isHelpful === false
+    ? el("span", { class: "fb-tag fb-tag-bad" }, "👎 没用")
+    : null;
+  return el("div", { class: "fb-item" }, [
+    el("div", { class: "fb-item-head" }, [
+      el("span", { class: "fb-item-stars" }, stars),
+      helpfulIcon,
+      el("span", { class: "fb-item-time muted" },
+        fmtTime(it.createdAt ? new Date(it.createdAt).getTime() : null)),
+    ]),
+    it.comment
+      ? el("div", { class: "fb-item-comment" }, it.comment)
+      : el("div", { class: "fb-item-comment muted" }, "(无评论)"),
+    (it.tags && it.tags.length > 0)
+      ? el("div", { class: "fb-item-tags" }, it.tags.map((t) => el("span", { class: "tag" }, `#${t}`)))
+      : null,
+  ]);
 }
 
 async function renderNewWorkspace(agentId) {

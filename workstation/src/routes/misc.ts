@@ -132,6 +132,18 @@ miscRoute.put("/agents/:id", async (c) => {
 });
 
 /**
+ * GET /api/ws/agents/:id/feedback
+ * 透传 ARM 的反馈列表（含 summary + items）
+ */
+miscRoute.get("/agents/:id/feedback", async (c) => {
+  const id = c.req.param("id");
+  const limit = Math.min(Number(c.req.query("limit") ?? "50"), 200);
+  const data = await arm().getAgentFeedbacks(id, limit);
+  if (!data) return c.json(fail("ARM 不可达"), 502);
+  return c.json(ok(data));
+});
+
+/**
  * GET /api/ws/me/history?limit=20
  * 返回当前用户最近用过的 Agent（来自 ws_run 聚合）
  */

@@ -20,6 +20,12 @@ export interface ArmAgent {
 }
 
 export interface ArmAgentDetail extends ArmAgent {
+  feedbackSummary?: {
+    total: number;
+    avgRating: number | null;
+    helpfulCount: number;
+    unhelpfulCount: number;
+  } | null;
   skillBindings?: Array<{
     id: string;
     skillId: string;

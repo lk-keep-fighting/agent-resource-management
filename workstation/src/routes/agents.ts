@@ -11,11 +11,21 @@ agentsRoute.get("/", async (c) => {
   const pageSize = Number(c.req.query("pageSize") ?? "50");
   const data = await arm().listAgents({ keyword, page, pageSize });
   if (!data) return c.json(fail("ARM 不可达"), 502);
-  // 给每个 Agent 加上我的 workspace 数
-  const agents = data.agents.map((a) => ({
-    ...a,
-    workspaceCount: workspaceRepo.countByAgent(a.id),
-  }));
+  // 给每个 Agent 加上：我的 workspace 数 + ARM 的 feedbackSummary
+  // 两个独立的 N+1，并行发请求（数量级通常 10-30，可接受）
+  const agents = await Promise.all(
+    data.agents.map(async (a) => {
+      const [workspaceCount, detail] = await Promise.all([
+        Promise.resolve(workspaceRepo.countByAgent(a.id)),
+        arm().getAgent(a.id),
+      ]);
+      return {
+        ...a,
+        workspaceCount,
+        feedbackSummary: detail?.feedbackSummary ?? null,
+      };
+    }),
+  );
   return c.json(ok({ ...data, agents }));
 });
 
