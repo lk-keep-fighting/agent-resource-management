@@ -666,10 +666,14 @@ async function renderHome() {
     el("div", { class: "section" }, [
       el("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" } }, [
         el("h2", { style: { margin: 0 } }, `📂 我的工作空间 (${workspaces.length})`),
-        el("a", { href: "#/agents", onclick: (e) => { e.preventDefault(); navigate("/agents"); }, class: "primary", style: { color: "#fff", background: "#165dff", padding: "6px 14px", borderRadius: "6px" } }, "+ 新建 →"),
+        el("button", {
+          class: "primary",
+          onclick: () => openNewWorkspaceModal(allAgents),
+          style: { background: "#165dff", color: "#fff", padding: "6px 14px", borderRadius: "6px", border: "none", cursor: "pointer" },
+        }, "+ 新建工作空间"),
       ]),
       workspaces.length === 0
-        ? el("div", { class: "empty" }, "暂无工作空间，去 [Agent 员工] 选一个开始吧")
+        ? el("div", { class: "empty" }, "暂无工作空间，点上方 [新建工作空间] 选个 Agent 开始吧")
         : el("div", { class: "cards" }, workspaces.map(renderWorkspaceCard)),
     ]),
   );
@@ -1044,6 +1048,281 @@ async function renderNewWorkspace(agentId) {
   }, 0);
 
   return wrap;
+}
+
+/**
+ * 新建工作空间 Modal（2 步式）
+ *
+ * 设计目标：从首页/任何入口一键直达 chat，跳过 4 跳路径
+ *  - Step 1: 选 Agent（搜索 + 卡片网格，可一键跳老路径 /agents）
+ *  - Step 2: 命名 + 高级选项（默认 name=Agent.name，tools=启用）
+ *
+ * 单例：复用 document.body 上的 #new-ws-modal 元素
+ */
+let _newWsModal = null;
+function getNewWsModal() {
+  if (_newWsModal) return _newWsModal;
+  _newWsModal = el("div", {
+    class: "new-ws-modal-backdrop",
+    id: "new-ws-modal",
+    style: { display: "none" },
+  });
+  document.body.appendChild(_newWsModal);
+  return _newWsModal;
+}
+
+function closeNewWsModal() {
+  if (_newWsModal) _newWsModal.style.display = "none";
+  // 清除旧内容，避免下次打开残留
+  if (_newWsModal) _newWsModal.innerHTML = "";
+}
+
+/**
+ * 打开新建 ws modal
+ * @param {Array} allAgents  Agent 列表（已 fetch 好的，省一次请求）
+ */
+function openNewWorkspaceModal(allAgents) {
+  const modal = getNewWsModal();
+  modal.innerHTML = "";
+  modal.style.display = "flex";
+
+  // Step 1: 选 Agent
+  let selectedAgent = null;
+  let searchKeyword = "";
+  let agentsData = allAgents && allAgents.length > 0 ? allAgents : null;
+
+  // 内容容器（每步重新渲染）
+  const content = el("div", { class: "new-ws-content" });
+
+  function renderStep1() {
+    content.innerHTML = "";
+    content.appendChild(el("div", { class: "new-ws-header" }, [
+      el("div", { class: "new-ws-title" }, "选择 Agent"),
+      el("button", {
+        class: "new-ws-close",
+        "aria-label": "关闭",
+        onclick: closeNewWsModal,
+      }, "×"),
+    ]));
+
+    // 搜索框
+    const searchInput = el("input", {
+      type: "search",
+      class: "new-ws-search",
+      placeholder: "🔍 搜索 Agent（名称 / 描述）",
+      value: searchKeyword,
+      oninput: (e) => {
+        searchKeyword = e.target.value;
+        renderGrid();
+      },
+    });
+    content.appendChild(searchInput);
+
+    // 卡片网格容器
+    const grid = el("div", { class: "new-ws-grid" });
+    content.appendChild(grid);
+
+    function renderGrid() {
+      grid.innerHTML = "";
+      const kw = searchKeyword.trim().toLowerCase();
+      let filtered = agentsData || [];
+      if (kw) {
+        filtered = filtered.filter((a) =>
+          (a.name || "").toLowerCase().includes(kw) ||
+          (a.description || "").toLowerCase().includes(kw));
+      }
+      if (!agentsData) {
+        // 还没 fetch 完 → 提示加载中
+        grid.appendChild(el("div", { class: "new-ws-loading muted" }, "加载 Agent 列表…"));
+        // 主动 fetch
+        api("/agents?pageSize=100").then((d) => {
+          agentsData = d.agents ?? [];
+          renderGrid();
+        }).catch(() => {
+          grid.appendChild(el("div", { class: "empty" }, "加载 Agent 列表失败"));
+        });
+        return;
+      }
+      if (filtered.length === 0) {
+        grid.appendChild(el("div", { class: "empty", style: { gridColumn: "1 / -1", padding: "20px" } }, [
+          "没有匹配的 Agent",
+          el("br"),
+          el("a", {
+            href: "#/agents",
+            onclick: (e) => { e.preventDefault(); closeNewWsModal(); navigate("/agents"); },
+            style: { color: "#165dff", fontSize: "13px" },
+          }, "去浏览全部 Agent →"),
+        ]));
+        return;
+      }
+      for (const a of filtered) {
+        grid.appendChild(el("button", {
+          class: "new-ws-agent-card",
+          onclick: () => {
+            selectedAgent = a;
+            renderStep2();
+          },
+        }, [
+          renderAgentAvatar(a, 36),
+          el("div", { class: "new-ws-agent-name" }, a.name),
+          el("div", { class: "new-ws-agent-desc" }, a.description || "（无描述）"),
+          el("div", { class: "new-ws-agent-tags" }, [
+            el("span", { class: "tag" }, `v${a.version}`),
+            a.status ? el("span", { class: "tag" }, a.status) : null,
+          ]),
+        ]));
+      }
+    }
+
+    // 底部：兜底跳老路径
+    content.appendChild(el("div", { class: "new-ws-footer" }, [
+      el("a", {
+        href: "#/agents",
+        onclick: (e) => { e.preventDefault(); closeNewWsModal(); navigate("/agents"); },
+        style: { color: "#86909c", fontSize: "12px" },
+      }, "浏览全部 Agent →"),
+    ]));
+
+    renderGrid();
+    setTimeout(() => searchInput.focus(), 0);
+  }
+
+  function renderStep2() {
+    content.innerHTML = "";
+    const form = { name: selectedAgent.name, context: "", enableTools: true };
+    content.appendChild(el("div", { class: "new-ws-header" }, [
+      el("div", { class: "new-ws-title" }, "新建工作空间"),
+      el("button", {
+        class: "new-ws-close",
+        "aria-label": "关闭",
+        onclick: closeNewWsModal,
+      }, "×"),
+    ]));
+
+    // 顶部 Agent 上下文
+    content.appendChild(el("div", { class: "new-ws-agent-context" }, [
+      renderAgentAvatar(selectedAgent, 24),
+      el("div", { style: { flex: 1, minWidth: 0 } }, [
+        el("div", { style: { fontWeight: 600, fontSize: "13px" } }, selectedAgent.name),
+        el("div", { class: "muted", style: { fontSize: "11.5px" } },
+          `v${selectedAgent.version} · ${selectedAgent.description || ""}`),
+      ]),
+      el("button", {
+        class: "new-ws-back",
+        onclick: renderStep1,
+      }, "← 重选"),
+    ]));
+
+    // 必填：名称
+    const nameInput = el("input", {
+      id: "new-ws-name",
+      value: form.name,
+      oninput: (e) => (form.name = e.target.value),
+      placeholder: "如：订单系统 Bug分类",
+      onkeydown: (e) => { if (e.key === "Enter") { e.preventDefault(); submit(); } },
+    });
+    content.appendChild(el("div", { class: "form-row" }, [
+      el("label", {}, [el("span", {}, "名称 "), el("span", { class: "muted", style: { fontSize: "12px" } }, "（必填）")]),
+      nameInput,
+    ]));
+
+    // 高级选项折叠
+    const ctxTextarea = el("textarea", {
+      rows: 4,
+      oninput: (e) => (form.context = e.target.value),
+      placeholder: "例如：只看订单系统的日志，只输出 P0/P1/P2 三个等级…",
+    }, form.context);
+    const toolsCheckbox = el("input", {
+      type: "checkbox",
+      checked: form.enableTools,
+      onchange: (e) => (form.enableTools = e.target.checked),
+      style: { width: "auto" },
+    });
+    const advBody = el("div", { style: { display: "none" } }, [
+      el("div", { class: "form-row" }, [
+        el("label", {}, [el("span", {}, "场景描述 "), el("span", { class: "muted", style: { fontSize: "12px" } }, "（可选）")]),
+        ctxTextarea,
+        el("div", { class: "hint" }, "这段文字会和 Agent 的 prompt 一起作为 system prompt。"),
+      ]),
+      el("div", { class: "form-row" }, [
+        el("label", { style: { display: "flex", alignItems: "center", gap: "8px" } }, [
+          toolsCheckbox,
+          el("span", {}, "启用工具（bash / 读写文件 / arm_cli）"),
+          el("span", { class: "tag", style: { background: "#fff7e6", color: "#d46b08" } }, "默认 ✓"),
+        ]),
+        el("div", { class: "hint" }, [
+          "Agent 可在隔离目录 (",
+          el("code", {}, `data/workspaces/<id>`),
+          ") 中执行命令、读写文件、调用 arm_cli。",
+          el("br"),
+          "⚠️ 没有沙箱 —— 仅在可信 Agent 上启用。",
+        ]),
+      ]),
+    ]);
+    const advChev = el("span", {}, "▸");
+    const advToggle = el("div", {
+      class: "adv-toggle",
+      onclick: () => {
+        const open = advBody.style.display !== "none";
+        advBody.style.display = open ? "none" : "block";
+        advChev.textContent = open ? "▸" : "▾";
+      },
+    }, [advChev, el("span", {}, "高级选项（场景描述、工具）")]);
+    content.appendChild(advToggle);
+    content.appendChild(advBody);
+
+    // 底部按钮
+    const submitBtn = el("button", { class: "primary", onclick: submit }, "创建工作空间");
+    content.appendChild(el("div", { style: { display: "flex", justifyContent: "flex-end", gap: "8px", marginTop: "8px" } }, [
+      el("button", { onclick: renderStep1 }, "← 上一步"),
+      submitBtn,
+    ]));
+
+    async function submit() {
+      const name = form.name.trim();
+      if (!name) {
+        nameInput.focus();
+        return alert("请填写工作空间名称");
+      }
+      submitBtn.disabled = true;
+      submitBtn.textContent = "创建中…";
+      try {
+        const ws = await api("/workspaces", {
+          method: "POST",
+          body: {
+            agentId: selectedAgent.id,
+            name,
+            context: form.context.trim(),
+            enableTools: form.enableTools,
+          },
+        });
+        closeNewWsModal();
+        navigate(`/w/${ws.id}/chat`);
+      } catch (e) {
+        alert("创建失败: " + e.message);
+        submitBtn.disabled = false;
+        submitBtn.textContent = "创建工作空间";
+      }
+    }
+
+    setTimeout(() => { nameInput.focus(); nameInput.select(); }, 0);
+  }
+
+  modal.appendChild(content);
+
+  // 关闭行为：点击背景 / Esc 键
+  modal.onclick = (e) => {
+    if (e.target === modal) closeNewWsModal();
+  };
+  const escHandler = (e) => {
+    if (e.key === "Escape" && modal.style.display !== "none") {
+      closeNewWsModal();
+      document.removeEventListener("keydown", escHandler);
+    }
+  };
+  document.addEventListener("keydown", escHandler);
+
+  renderStep1();
 }
 
 // ─────────── 对话核心 ───────────

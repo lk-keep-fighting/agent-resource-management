@@ -103,6 +103,155 @@ textarea { resize: vertical; min-height: 60px; }
 }
 .adv-body { padding-top: 8px; }
 
+/* 新建工作空间 Modal（2 步式：选 Agent → 命名） */
+.new-ws-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1200;
+  animation: new-ws-fade-in 0.15s ease-out;
+}
+@keyframes new-ws-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+.new-ws-content {
+  background: #fff;
+  border-radius: 10px;
+  box-shadow: 0 12px 48px rgba(0, 0, 0, 0.2);
+  width: min(640px, calc(100vw - 32px));
+  max-height: calc(100vh - 64px);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.new-ws-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px 8px;
+}
+.new-ws-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #1f2329;
+}
+.new-ws-close {
+  background: transparent;
+  border: none;
+  font-size: 24px;
+  line-height: 1;
+  color: #86909c;
+  cursor: pointer;
+  padding: 0 4px;
+}
+.new-ws-close:hover { color: #1f2329; }
+
+.new-ws-search {
+  margin: 0 20px 12px;
+  width: calc(100% - 40px);
+  padding: 8px 12px;
+  border: 1px solid #e5e6eb;
+  border-radius: 6px;
+  font-size: 14px;
+}
+.new-ws-search:focus { outline: 2px solid #165dff33; border-color: #165dff; }
+
+.new-ws-grid {
+  flex: 1;
+  overflow-y: auto;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 10px;
+  padding: 0 20px 12px;
+}
+.new-ws-loading { grid-column: 1 / -1; padding: 20px; text-align: center; }
+
+.new-ws-agent-card {
+  text-align: left;
+  background: #fff;
+  border: 1px solid #e5e6eb;
+  border-radius: 8px;
+  padding: 12px;
+  cursor: pointer;
+  transition: all 0.12s;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.new-ws-agent-card:hover {
+  border-color: #165dff;
+  background: #f0f7ff;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(22, 93, 255, 0.1);
+}
+.new-ws-agent-name {
+  font-weight: 600;
+  font-size: 13.5px;
+  color: #1f2329;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.new-ws-agent-desc {
+  font-size: 12px;
+  color: #4e5969;
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.new-ws-agent-tags {
+  display: flex;
+  gap: 4px;
+  margin-top: 4px;
+}
+.new-ws-agent-tags .tag {
+  font-size: 11px;
+  padding: 1px 6px;
+}
+
+.new-ws-footer {
+  padding: 10px 20px 14px;
+  border-top: 1px solid #f2f3f5;
+  text-align: center;
+}
+.new-ws-footer a { font-size: 12px; }
+
+/* Step 2: 命名步骤 */
+.new-ws-agent-context {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 20px 12px;
+  padding: 10px 12px;
+  background: #f7f8fa;
+  border-radius: 6px;
+}
+.new-ws-back {
+  background: transparent;
+  border: none;
+  color: #86909c;
+  cursor: pointer;
+  font-size: 12px;
+  padding: 4px 8px;
+}
+.new-ws-back:hover { color: #165dff; }
+
+/* Modal 内的 form-row 调整（modal 宽度比独立页面窄） */
+.new-ws-content .form-row { margin-bottom: 12px; }
+.new-ws-content .form-row input,
+.new-ws-content .form-row textarea {
+  padding: 6px 10px;
+  font-size: 13.5px;
+}
+.new-ws-content .form-row textarea { min-height: 70px; }
+.new-ws-content .form-row .hint { font-size: 11.5px; margin-top: 3px; }
+
 /* 对话页布局 */
 .chat-layout {
   display: grid;
