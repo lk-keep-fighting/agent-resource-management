@@ -71,7 +71,37 @@ textarea { resize: vertical; min-height: 60px; }
 /* 表单 */
 .form-row { margin-bottom: 14px; }
 .form-row label { display: block; margin-bottom: 6px; font-weight: 500; }
-.form-row .hint { color: #86909c; font-size: 12px; margin-top: 4px; }
+.form-row .hint { color: #86909c; font-size: 12px; margin-top: 4px; line-height: 1.5; }
+.form-row .hint code {
+  background: #f2f3f5;
+  padding: 1px 5px;
+  border-radius: 3px;
+  font-size: 11.5px;
+  font-family: ui-monospace, monospace;
+}
+.form-row input[type="checkbox"] { vertical-align: middle; }
+
+/* 新建工作空间：高级选项折叠区 */
+.adv-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 4px;
+  cursor: pointer;
+  user-select: none;
+  color: #4e5969;
+  font-size: 13px;
+  border-top: 1px dashed #f2f3f5;
+  margin-top: 4px;
+}
+.adv-toggle:hover { color: #165dff; }
+.adv-toggle .adv-chev {
+  font-size: 11px;
+  color: #86909c;
+  width: 12px;
+  display: inline-block;
+}
+.adv-body { padding-top: 8px; }
 
 /* 对话页布局 */
 .chat-layout {

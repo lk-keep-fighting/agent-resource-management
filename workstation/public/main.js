@@ -1015,92 +1015,134 @@ async function renderNewWorkspace(agentId) {
     { label: data.name, href: `/agents/${agentId}` },
     { label: "新建工作空间" },
   ]));
-  const container = el("div", { class: "container" });
+  const container = el("div", { class: "container", style: { maxWidth: "560px" } });
 
-  let step = 1;
-  let form = { name: "", context: "", enableTools: false };
+  // 默认值：name = Agent 名；tools = 启用（用户偏好）
+  // 高级选项（context + tools）默认折叠，80% 用户只填 name 就能用
+  const form = { name: data.name, context: "", enableTools: true };
 
-  const render = () => {
-    container.innerHTML = "";
-    container.appendChild(el("h2", {}, `为 ${data.name} 新建工作空间`));
-    container.appendChild(el("div", { class: "muted", style: { marginBottom: "16px" } },
-      `Step ${step} / 3 · ${["选 Agent", "命名", "场景描述"][step - 1]}`));
+  const card = el("div", { class: "card", style: { padding: "20px 24px" } });
 
-    if (step === 1) {
-      container.appendChild(el("div", { class: "card" }, [
-        el("div", { style: { display: "flex", alignItems: "center", gap: "10px", marginBottom: "6px" } }, [
-          renderAgentAvatar(data, 32),
-          el("div", { class: "card-title", style: { marginBottom: 0 } }, data.name),
-        ]),
-        el("div", { class: "card-sub" }, data.description),
-        el("div", { class: "card-meta" }, `v${data.version}`),
-      ]));
-    } else if (step === 2) {
-      container.appendChild(el("div", { class: "form-row" }, [
-        el("label", {}, "工作空间名称 *"),
-        el("input", { value: form.name, oninput: (e) => (form.name = e.target.value), placeholder: "如：订单系统 Bug分类" }),
-      ]));
-    } else if (step === 3) {
-      container.appendChild(el("div", { class: "form-row" }, [
-        el("label", {}, "场景描述（追加到 Agent 身份之后）"),
-        el("textarea", { rows: 6, oninput: (e) => (form.context = e.target.value), placeholder: "例如：只看订单系统的日志，只输出 P0/P1/P2 三个等级..." }, form.context),
-        el("div", { class: "hint" }, "这段文字会和 Agent 的 prompt 一起作为 system prompt"),
-      ]));
-      container.appendChild(el("div", { class: "form-row" }, [
-        el("label", { style: { display: "flex", alignItems: "center", gap: "8px" } }, [
-          el("input", { type: "checkbox", checked: form.enableTools, onchange: (e) => (form.enableTools = e.target.checked), style: { width: "auto" } }),
-          "启用工具（bash / 读写文件 / arm_cli）",
-        ]),
-        el("div", { class: "hint" }, [
-          "默认关闭。启用后 Agent 可以：",
-          el("br"),
-          "· 执行 shell 命令（bash）排查问题",
-          el("br"),
-          "· 读写文件（read/write/edit/ls/grep/find）",
-          el("br"),
-          "· 调用 arm_cli 查询 ARM 资源",
-          el("br"),
-          "⚠️ 启用后 Agent 会在一个隔离目录（data/workspaces/<id>）里直接执行命令，",
-          el("br"),
-          "可以修改该目录下的文件。没有沙箱，请只在可信 Agent 上启用。",
-        ]),
-      ]));
-    }
+  // ─── 标题区（Agent 上下文，紧凑一行） ───
+  card.appendChild(el("div", { style: { display: "flex", alignItems: "center", gap: "10px", marginBottom: "16px", paddingBottom: "12px", borderBottom: "1px solid #f2f3f5" } }, [
+    renderAgentAvatar(data, 28),
+    el("div", { style: { flex: 1 } }, [
+      el("div", { style: { fontWeight: 600 } }, data.name),
+      el("div", { class: "muted", style: { fontSize: "12px" } }, `v${data.version} · ${data.description || ""}`),
+    ]),
+  ]));
 
-    container.appendChild(el("div", { style: { display: "flex", justifyContent: "space-between", marginTop: "16px" } }, [
-      step > 1
-        ? el("button", { onclick: () => { step -= 1; render(); } }, "← 上一步")
-        : el("button", { onclick: () => navigate(`/agents/${agentId}`) }, "取消"),
-      step < 3
-        ? el("button", { class: "primary", onclick: () => {
-            if (step === 2 && !form.name.trim()) return alert("请填写名称");
-            step += 1; render();
-          } }, "下一步 →")
-        : el("button", { class: "primary", onclick: async () => {
-            // 提交前从 DOM 同步 checkbox 状态（防止 onchange 没触发的边界情况）
-            const labels = Array.from(document.querySelectorAll("label"));
-            const toolLabel = labels.find((l) => l.textContent.includes("启用工具"));
-            const cb = toolLabel?.querySelector('input[type="checkbox"]');
-            if (cb) form.enableTools = cb.checked;
-            try {
-              const ws = await api("/workspaces", {
-                method: "POST",
-                body: {
-                  agentId,
-                  name: form.name.trim(),
-                  context: form.context.trim(),
-                  enableTools: form.enableTools,
-                },
-              });
-              navigate(`/w/${ws.id}/chat`);
-            } catch (e) {
-              alert("创建失败: " + e.message);
-            }
-          } }, "创建工作空间"),
-    ]));
-  };
-  render();
+  // ─── 必填：名称 ───
+  const nameInput = el("input", {
+    id: "ws-name",
+    value: form.name,
+    oninput: (e) => (form.name = e.target.value),
+    placeholder: "如：订单系统 Bug分类",
+    onkeydown: (e) => { if (e.key === "Enter") { e.preventDefault(); submit(); } },
+  });
+  card.appendChild(el("div", { class: "form-row" }, [
+    el("label", {}, [el("span", {}, "名称 "), el("span", { class: "muted", style: { fontSize: "12px" } }, "（必填）")]),
+    nameInput,
+  ]));
+
+  // ─── 高级选项：折叠区 ───
+  const ctxTextarea = el("textarea", {
+    id: "ws-context",
+    rows: 5,
+    oninput: (e) => (form.context = e.target.value),
+    placeholder: "例如：只看订单系统的日志，只输出 P0/P1/P2 三个等级…",
+  }, form.context);
+  const toolsCheckbox = el("input", {
+    type: "checkbox",
+    id: "ws-enable-tools",
+    checked: form.enableTools,
+    onchange: (e) => (form.enableTools = e.target.checked),
+    style: { width: "auto" },
+  });
+
+  const advBody = el("div", { class: "adv-body" }, [
+    el("div", { class: "form-row" }, [
+      el("label", {}, [el("span", {}, "场景描述 "), el("span", { class: "muted", style: { fontSize: "12px" } }, "（可选）")]),
+      ctxTextarea,
+      el("div", { class: "hint" }, "这段文字会和 Agent 的 prompt 一起作为 system prompt。留空则使用 Agent 默认行为。"),
+    ]),
+    el("div", { class: "form-row" }, [
+      el("label", { style: { display: "flex", alignItems: "center", gap: "8px" } }, [
+        toolsCheckbox,
+        el("span", {}, "启用工具（bash / 读写文件 / arm_cli）"),
+        el("span", { class: "tag", style: { background: "#fff7e6", color: "#d46b08", marginLeft: "4px" } }, "默认 ✓"),
+      ]),
+      el("div", { class: "hint" }, [
+        "Agent 可在隔离目录 (",
+        el("code", {}, `data/workspaces/<id>`),
+        ") 中执行命令、读写文件、调用 arm_cli。",
+        el("br"),
+        "⚠️ 没有沙箱 —— 仅在可信 Agent 上启用。",
+      ]),
+    ]),
+  ]);
+  advBody.style.display = "none";  // 默认折叠
+
+  const advChev = el("span", { class: "adv-chev" }, "▸");
+  const advToggle = el("div", {
+    class: "adv-toggle",
+    onclick: () => {
+      const open = advBody.style.display !== "none";
+      advBody.style.display = open ? "none" : "block";
+      advChev.textContent = open ? "▸" : "▾";
+    },
+  }, [
+    advChev,
+    el("span", {}, "高级选项（场景描述、工具）"),
+    el("span", { class: "muted", style: { fontSize: "12px", marginLeft: "auto" } },
+      "已默认：工具 ✓"),
+  ]);
+  card.appendChild(advToggle);
+  card.appendChild(advBody);
+
+  // ─── 底部按钮 ───
+  const submitBtn = el("button", { class: "primary", onclick: submit }, "创建工作空间");
+  card.appendChild(el("div", { style: { display: "flex", justifyContent: "flex-end", gap: "8px", marginTop: "8px" } }, [
+    el("button", { onclick: () => navigate(`/agents/${agentId}`) }, "取消"),
+    submitBtn,
+  ]));
+
+  container.appendChild(card);
   wrap.appendChild(container);
+
+  // 提交
+  async function submit() {
+    const name = form.name.trim();
+    if (!name) {
+      nameInput.focus();
+      return alert("请填写工作空间名称");
+    }
+    submitBtn.disabled = true;
+    submitBtn.textContent = "创建中…";
+    try {
+      const ws = await api("/workspaces", {
+        method: "POST",
+        body: {
+          agentId,
+          name,
+          context: form.context.trim(),
+          enableTools: form.enableTools,
+        },
+      });
+      navigate(`/w/${ws.id}/chat`);
+    } catch (e) {
+      alert("创建失败: " + e.message);
+      submitBtn.disabled = false;
+      submitBtn.textContent = "创建工作空间";
+    }
+  }
+
+  // 自动 focus 名称框 + 选中全文（用户可直接覆盖默认名）
+  setTimeout(() => {
+    nameInput.focus();
+    nameInput.select();
+  }, 0);
+
   return wrap;
 }
 
