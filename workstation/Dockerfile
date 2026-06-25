@@ -30,9 +30,18 @@ FROM nexus.aimstek.cn/xuanwu-factory/common/bun:1.2-slim AS runtime
 WORKDIR /app
 
 # 系统工具
+#   - 基础：ca-certificates curl wget tini
+#   - 网络诊断：ping traceroute dig mtr nmap nc tcpdump
+#   - 数据库：mariadb-client (mysql 兼容)
+#   - SSH/远程：openssh-client sshpass
+#   - 开发必备：jq unzip vim less tree git
 USER root
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates curl wget tini \
+    iputils-ping traceroute dnsutils mtr-tiny nmap netcat-openbsd tcpdump \
+    default-mysql-client \
+    openssh-client sshpass \
+    jq unzip vim-tiny less tree git \
     && rm -rf /var/lib/apt/lists/*
 
 # 从 prepare 阶段显式 COPY 需要的产物
