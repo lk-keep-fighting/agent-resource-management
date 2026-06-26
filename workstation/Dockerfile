@@ -7,7 +7,7 @@
 # ──────────────────────────────────────────────────────────
 
 # 允许通过 --build-arg WS_BASE_IMAGE=xxx 覆盖 base 镜像（本地开发用）
-ARG WS_BASE_IMAGE=nexus.aimstek.cn/xuanwu-factory/agent-workstation/base:1.2-slim
+ARG WS_BASE_IMAGE=nexus.aimstek.cn/arm:ws-base-6bb0db9
 
 # ───── Stage 1: prepare ─────
 FROM nexus.aimstek.cn/xuanwu-factory/common/bun:1.2 AS prepare
