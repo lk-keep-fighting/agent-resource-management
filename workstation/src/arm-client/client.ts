@@ -93,6 +93,26 @@ export class ArmClient {
     return withAvatar(d.agent ?? d);
   }
 
+  /**
+   * 批量取多个 Agent 的反馈聚合。
+   * 对应 ARM `POST /api/v1/agents/batch-summary`。
+   * 替代 N+1 的 getAgent（每个 agent 单独拉一次 feedbackSummary）。
+   * - 入参：agentId 列表（内部去重）
+   * - 返回：{ [agentId]: { total, avgRating, helpfulCount, unhelpfulCount } }，缺失的 agentId 不会出现
+   */
+  async batchAgentSummary(
+    agentIds: string[],
+  ): Promise<Record<string, { total: number; avgRating: number | null; helpfulCount: number; unhelpfulCount: number }>> {
+    const ids = Array.from(new Set(agentIds));
+    if (ids.length === 0) return {};
+    const res = await this.request<{ summaries: Record<string, any> }>(`/agents/batch-summary`, {
+      method: "POST",
+      body: JSON.stringify({ agentIds: ids }),
+    });
+    if (!res.ok || !res.data) return {};
+    return res.data.summaries ?? {};
+  }
+
   async createAgent(payload: {
     name: string;
     description?: string;

@@ -192,6 +192,28 @@ export const workspaceRepo = {
     return row.c;
   },
 
+  /**
+   * 批量按 agentId 计 workspace 数。
+   * - 1 次 SQL（GROUP BY），替代逐个 countByAgent
+   * - 缺失的 agentId 在返回 map 中计 0
+   */
+  countByAgentIds(agentIds: string[]): Record<string, number> {
+    const map: Record<string, number> = {};
+    if (agentIds.length === 0) return map;
+    for (const id of agentIds) map[id] = 0;
+    const placeholders = agentIds.map(() => "?").join(",");
+    const rows = getDb()
+      .prepare(
+        `SELECT agent_id AS agentId, COUNT(*) AS c
+         FROM ws_workspace
+         WHERE agent_id IN (${placeholders})
+         GROUP BY agent_id`,
+      )
+      .all(...agentIds) as { agentId: string; c: number }[];
+    for (const r of rows) map[r.agentId] = r.c;
+    return map;
+  },
+
   setCwd(id: string, cwd: string): WsWorkspace | null {
     getDb()
       .prepare(`UPDATE ws_workspace SET cwd = ? WHERE id = ?`)
