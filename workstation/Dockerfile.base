@@ -1,0 +1,46 @@
+# ──────────────────────────────────────────────────────────
+# Agent Workstation - Base Image
+#
+# 包含 workstation runtime 需要的全部系统工具。
+# 构建一次推到 nexus，所有 workstation 镜像复用此 base，
+# 避免每次 build 都重新跑 apt-get install（省 1-2min + 80MB 下载）。
+#
+# 构建 + 推送：
+#   docker build -f Dockerfile.base \
+#     -t nexus.aimstek.cn/xuanwu-factory/agent-workstation/base:1.2-slim \
+#     -t nexus.aimstek.cn/xuanwu-factory/agent-workstation/base:latest \
+#     .
+#   docker push nexus.aimstek.cn/xuanwu-factory/agent-workstation/base:1.2-slim
+#   docker push nexus.aimstek.cn/xuanwu-factory/agent-workstation/base:latest
+#
+# 本地开发（不推到 registry）：
+#   docker build -f Dockerfile.base -t ws-base:local .
+#   docker build --build-arg WS_BASE_IMAGE=ws-base:local -t workstation .
+# ──────────────────────────────────────────────────────────
+
+FROM nexus.aimstek.cn/xuanwu-factory/common/bun:1.2-slim
+
+USER root
+
+# 系统工具（按类别分组，方便审计）
+#   - 基础：       ca-certificates curl wget tini
+#   - 网络诊断：   iputils-ping traceroute dnsutils mtr-tiny nmap
+#                  netcat-openbsd tcpdump
+#   - 数据库：     default-mysql-client (与 mysql 协议兼容)
+#   - SSH/远程：   openssh-client sshpass
+#   - 开发必备：   jq unzip vim-tiny less tree git
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates curl wget tini \
+    iputils-ping traceroute dnsutils mtr-tiny nmap netcat-openbsd tcpdump \
+    default-mysql-client \
+    openssh-client sshpass \
+    jq unzip vim-tiny less tree git \
+    && rm -rf /var/lib/apt/lists/*
+
+# /app 目录结构 —— 与 runtime 阶段约定一致
+# /app/data 用 VOLUME 挂载点（compose 里挂 ws-data 卷）
+WORKDIR /app
+RUN mkdir -p /app/data && chown -R bun:bun /app/data
+
+# runtime 默认 USER，避免后续 stage 重复声明
+USER bun

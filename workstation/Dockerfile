@@ -2,8 +2,12 @@
 # Agent Workstation Dockerfile
 #
 # 假设 CI build context 是仓库根目录（包含 workstation/ 子目录）。
-# 所有 workstation 文件都从 ./workstation/ 显式复制到 /app/。
+# 使用 Dockerfile.base 预装好系统工具的 base 镜像，避免重复 apt-get install。
+# Base 镜像构建：见 Dockerfile.base。
 # ──────────────────────────────────────────────────────────
+
+# 允许通过 --build-arg WS_BASE_IMAGE=xxx 覆盖 base 镜像（本地开发用）
+ARG WS_BASE_IMAGE=nexus.aimstek.cn/xuanwu-factory/agent-workstation/base:1.2-slim
 
 # ───── Stage 1: prepare ─────
 FROM nexus.aimstek.cn/xuanwu-factory/common/bun:1.2 AS prepare
@@ -26,32 +30,16 @@ RUN bun install
 RUN bun run typecheck
 
 # ───── Stage 2: runtime ─────
-FROM nexus.aimstek.cn/xuanwu-factory/common/bun:1.2-slim AS runtime
+FROM ${WS_BASE_IMAGE} AS runtime
 WORKDIR /app
 
-# 系统工具
-#   - 基础：ca-certificates curl wget tini
-#   - 网络诊断：ping traceroute dig mtr nmap nc tcpdump
-#   - 数据库：mariadb-client (mysql 兼容)
-#   - SSH/远程：openssh-client sshpass
-#   - 开发必备：jq unzip vim less tree git
-USER root
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    ca-certificates curl wget tini \
-    iputils-ping traceroute dnsutils mtr-tiny nmap netcat-openbsd tcpdump \
-    default-mysql-client \
-    openssh-client sshpass \
-    jq unzip vim-tiny less tree git \
-    && rm -rf /var/lib/apt/lists/*
+# /app/data 已由 base 镜像预创建并 chown，无需重复
 
 # 从 prepare 阶段显式 COPY 需要的产物
 COPY --chown=bun:bun --from=prepare /app/node_modules /app/node_modules
 COPY --chown=bun:bun --from=prepare /app/src /app/src
 COPY --chown=bun:bun --from=prepare /app/public /app/public
 COPY --chown=bun:bun --from=prepare /app/package.json /app/package.json
-
-# 数据目录
-RUN mkdir -p /app/data && chown -R bun:bun /app/data
 
 USER bun
 

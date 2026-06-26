@@ -1,17 +1,68 @@
 # Agent Workstation - Docker 部署指南
 
+## 镜像分层
+
+```
+Dockerfile.base  →  agent-workstation/base:1.2-slim   (系统工具，一次性构建)
+        ↓
+Dockerfile       →  agent-workstation:0.1.0          (应用层，每次代码改动构建)
+```
+
+`Dockerfile.base` 装系统工具（~20 个包，apt-get install 80MB + 1-2min），
+构建一次推到 nexus，所有应用层构建复用。**每次代码改动只重装 node_modules + COPY 源码**。
+
 ## 快速启动
 
 ```bash
-# 1. 构建镜像
-docker build -t agent-workstation:0.1.0 .
-
-# 2. 准备 .env（注意：WS_LLM_API_KEY 必填）
+# 1. 准备 .env（注意：WS_LLM_API_KEY 必填）
 cp .env.example .env
-# 编辑 .env 填入真实 LLM API key
 $EDITOR .env
 
+# 2. 构建并启动（依赖 base 镜像已存在于 nexus / 本地）
+docker compose up -d
+
+# 查看日志
+docker logs -f agent-workstation
+```
+
+## 首次部署 / 更新 base 镜像
+
+CI 流水线中或本机首次部署时，需要先构建 base 镜像（**只需做一次**，除非系统工具列表变更）：
+
+```bash
+# 1. 构建 base 镜像（耗时 1-2min，结果推 nexus）
+docker build -f Dockerfile.base \
+  -t nexus.aimstek.cn/xuanwu-factory/agent-workstation/base:1.2-slim \
+  -t nexus.aimstek.cn/xuanwu-factory/agent-workstation/base:latest \
+  .
+docker push nexus.aimstek.cn/xuanwu-factory/agent-workstation/base:1.2-slim
+docker push nexus.aimstek.cn/xuanwu-factory/agent-workstation/base:latest
+
+# 2. 然后正常构建应用镜像
+docker build -t agent-workstation:0.1.0 .
+```
+
+## 本地开发（无需推到 registry）
+
+```bash
+# 1. 构建本地 base
+docker build -f Dockerfile.base -t ws-base:local .
+
+# 2. 用本地 base 构建应用
+docker build --build-arg WS_BASE_IMAGE=ws-base:local -t agent-workstation:dev .
+
 # 3. 启动
+docker run -d \
+  --name agent-workstation \
+  -p 4000:4000 \
+  -v ws-data:/app/data \
+  --env-file .env \
+  agent-workstation:dev
+```
+
+## 直接 docker run（绕过 docker-compose）
+
+```bash
 docker run -d \
   --name agent-workstation \
   --restart unless-stopped \
@@ -19,15 +70,6 @@ docker run -d \
   -v ws-data:/app/data \
   --env-file .env \
   agent-workstation:0.1.0
-
-# 4. 查看日志
-docker logs -f agent-workstation
-```
-
-## docker-compose 部署
-
-```bash
-docker compose up -d
 ```
 
 ## 必填环境变量
@@ -64,11 +106,12 @@ docker compose up -d
 
 | 项 | 值 |
 |---|---|
-| 基础镜像 | `oven/bun:1.1-slim` |
-| 入口 | `bun src/server.ts` |
+| 基础镜像 | `nexus.aimstek.cn/xuanwu-factory/agent-workstation/base:1.2-slim` |
+| 应用入口 | `bun src/server.ts` |
 | 端口 | 4000 |
 | 健康检查 | `GET /health` (30s 间隔) |
-| 多阶段构建 | 3 阶段：deps → build (typecheck) → runtime |
+| 多阶段构建 | 2 阶段：prepare (deps + typecheck) → runtime |
+| Base 镜像 | `Dockerfile.base` —— 系统工具预装 |
 
 ## 反向代理（Nginx 示例）
 
