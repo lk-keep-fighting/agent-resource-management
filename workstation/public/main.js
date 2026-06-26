@@ -657,10 +657,6 @@ async function renderHome() {
 
   // 我的工作空间
   const workspaces = await api("/workspaces").catch(() => []);
-  const agents = await api("/agents?pageSize=50").catch(() => ({ agents: [] }));
-  const allAgents = agents.agents ?? [];
-  const totalAgents = agents.total ?? allAgents.length;
-  const previewAgents = allAgents.slice(0, 8);
 
   container.appendChild(
     el("div", { class: "section" }, [
@@ -668,30 +664,13 @@ async function renderHome() {
         el("h2", { style: { margin: 0 } }, `📂 我的工作空间 (${workspaces.length})`),
         el("button", {
           class: "primary",
-          onclick: () => openNewWorkspaceModal(allAgents),
+          onclick: () => openNewWorkspaceModal(null),
           style: { background: "#165dff", color: "#fff", padding: "6px 14px", borderRadius: "6px", border: "none", cursor: "pointer" },
         }, "+ 新建工作空间"),
       ]),
       workspaces.length === 0
         ? el("div", { class: "empty" }, "暂无工作空间，点上方 [新建工作空间] 选个 Agent 开始吧")
         : el("div", { class: "cards" }, workspaces.map(renderWorkspaceCard)),
-    ]),
-  );
-
-  // Agent 员工：首页只预览前 8 个，避免页面过长；明确文案 + 跳转
-  const agentHeaderRight = totalAgents > previewAgents.length
-    ? el("a", { href: "#/agents", onclick: (e) => { e.preventDefault(); navigate("/agents"); }, style: { color: "#165dff" } }, `查看全部 ${totalAgents} →`)
-    : null;
-  const agentHeader = el("h2", { style: { margin: 0 } },
-    `🤖 Agent 员工（首页显示前 ${previewAgents.length} / 共 ${totalAgents}）`
-  );
-  container.appendChild(
-    el("div", { class: "section" }, [
-      el("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" } }, [
-        agentHeader,
-        agentHeaderRight,
-      ]),
-      el("div", { class: "cards" }, previewAgents.map(renderAgentCard)),
     ]),
   );
 
