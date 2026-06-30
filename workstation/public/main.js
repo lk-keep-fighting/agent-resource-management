@@ -1437,6 +1437,8 @@ async function renderWorkspaceChat(workspaceId) {
   window.__ctxMenuDocClick = docClick;
   document.addEventListener("click", docClick);
 
+  const citeBar = el("div", { class: "cite-bar" });
+  main.appendChild(citeBar);
   main.appendChild(inputArea);
 
   const feedbackBar = el("div", { class: "feedback-bar" }, [
@@ -1486,6 +1488,7 @@ async function renderWorkspaceChat(workspaceId) {
   let experienceItems = [];     // [{id,name,description,content,updatedAt}]
   let essentialItems = [];      // [{id,name}]
   let citedExperienceIds = [];  // 引用中的经验 id（≤5）
+  const citedMeta = {}; // id -> {name}，用于标签文案
 
   /**
    * 流式状态切换：把"发送"按钮变"⏹ 停止"，把按钮绑到 stopRun()。
@@ -1734,7 +1737,31 @@ async function renderWorkspaceChat(workspaceId) {
     document.body.appendChild(drawer);
     document.addEventListener("keydown", onDrawerEsc);
   }
-  function citeExperience(_k) { /* Task 8 实现 */ }
+  function citeExperience(k) {
+    if (citedExperienceIds.length >= 5 && !citedExperienceIds.includes(k.id)) {
+      alert("单次最多引用 5 条经验");
+      return;
+    }
+    if (citedExperienceIds.includes(k.id)) { closeExpDrawer(); return; }
+    citedExperienceIds.push(k.id);
+    citedMeta[k.id] = { name: k.name };
+    renderCiteBar();
+    closeExpDrawer();
+  }
+  function unciteExperience(id) {
+    citedExperienceIds = citedExperienceIds.filter((x) => x !== id);
+    renderCiteBar();
+  }
+  function renderCiteBar() {
+    citeBar.innerHTML = "";
+    if (!citedExperienceIds.length) return;
+    citedExperienceIds.forEach((id) =>
+      citeBar.appendChild(el("span", { class: "cite-chip" }, [
+        `📌 ${citedMeta[id]?.name ?? id} `,
+        el("span", { class: "x", onclick: () => unciteExperience(id) }, "✕"),
+      ])));
+    citeBar.appendChild(el("div", { class: "hint" }, `本次对话将附带 ${citedExperienceIds.length} 条经验`));
+  }
 
   function fmtRelative(iso) {
     if (!iso) return "";
@@ -1873,10 +1900,17 @@ async function renderWorkspaceChat(workspaceId) {
 
     setStreaming(true);
     try {
+      const payload = {
+        message: text,
+        pinnedExperienceIds: citedExperienceIds.length ? [...citedExperienceIds] : undefined,
+      };
+      // 引用按消息清空：ids 已进 payload，立即复位 UI
+      citedExperienceIds = [];
+      renderCiteBar();
       const res = await fetch(`/api/ws/workspaces/${workspaceId}/runs`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Accept: "text/event-stream" },
-        body: JSON.stringify({ message: text }),
+        body: JSON.stringify(payload),
       });
       if (!res.ok || !res.body) throw new Error("请求失败: HTTP " + res.status);
       const reader = res.body.getReader();
