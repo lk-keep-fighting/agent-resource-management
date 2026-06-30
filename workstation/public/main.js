@@ -1790,8 +1790,16 @@ async function renderWorkspaceChat(workspaceId) {
     // 搜索框（仅展开时）
     if (expSection.dataset.search === "1") {
       const input = el("input", { class: "exp-search-input", placeholder: "搜索经验标题/描述…", value: filter ?? "" });
-      input.addEventListener("input", () => renderExpList(input.value));
-      input.addEventListener("keydown", e => { if (e.key === "Escape") { input.value = ""; renderExpList(""); } });
+      // 注意：renderExpList 会重建整个 expSection（含本 input），每次输入后需重新聚焦并恢复光标，否则输完一个字符就失焦。
+      input.addEventListener("input", () => {
+        const v = input.value;
+        renderExpList(v);
+        const ni = expSection.querySelector(".exp-search-input");
+        if (ni) { ni.focus(); ni.setSelectionRange(v.length, v.length); }
+      });
+      input.addEventListener("keydown", e => {
+        if (e.key === "Escape") { renderExpList(""); const ni = expSection.querySelector(".exp-search-input"); if (ni) ni.focus(); }
+      });
       expSection.appendChild(input);
     }
 
