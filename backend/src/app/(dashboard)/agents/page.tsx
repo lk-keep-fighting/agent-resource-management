@@ -25,6 +25,7 @@ interface AgentKnowledge {
   name: string;
   description?: string;
   content?: string;
+  kind?: "essential" | "experience";
   retrievalConfig?: {
     topK?: number;
     similarityThreshold?: number;
@@ -73,6 +74,7 @@ interface BoundKnowledge {
   knowledgeId: string;
   name: string;
   description?: string;
+  kind?: "essential" | "experience";
   retrievalConfig?: {
     topK: number;
   };
@@ -244,6 +246,7 @@ export default function AgentsPage() {
           knowledgeId: ak.knowledgeId,
           name: knowledgeInfo?.name || ak.knowledgeId,
           description: knowledgeInfo?.description,
+          kind: ak.kind ?? "experience",
           retrievalConfig: ak.retrievalConfig || { topK: 5 },
         };
       });
@@ -384,7 +387,7 @@ export default function AgentsPage() {
       await fetch(`/api/v1/agents/${agentId}/knowledges`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ knowledgeId: knowledge.knowledgeId, retrievalConfig: knowledge.retrievalConfig }),
+        body: JSON.stringify({ knowledgeId: knowledge.knowledgeId, kind: knowledge.kind ?? "experience", retrievalConfig: knowledge.retrievalConfig }),
       });
     }
   };
@@ -447,13 +450,21 @@ export default function AgentsPage() {
     } else {
       setBoundKnowledges([
         ...boundKnowledges,
-        { knowledgeId: knowledge.id, name: knowledge.name, description: knowledge.description, retrievalConfig: { topK: 5 } },
+        { knowledgeId: knowledge.id, name: knowledge.name, description: knowledge.description, kind: "experience", retrievalConfig: { topK: 5 } },
       ]);
     }
   };
 
   const handleRemoveKnowledge = (knowledgeId: string) => {
     setBoundKnowledges(boundKnowledges.filter(k => k.knowledgeId !== knowledgeId));
+  };
+
+  const handleToggleKnowledgeKind = (knowledgeId: string) => {
+    setBoundKnowledges(boundKnowledges.map(k =>
+      k.knowledgeId === knowledgeId
+        ? { ...k, kind: k.kind === "essential" ? "experience" : "essential" }
+        : k
+    ));
   };
 
   const handleCreateSkill = async () => {
@@ -515,7 +526,7 @@ export default function AgentsPage() {
         setFilteredKnowledges([...knowledges, newKnowledge]);
         setBoundKnowledges([
           ...boundKnowledges,
-          { knowledgeId: newKnowledge.id, name: newKnowledge.name, description: newKnowledge.description, retrievalConfig: { topK: 5 } },
+          { knowledgeId: newKnowledge.id, name: newKnowledge.name, description: newKnowledge.description, kind: "experience", retrievalConfig: { topK: 5 } },
         ]);
         setShowCreateKnowledge(false);
         setCreatingKnowledge({ name: "", description: "", content: "" });
@@ -728,24 +739,45 @@ export default function AgentsPage() {
       </div>
 
       {boundKnowledges.length > 0 && (
-        <div className="space-y-2">
+        <div className="space-y-3">
           <div className="text-xs font-medium text-gray-500 uppercase">已选择 ({boundKnowledges.length})</div>
-          <div className="space-y-2">
-            {boundKnowledges.map((k) => (
-              <div key={k.knowledgeId} className="flex items-center justify-between p-3 bg-green-50 border border-green-200 rounded-lg">
-                <div className="flex items-center gap-2">
-                  <BookOpen className="h-4 w-4 text-green-500" />
-                  <div>
-                    <div className="font-medium text-sm">{k.name}</div>
-                    {k.description && <div className="text-xs text-gray-500">{k.description}</div>}
-                  </div>
+          {(["essential", "experience"] as const).map((group) => {
+            const items = boundKnowledges.filter(k => (k.kind ?? "experience") === group);
+            if (!items.length) return null;
+            const isEssential = group === "essential";
+            return (
+              <div key={group} className="space-y-2">
+                <div className={`text-xs font-medium ${isEssential ? "text-amber-600" : "text-gray-500"}`}>
+                  {isEssential ? "必备业务知识（下载到环境）" : "工作经验（按需检索）"}
+                  {isEssential && items.length > 5 && (
+                    <span className="ml-2 text-amber-500 normal-case">必备过多（&gt;5）会拖慢启动</span>
+                  )}
                 </div>
-                <button onClick={() => handleRemoveKnowledge(k.knowledgeId)} className="text-gray-400 hover:text-red-500">
-                  <X className="h-4 w-4" />
-                </button>
+                {items.map((k) => {
+                  const essential = (k.kind ?? "experience") === "essential";
+                  return (
+                    <div key={k.knowledgeId} className={`flex items-center justify-between p-3 border rounded-lg ${essential ? "bg-amber-50 border-amber-200" : "bg-green-50 border-green-200"}`}>
+                      <div className="flex items-center gap-2 min-w-0">
+                        <BookOpen className={`h-4 w-4 shrink-0 ${essential ? "text-amber-500" : "text-green-500"}`} />
+                        <div className="min-w-0">
+                          <div className="font-medium text-sm truncate">{k.name}</div>
+                          {k.description && <div className="text-xs text-gray-500 truncate">{k.description}</div>}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <button onClick={() => handleToggleKnowledgeKind(k.knowledgeId)} className="text-xs px-2 py-1 rounded border border-gray-300 hover:bg-gray-50">
+                          {essential ? "改为经验" : "改为必备"}
+                        </button>
+                        <button onClick={() => handleRemoveKnowledge(k.knowledgeId)} className="text-gray-400 hover:text-red-500">
+                          <X className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
-            ))}
-          </div>
+            );
+          })}
         </div>
       )}
 
@@ -891,11 +923,14 @@ export default function AgentsPage() {
             {boundKnowledges.length === 0 ? (
               <span className="text-sm text-gray-400">暂无</span>
             ) : (
-              boundKnowledges.map((k) => (
-                <span key={k.knowledgeId} className="px-3 py-1 bg-green-50 text-green-600 text-sm rounded-full">
-                  {k.name}
-                </span>
-              ))
+              boundKnowledges.map((k) => {
+                const essential = (k.kind ?? "experience") === "essential";
+                return (
+                  <span key={k.knowledgeId} className={`px-3 py-1 text-sm rounded-full ${essential ? "bg-amber-50 text-amber-700" : "bg-green-50 text-green-600"}`}>
+                    {essential ? "必备·" : "经验·"}{k.name}
+                  </span>
+                );
+              })
             )}
           </div>
         </div>
