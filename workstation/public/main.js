@@ -1468,6 +1468,10 @@ async function renderWorkspaceChat(workspaceId) {
   side.appendChild(el("div", { class: "divider" }));
   side.appendChild(el("div", { style: { fontWeight: 600, marginBottom: "6px" } }, "📌 上下文"));
   side.appendChild(el("div", { class: "muted", style: { whiteSpace: "pre-wrap" } }, ws.context || "(无)"));
+  side.appendChild(el("div", { class: "divider" }));
+  const expSection = el("div", { class: "exp-section" });
+  expSection.appendChild(el("div", { class: "exp-empty" }, "加载经验中…"));
+  side.appendChild(expSection);
   layout.appendChild(side);
 
   wrap.appendChild(layout);
@@ -1477,6 +1481,11 @@ async function renderWorkspaceChat(workspaceId) {
   let currentRating = 0;
   let currentHelpful = null;
   let isStreaming = false;
+
+  // ── 工作经验侧栏状态 ──
+  let experienceItems = [];     // [{id,name,description,content,updatedAt}]
+  let essentialItems = [];      // [{id,name}]
+  let citedExperienceIds = [];  // 引用中的经验 id（≤5）
 
   /**
    * 流式状态切换：把"发送"按钮变"⏹ 停止"，把按钮绑到 stopRun()。
@@ -1692,6 +1701,105 @@ async function renderWorkspaceChat(workspaceId) {
       },
     };
   }
+
+  function openExpDrawer(_k, _kind) { /* Task 6 实现 */ }
+  function citeExperience(_k) { /* Task 8 实现 */ }
+
+  function fmtRelative(iso) {
+    if (!iso) return "";
+    const diff = Date.now() - new Date(iso).getTime();
+    const d = Math.floor(diff / 86400000);
+    if (d <= 0) return "今天更新";
+    if (d === 1) return "昨天更新";
+    if (d < 30) return `${d} 天前更新`;
+    return `${Math.floor(d / 30)} 个月前更新`;
+  }
+
+  async function loadExperience() {
+    const agent = await api(`/agents/${encodeURIComponent(ws.agentId)}`).catch(() => null);
+    if (!agent) { renderExpList(); return; }
+    const bindings = agent.knowledgeBindings ?? [];
+    const expBindings = bindings.filter((b) => (b.kind ?? "experience") === "experience");
+    const essBindings = bindings.filter((b) => b.kind === "essential");
+    // 并行取全文（含 description/updatedAt/content）
+    const expDetails = await Promise.all(
+      expBindings.map((b) => api(`/knowledges/${encodeURIComponent(b.knowledgeId)}`).catch(() => null)),
+    );
+    experienceItems = expDetails
+      .filter(Boolean)
+      .map((k) => ({ id: k.id, name: k.name, description: k.description, content: k.content, updatedAt: k.updatedAt }))
+      .sort((a, b) => (b.updatedAt ?? "").localeCompare(a.updatedAt ?? ""));
+    essentialItems = essBindings.map((b) => ({ id: b.knowledgeId, name: b.knowledgeName ?? b.knowledgeId }));
+    renderExpList();
+  }
+
+  function renderExpList(filter) {
+    expSection.innerHTML = "";
+    // 必备折叠区
+    if (essentialItems.length) {
+      const col = el("div", { class: "essential-collapse" }, [
+        el("span", { onclick: () => { col.dataset.open = col.dataset.open === "1" ? "0" : "1"; renderExpList(filter); } },
+          (essentialItems.length ? `📦 已加载必备 ${essentialItems.length} 篇 ` : "") + (expSection.dataset.essOpen === "1" ? "▾" : "▸")),
+      ]);
+      if (expSection.dataset.essOpen === "1") {
+        const list = el("div", { class: "list" }, essentialItems.map((k) =>
+          el("div", { class: "row", onclick: () => openExpDrawer(k, "essential") }, `• ${k.name}`)));
+        col.appendChild(list);
+      }
+      expSection.appendChild(col);
+    }
+    // 标题行 + 搜索按钮
+    const head = el("div", { class: "exp-head" }, [
+      el("span", { class: "title" }, "📚 工作经验"),
+      el("span", { class: "exp-count" }, `${experienceItems.length}`),
+      el("button", { class: "exp-search-btn", title: "搜索", onclick: () => toggleSearch() }, "🔍"),
+    ]);
+    expSection.appendChild(head);
+
+    // 搜索框（仅展开时）
+    if (expSection.dataset.search === "1") {
+      const input = el("input", { class: "exp-search-input", placeholder: "搜索经验标题/描述…", value: filter ?? "" });
+      input.addEventListener("input", () => renderExpList(input.value));
+      expSection.appendChild(input);
+    }
+
+    // 列表（过滤）
+    const q = (filter ?? "").trim().toLowerCase();
+    const items = q
+      ? experienceItems.filter((k) => (k.name + " " + (k.description ?? "")).toLowerCase().includes(q))
+      : experienceItems.slice(0, 8);
+
+    if (!experienceItems.length) {
+      expSection.appendChild(el("div", { class: "exp-empty" }, [
+        el("div", {}, "这位员工暂无工作经验沉淀"),
+        el("button", { class: "ctx-menu-item", style: { marginTop: "6px" }, onclick: () => handleSummarize() }, "把这次对话总结成经验"),
+      ]));
+      return;
+    }
+    const list = el("div", { class: "exp-list" }, items.map((k) =>
+      el("div", { class: "exp-item", onclick: () => openExpDrawer(k, "experience") }, [
+        el("div", { class: "name" }, k.name),
+        el("div", { class: "desc" }, k.description ?? "(无描述)"),
+        el("div", { class: "meta" }, [
+          el("span", {}, fmtRelative(k.updatedAt)),
+          el("button", { class: "pin", title: "引用进对话", onclick: (e) => { e.stopPropagation(); citeExperience(k); } }, "📌"),
+        ]),
+      ])));
+    expSection.appendChild(list);
+    if (!q && experienceItems.length > 8) {
+      expSection.appendChild(el("div", { class: "exp-hint" }, `共 ${experienceItems.length} 条 · 🔍 搜索全部`));
+    }
+    if (q && !items.length) {
+      expSection.appendChild(el("div", { class: "exp-hint" }, "没找到匹配的经验，换个词？"));
+    }
+  }
+
+  function toggleSearch() {
+    expSection.dataset.search = expSection.dataset.search === "1" ? "0" : "1";
+    renderExpList(expSection.dataset.search === "1" ? "" : undefined);
+  }
+
+  loadExperience(); // 进入工作空间即加载
 
   async function send() {
     const ta = $("#chat-textarea");
