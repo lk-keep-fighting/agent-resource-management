@@ -1702,7 +1702,38 @@ async function renderWorkspaceChat(workspaceId) {
     };
   }
 
-  function openExpDrawer(_k, _kind) { /* Task 6 实现 */ }
+  function closeExpDrawer() {
+    const b = document.getElementById("exp-drawer-backdrop");
+    const d = document.getElementById("exp-drawer");
+    if (b) b.remove();
+    if (d) d.remove();
+    document.removeEventListener("keydown", onDrawerEsc);
+  }
+  function onDrawerEsc(e) { if (e.key === "Escape") closeExpDrawer(); }
+
+  function openExpDrawer(k, kind) {
+    closeExpDrawer(); // 防重复
+    const backdrop = el("div", { id: "exp-drawer-backdrop", class: "exp-drawer-backdrop", onclick: closeExpDrawer });
+    const drawer = el("div", { id: "exp-drawer", class: "exp-drawer" }, [
+      el("div", { class: "head" }, [
+        el("span", { class: kind === "essential" ? "badge-ess" : "badge-exp" }, kind === "essential" ? "必备" : "经验"),
+        el("span", { class: "name" }, k.name),
+        el("button", { class: "close", onclick: closeExpDrawer }, "✕"),
+      ]),
+      el("div", { class: "body", html: renderMarkdown(k.content ?? "(无内容)") }),
+      el("div", { class: "foot" }, [
+        el("button", { onclick: () => {
+          navigator.clipboard?.writeText(k.content ?? "");
+        } }, "复制全文"),
+        kind === "essential"
+          ? el("span", { class: "badge-ess" }, "✓ 已在工作区")
+          : el("button", { class: "primary", onclick: () => citeExperience(k) }, "📌 引用进对话"),
+      ]),
+    ]);
+    document.body.appendChild(backdrop);
+    document.body.appendChild(drawer);
+    document.addEventListener("keydown", onDrawerEsc);
+  }
   function citeExperience(_k) { /* Task 8 实现 */ }
 
   function fmtRelative(iso) {
