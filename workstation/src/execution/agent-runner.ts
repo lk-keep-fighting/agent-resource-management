@@ -49,6 +49,7 @@ import type { ArmAgentDetail, WsRun, WsMessage } from "../types.ts";
 import { buildSystemPrompt } from "./context-builder.ts";
 import { buildSkillHintTool } from "./skill-tools.ts";
 import { prepareEssentialKnowledges } from "./knowledge-env.ts";
+import { resolvePinnedExperience } from "./knowledge-env.ts";
 import { buildKnowledgeSearchTool } from "./knowledge-tools.ts";
 import { registerRunner, unregisterRunner } from "./runner-registry.ts";
 
@@ -67,6 +68,7 @@ interface RunOptions {
    * 决定传给 Agent 的 initialState.messages
    */
   historyMode: "continue" | "fresh";
+  pinnedExperienceIds?: string[];
 }
 
 interface ExecuteResult {
@@ -343,15 +345,20 @@ export async function executeRun(opts: RunOptions): Promise<ExecuteResult> {
     essentialErrors = r.errors.length ? r.errors : undefined;
   }
 
-  const systemPrompt =
-    run.systemPrompt ||
-    buildSystemPrompt(agentDetail, null, {
-      enableTools,
-      cwd,
-      essentialFiles,
-      essentialInline,
-      essentialErrors,
-    });
+  let pinnedExperience: Array<{ name: string; content: string }> | undefined;
+  let pinnedErrors: string[] | undefined;
+  if (opts.pinnedExperienceIds?.length) {
+    const r = await resolvePinnedExperience(opts.pinnedExperienceIds, arm());
+    pinnedExperience = r.items.length ? r.items : undefined;
+    pinnedErrors = r.errors.length ? r.errors : undefined;
+  }
+
+  // 有引用经验时必须绕过 run.systemPrompt 快照（runs.ts 在 executeRun 前已写入快照），
+  // 否则引用内容会被静默丢弃；无引用时保留快照优先的既有语义。
+  const promptOpts = { enableTools, cwd, essentialFiles, essentialInline, essentialErrors };
+  const systemPrompt = opts.pinnedExperienceIds?.length
+    ? buildSystemPrompt(agentDetail, null, { ...promptOpts, pinnedExperience, pinnedErrors })
+    : (run.systemPrompt || buildSystemPrompt(agentDetail, null, promptOpts));
 
   const tools: any[] = [];
   if (enableTools) {

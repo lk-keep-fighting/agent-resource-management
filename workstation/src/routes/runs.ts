@@ -25,7 +25,10 @@ runsRoute.post("/workspaces/:workspaceId/runs", async (c) => {
   const workspace = workspaceRepo.get(wsId);
   if (!workspace) return c.json(fail("工作空间不存在"), 404);
 
-  const body = (await c.req.json().catch(() => ({}))) as { message?: string };
+  const body = (await c.req.json().catch(() => ({}))) as {
+    message?: string;
+    pinnedExperienceIds?: string[];
+  };
   if (!body.message || !body.message.trim()) {
     return c.json(fail("message 必填"), 400);
   }
@@ -72,6 +75,8 @@ runsRoute.post("/workspaces/:workspaceId/runs", async (c) => {
       userMessage: body.message!.trim(),
       sender: send,
       historyMode: "fresh",  // 新 run：注入 workspace 全部历史消息
+      pinnedExperienceIds:
+        Array.isArray(body.pinnedExperienceIds) ? body.pinnedExperienceIds : undefined,
     });
 
     send("run.done", { status: result.status, durationMs: result.durationMs });
@@ -88,7 +93,10 @@ runsRoute.post("/runs/:id/messages", async (c) => {
   if (run.status === "streaming" || run.status === "loading" || run.status === "tool_calling") {
     return c.json(fail("Run 进行中，请先 abort"), 409);
   }
-  const body = (await c.req.json().catch(() => ({}))) as { message?: string };
+  const body = (await c.req.json().catch(() => ({}))) as {
+    message?: string;
+    pinnedExperienceIds?: string[];
+  };
   if (!body.message || !body.message.trim()) return c.json(fail("message 必填"), 400);
 
   c.header("Content-Type", "text/event-stream");
@@ -106,6 +114,8 @@ runsRoute.post("/runs/:id/messages", async (c) => {
       userMessage: body.message!.trim(),
       sender: send,
       historyMode: "continue",  // 续接该 run 已有消息
+      pinnedExperienceIds:
+        Array.isArray(body.pinnedExperienceIds) ? body.pinnedExperienceIds : undefined,
     });
     send("run.done", { status: result.status, durationMs: result.durationMs });
   });
