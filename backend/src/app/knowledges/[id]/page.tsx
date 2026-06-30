@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import ReactMarkdown from "react-markdown";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Pencil } from "lucide-react";
 
 interface Knowledge {
   id: string;
@@ -24,6 +24,16 @@ export default function KnowledgeSharePage() {
   const [knowledge, setKnowledge] = useState<Knowledge | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [user, setUser] = useState<{ role?: string } | null>(null);
+
+  useEffect(() => {
+    fetch("/api/auth/session", { credentials: "include" })
+      .then((r) => r.json())
+      .then((d) => {
+        if (d.user) setUser(d.user);
+      })
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     async function fetchKnowledge() {
@@ -79,13 +89,24 @@ export default function KnowledgeSharePage() {
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-2xl mx-auto px-4 py-8">
-        <Link
-          href="/knowledges"
-          className="inline-flex items-center gap-2 text-gray-500 hover:text-gray-700 mb-8 transition-colors"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          返回知识市场
-        </Link>
+        <div className="flex items-center justify-between mb-8">
+          <Link
+            href="/knowledges"
+            className="inline-flex items-center gap-2 text-gray-500 hover:text-gray-700 transition-colors"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            返回知识市场
+          </Link>
+          {user?.role === "ADMIN" && (
+            <Link
+              href={`/knowledges/${id}/edit`}
+              className="inline-flex items-center gap-1 px-3 py-1.5 text-sm rounded-md border border-gray-300 text-gray-700 hover:bg-gray-100 transition-colors"
+            >
+              <Pencil className="h-4 w-4" />
+              编辑
+            </Link>
+          )}
+        </div>
 
         <article className="bg-white rounded-xl shadow-sm border p-6 md:p-8">
           <header className="text-center mb-8">
