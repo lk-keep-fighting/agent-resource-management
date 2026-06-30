@@ -164,16 +164,19 @@ export function KnowledgeEditor({ mode, knowledgeId }: KnowledgeEditorProps) {
       });
       const data = await res.json();
       if (data.ok) {
-        alert(`已更新 ${data.data.updatedAgents.length} 个 Agent 版本`);
+        setVersionUpdating(false);
+        setVersionModalOpen(false);
+        alert(`已更新 ${data.data?.updatedAgents?.length ?? 0} 个 Agent 版本`);
+        router.push(`/knowledges/${knowledgeId}`);
       } else {
+        setVersionUpdating(false);
         alert(data.msg || "版本更新失败");
+        // keep modal open so the user can retry
       }
     } catch {
-      alert("版本更新失败");
-    } finally {
       setVersionUpdating(false);
-      setVersionModalOpen(false);
-      router.push(`/knowledges/${knowledgeId}`);
+      alert("版本更新失败");
+      // keep modal open so the user can retry
     }
   };
 
