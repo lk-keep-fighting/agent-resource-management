@@ -1738,7 +1738,7 @@ async function renderWorkspaceChat(workspaceId) {
     // 必备折叠区
     if (essentialItems.length) {
       const col = el("div", { class: "essential-collapse" }, [
-        el("span", { onclick: () => { col.dataset.open = col.dataset.open === "1" ? "0" : "1"; renderExpList(filter); } },
+        el("span", { onclick: () => { expSection.dataset.essOpen = expSection.dataset.essOpen === "1" ? "0" : "1"; renderExpList(filter); } },
           (essentialItems.length ? `📦 已加载必备 ${essentialItems.length} 篇 ` : "") + (expSection.dataset.essOpen === "1" ? "▾" : "▸")),
       ]);
       if (expSection.dataset.essOpen === "1") {
