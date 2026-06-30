@@ -332,6 +332,20 @@ export class ArmClient {
     return res.ok ? res.data : null;
   }
 
+  /**
+   * 关键字检索知识库（对应 ARM GET /knowledges?search=）。
+   * 注意：后端读的是 search 参数（非 keyword）。
+   */
+  async searchKnowledges(params: { keyword?: string; page?: number; pageSize?: number } = {}): Promise<{ knowledges: any[]; total: number } | null> {
+    const sp = new URLSearchParams();
+    if (params.keyword) sp.set("search", params.keyword);
+    if (params.page) sp.set("page", String(params.page));
+    if (params.pageSize) sp.set("pageSize", String(params.pageSize));
+    const qs = sp.toString();
+    const res = await this.request<{ knowledges: any[]; total: number }>(`/knowledges${qs ? `?${qs}` : ""}`);
+    return res.ok ? res.data : null;
+  }
+
   async createKnowledge(payload: { name: string; description?: string; content: string }): Promise<any | null> {
     const res = await this.request<any>(`/knowledges`, {
       method: "POST",
@@ -349,6 +363,7 @@ export class ArmClient {
     payload: {
       knowledgeId: string;
       version?: string;
+      kind?: "essential" | "experience";
       retrievalConfig?: { topK?: number; similarityThreshold?: number };
     },
   ): Promise<{ id: string; knowledgeId: string; version: string } | null> {

@@ -38,6 +38,7 @@ export interface ArmAgentDetail extends ArmAgent {
     knowledgeId: string;
     knowledgeName?: string;
     version: string;
+    kind?: "essential" | "experience";
     retrievalConfig?: Record<string, unknown>;
   }>;
 }
