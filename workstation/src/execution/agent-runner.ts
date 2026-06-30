@@ -48,6 +48,8 @@ import { arm } from "../arm-client/client.ts";
 import type { ArmAgentDetail, WsRun, WsMessage } from "../types.ts";
 import { buildSystemPrompt } from "./context-builder.ts";
 import { buildSkillHintTool } from "./skill-tools.ts";
+import { prepareEssentialKnowledges } from "./knowledge-env.ts";
+import { buildKnowledgeSearchTool } from "./knowledge-tools.ts";
 import { registerRunner, unregisterRunner } from "./runner-registry.ts";
 
 type SseSender = (event: string, data: unknown) => void;
@@ -324,18 +326,36 @@ export async function executeRun(opts: RunOptions): Promise<ExecuteResult> {
   // 这样普通对话不会被工具抢戏。
   const workspace = workspaceRepo.get(run.workspaceId);
   const enableTools = workspace?.enableTools ?? false;
+  const cwd = workspace?.cwd ?? workspaceCwdPath(run.workspaceId);
+
+  // 按 kind 分流知识：essential 下载/内联；experience 仅提示 + 检索工具
+  const essentialBindings = (agentDetail.knowledgeBindings ?? [])
+    .filter((b) => (b.kind ?? "experience") === "essential")
+    .map((b) => ({ knowledgeId: b.knowledgeId, knowledgeName: b.knowledgeName, version: b.version }));
+
+  let essentialFiles: Awaited<ReturnType<typeof prepareEssentialKnowledges>>["files"] | undefined;
+  let essentialInline: Awaited<ReturnType<typeof prepareEssentialKnowledges>>["inline"] | undefined;
+  let essentialErrors: string[] | undefined;
+  if (essentialBindings.length) {
+    const r = await prepareEssentialKnowledges(essentialBindings, cwd, enableTools, arm());
+    essentialFiles = r.files.length ? r.files : undefined;
+    essentialInline = r.inline.length ? r.inline : undefined;
+    essentialErrors = r.errors.length ? r.errors : undefined;
+  }
 
   const systemPrompt =
     run.systemPrompt ||
     buildSystemPrompt(agentDetail, null, {
       enableTools,
-      cwd: workspace?.cwd ?? workspaceCwdPath(run.workspaceId),
+      cwd,
+      essentialFiles,
+      essentialInline,
+      essentialErrors,
     });
 
   const tools: any[] = [];
   if (enableTools) {
     // pi-coding-agent 内置 7 件套：bash / read / write / edit / ls / grep / find
-    const cwd = workspace?.cwd ?? workspaceCwdPath(run.workspaceId);
     tools.push(...buildTools(cwd));
     // 提示当前 WS 已绑定的 Skill 列表（仅 info 工具，无副作用）
     const skillSummaries = (agentDetail.skillBindings ?? []).map((b) => ({
@@ -345,6 +365,8 @@ export async function executeRun(opts: RunOptions): Promise<ExecuteResult> {
     }));
     const skillHint = buildSkillHintTool(skillSummaries);
     if (skillHint) tools.push(skillHint);
+    // 工作经验检索工具（按需检索全局知识库，排障时使用）
+    tools.push(buildKnowledgeSearchTool());
   }
 
   let model: Model<"openai-completions">;
