@@ -50,3 +50,28 @@ describe("buildSystemPrompt 知识分区", () => {
     expect(p).toContain("老知识");
   });
 });
+
+describe("buildSystemPrompt 引用经验", () => {
+  it("pinnedExperience 注入「用户本次引用的工作经验」分区与内容", () => {
+    const p = buildSystemPrompt(baseAgent([]), null, {
+      pinnedExperience: [{ name: "OOM 排查三步", content: "第一步：看 GC 日志" }],
+    });
+    expect(p).toContain("用户本次引用的工作经验");
+    expect(p).toContain("OOM 排查三步");
+    expect(p).toContain("第一步：看 GC 日志");
+  });
+
+  it("无 pinnedExperience 时不出现引用分区", () => {
+    const p = buildSystemPrompt(baseAgent([]), null, {});
+    expect(p).not.toContain("用户本次引用的工作经验");
+  });
+
+  it("pinnedErrors 输出加载失败提示", () => {
+    const p = buildSystemPrompt(baseAgent([]), null, {
+      pinnedExperience: [{ name: "A", content: "a" }],
+      pinnedErrors: ["kMissing"],
+    });
+    expect(p).toContain("部分引用经验加载失败");
+    expect(p).toContain("kMissing");
+  });
+});

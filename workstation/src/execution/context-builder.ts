@@ -6,6 +6,8 @@ interface BuildOptions {
   essentialFiles?: Array<{ name: string; filename: string }>;
   essentialInline?: Array<{ name: string; content: string }>;
   essentialErrors?: string[];
+  pinnedExperience?: Array<{ name: string; content: string }>;
+  pinnedErrors?: string[];
 }
 
 /**
@@ -83,6 +85,16 @@ export function buildSystemPrompt(
     parts.push(
       `\n可用工具：bash、read、write、edit、ls/grep/find、knowledge_search（按关键词检索全局「工作经验」知识库，排障时使用）。`,
     );
+  }
+
+  if (options.pinnedExperience?.length) {
+    parts.push(`\n### 用户本次引用的工作经验`);
+    for (const k of options.pinnedExperience) {
+      parts.push(`\n#### ${k.name}\n${k.content}`);
+    }
+  }
+  if (options.pinnedErrors?.length) {
+    parts.push(`\n> 部分引用经验加载失败：${options.pinnedErrors.join(", ")}`);
   }
 
   return parts.join("\n");
