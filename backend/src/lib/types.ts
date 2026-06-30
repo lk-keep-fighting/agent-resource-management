@@ -87,6 +87,7 @@ export interface Agent {
   }>;
   knowledges?: Array<{
     knowledgeId: string;
+    kind?: "essential" | "experience";
     retrievalConfig?: {
       topK?: number;
       similarityThreshold?: number;
@@ -101,6 +102,7 @@ export interface AgentSkill {
 
 export interface AgentKnowledge {
   knowledgeId: string;
+  kind?: "essential" | "experience";
   retrievalConfig?: {
     topK?: number;
     similarityThreshold?: number;
@@ -115,6 +117,7 @@ export interface AgentWithRelations extends Agent {
   }>;
   knowledges: Array<{
     knowledgeId: string;
+    kind?: "essential" | "experience";
     retrievalConfig?: {
       topK?: number;
       similarityThreshold?: number;
@@ -137,6 +140,7 @@ export interface AgentConfig {
   }>;
   knowledges: Array<{
     id: string;
+    kind?: "essential" | "experience";
     retrievalConfig?: {
       topK?: number;
       similarityThreshold?: number;
@@ -183,6 +187,7 @@ export interface BindSkillRequest {
 
 export interface BindKnowledgeRequest {
   knowledgeId: string;
+  kind?: "essential" | "experience";
   retrievalConfig?: {
     topK?: number;
     similarityThreshold?: number;

@@ -7,6 +7,7 @@ import { Prisma } from '@prisma/client';
 interface BindKnowledgeRequest {
   knowledgeId: string;
   version?: string;
+  kind?: "essential" | "experience";
   retrievalConfig?: { topK?: number; similarityThreshold?: number };
 }
 
@@ -25,6 +26,11 @@ export async function POST(
 
     if (!body.knowledgeId) {
       return errorResponse('knowledgeId 不能为空');
+    }
+
+    const kind = body.kind ?? "experience";
+    if (kind !== "essential" && kind !== "experience") {
+      return errorResponse("kind 只能是 essential 或 experience", 400);
     }
 
     const agent = await prisma.agent.findUnique({ where: { id: agentId } });
@@ -68,6 +74,7 @@ export async function POST(
         agentId,
         knowledgeId: body.knowledgeId,
         version,
+        kind,
         retrievalConfig: body.retrievalConfig as Prisma.InputJsonValue || {},
       },
     });
@@ -77,6 +84,7 @@ export async function POST(
       agentId,
       knowledgeId: body.knowledgeId,
       version,
+      kind,
       retrievalConfig: binding.retrievalConfig,
     }, '绑定成功');
   } catch (err) {
@@ -106,6 +114,7 @@ export async function GET(
         id: ak.id,
         knowledgeId: ak.knowledgeId,
         version: ak.version,
+        kind: ak.kind,
         knowledge: {
           id: ak.knowledge.id,
           name: ak.knowledge.name,

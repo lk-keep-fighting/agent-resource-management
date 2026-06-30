@@ -76,6 +76,7 @@ export async function GET(
         id: ak.id,
         knowledgeId: ak.knowledgeId,
         version: ak.version,
+        kind: ak.kind,
         knowledge: {
           id: ak.knowledge.id,
           name: ak.knowledge.name,
