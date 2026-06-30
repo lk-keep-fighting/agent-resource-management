@@ -1791,6 +1791,7 @@ async function renderWorkspaceChat(workspaceId) {
     if (expSection.dataset.search === "1") {
       const input = el("input", { class: "exp-search-input", placeholder: "搜索经验标题/描述…", value: filter ?? "" });
       input.addEventListener("input", () => renderExpList(input.value));
+      input.addEventListener("keydown", e => { if (e.key === "Escape") { input.value = ""; renderExpList(""); } });
       expSection.appendChild(input);
     }
 
