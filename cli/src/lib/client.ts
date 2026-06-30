@@ -200,7 +200,7 @@ export class ApiClient {
   async listKnowledge(keyword?: string, page = 1, pageSize = 20): Promise<{ knowledges: any[]; total: number }> {
     let path = `/knowledges?page=${page}&pageSize=${pageSize}`;
     if (keyword) {
-      path += `&keyword=${encodeURIComponent(keyword)}`;
+      path += `&search=${encodeURIComponent(keyword)}`;
     }
     const res = await this.request<{ knowledges: any[]; total: number }>(path);
     if (!res.ok) {
