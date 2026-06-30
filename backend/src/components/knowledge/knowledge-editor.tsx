@@ -166,7 +166,7 @@ export function KnowledgeEditor({ mode, knowledgeId }: KnowledgeEditorProps) {
       if (data.ok) {
         alert(`已更新 ${data.data.updatedAgents.length} 个 Agent 版本`);
       } else {
-        alert(data.message || "版本更新失败");
+        alert(data.msg || "版本更新失败");
       }
     } catch {
       alert("版本更新失败");
