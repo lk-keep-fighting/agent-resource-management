@@ -349,10 +349,10 @@ export class ApiClient {
     }
   }
 
-  async bindKnowledgeToAgent(agentId: string, knowledgeId: string, version: string, retrievalConfig?: { topK?: number; similarityThreshold?: number }): Promise<void> {
+  async bindKnowledgeToAgent(agentId: string, knowledgeId: string, version: string, retrievalConfig?: { topK?: number; similarityThreshold?: number }, kind?: 'essential' | 'experience'): Promise<void> {
     const res = await this.request<null>(`/agents/${agentId}/knowledges`, {
       method: 'POST',
-      body: JSON.stringify({ knowledgeId, version, retrievalConfig }),
+      body: JSON.stringify({ knowledgeId, version, retrievalConfig, kind }),
     });
     if (!res.ok) {
       throw new Error(res.msg);

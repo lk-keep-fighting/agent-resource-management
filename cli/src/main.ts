@@ -328,6 +328,7 @@ async function main() {
             let knowledgeId: string | undefined;
             let skillConfig: string | undefined;
             let knowledgeConfig: string | undefined;
+            let knowledgeKind: string | undefined;
 
             for (let i = 3; i < args.length; i++) {
               const arg = args[i];
@@ -339,15 +340,18 @@ async function main() {
                 skillConfig = arg.split('=').slice(1).join('=');
               } else if (arg.startsWith('--knowledge-config=')) {
                 knowledgeConfig = arg.split('=').slice(1).join('=');
+              } else if (arg.startsWith('--kind=')) {
+                knowledgeKind = arg.split('=').slice(1).join('=');
               }
             }
 
             if (skillId) {
               await bindSkill(id, skillId, undefined, skillConfig);
             } else if (knowledgeId) {
-              await bindKnowledge(id, knowledgeId, undefined, knowledgeConfig);
+              const kind = (knowledgeKind === 'essential' || knowledgeKind === 'experience') ? knowledgeKind : undefined;
+              await bindKnowledge(id, knowledgeId, undefined, knowledgeConfig, kind);
             } else {
-              console.error('用法: arm agent bind <id> --skill=<skillId> 或 --knowledge=<knowledgeId>');
+              console.error('用法: arm agent bind <id> --skill=<skillId> 或 --knowledge=<knowledgeId> [--kind=essential|experience]');
               process.exit(1);
             }
           }

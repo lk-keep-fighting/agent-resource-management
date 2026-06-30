@@ -217,7 +217,7 @@ export async function unbindSkill(id: string, skillId: string, version?: string)
   }
 }
 
-export async function bindKnowledge(id: string, knowledgeId: string, version: string = '1.0.0', retrievalConfig?: string): Promise<void> {
+export async function bindKnowledge(id: string, knowledgeId: string, version: string = '1.0.0', retrievalConfig?: string, kind?: 'essential' | 'experience'): Promise<void> {
   const configStore = loadConfig();
   if (!configStore?.token) {
     if (shouldOutputJson()) {
@@ -231,13 +231,13 @@ export async function bindKnowledge(id: string, knowledgeId: string, version: st
   const client = new ApiClient(configStore.serverUrl, configStore.token);
   try {
     const parsedConfig = retrievalConfig ? JSON.parse(retrievalConfig) : undefined;
-    await client.bindKnowledgeToAgent(id, knowledgeId, version, parsedConfig);
+    await client.bindKnowledgeToAgent(id, knowledgeId, version, parsedConfig, kind);
 
     if (shouldOutputJson()) {
-      outputJson({ success: true, data: { agentId: id, knowledgeId, version, retrievalConfig: parsedConfig } });
+      outputJson({ success: true, data: { agentId: id, knowledgeId, version, kind: kind ?? 'experience', retrievalConfig: parsedConfig } });
       return;
     }
-    success(`Knowledge "${knowledgeId}@${version}" 已绑定到 Agent "${id}"`);
+    success(`Knowledge "${knowledgeId}@${version}"（${kind ?? 'experience'}）已绑定到 Agent "${id}"`);
   } catch (err) {
     if (shouldOutputJson()) {
       outputJson({ success: false, error: { code: 'BIND_FAILED', message: err instanceof Error ? err.message : '未知错误' } });
