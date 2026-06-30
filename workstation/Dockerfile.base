@@ -28,6 +28,7 @@ USER root
 #                  netcat-openbsd tcpdump iproute2
 #   - 数据库：     default-mysql-client (与 mysql 协议兼容)
 #   - SSH/远程：   openssh-client sshpass
+#   - JS 运行时：  nodejs npm（Debian 源版本一般够用，要锁版本走 Nodesource）
 #   - 开发必备：   jq unzip zip vim-tiny less tree git
 #                  strace lsof
 #   - 容器/k8s：   kubectl（从 dl.k8s.io 直接下，apt 源版本通常滞后）
@@ -36,6 +37,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     iputils-ping traceroute dnsutils mtr-tiny nmap netcat-openbsd tcpdump iproute2 \
     default-mysql-client \
     openssh-client sshpass \
+    nodejs npm \
     jq unzip zip vim-tiny less tree git \
     strace lsof \
     && rm -rf /var/lib/apt/lists/*
