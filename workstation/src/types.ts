@@ -139,7 +139,7 @@ export interface WsFeedback {
 export interface WsAssetShare {
   id: string;
   fromRunId: string;
-  assetType: "skill" | "knowledge" | "agent";
+  assetType: "knowledge" | "agent";
   armAssetId: string | null;
   armAssetName: string | null;
   status: "pending" | "created" | "failed";

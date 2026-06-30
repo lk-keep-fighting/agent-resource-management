@@ -89,8 +89,6 @@ docker run -d \
 | `WS_DB_PATH` | `/app/data/workstation.db` | SQLite 文件路径 |
 | `WS_LLM_BASE_URL` | `https://open.bigmodel.cn/api/coding/paas/v4` | LLM base URL |
 | `WS_LLM_MODEL` | `glm-4.5` | LLM 模型名 |
-| `WS_ARM_CLI_ENABLED` | `true` | 是否启用 arm_cli tool |
-| `WS_ARM_CLI_PATH` | `arm` | ARM CLI 路径（需挂载或安装） |
 | `NEXT_PUBLIC_SSO_URL` | `http://sso.agent-platform.dev.aimstek.cn` | SSO 服务地址 |
 
 ## 持久化
@@ -147,18 +145,4 @@ docker exec -it agent-workstation bun src/db/migrate.ts
 
 # 检查 ARM 后端连通
 docker exec -it agent-workstation curl -s http://arm:3000/api/v1/health
-```
-
-## ARM CLI 集成（可选）
-
-`arm_cli` Tool 允许 Agent 在 Workspace 里执行 ARM CLI 命令。如果启用，需要在镜像中安装 ARM CLI 或挂载二进制：
-
-```dockerfile
-# 在 runtime 阶段加（如果 arm CLI 在 host 上）：
-COPY --from=ghcr.io/anomalyco/arm-cli:latest /usr/local/bin/arm /usr/local/bin/arm
-```
-
-或运行时挂载：
-```bash
-docker run -v /usr/local/bin/arm:/usr/local/bin/arm:ro ...
 ```

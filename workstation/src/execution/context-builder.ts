@@ -42,9 +42,6 @@ export function buildSystemPrompt(
     if (skillHints.length) parts.push(`\n### Skills\n${skillHints.join("\n")}`);
     if (knowledgeHints.length)
       parts.push(`\n### Knowledges\n${knowledgeHints.join("\n")}`);
-    parts.push(
-      `\n需要查看/使用上述资源时，请用 arm_cli 工具执行对应命令（如 'skill info <name>'）。`,
-    );
   }
 
   if (enableTools) {
@@ -56,7 +53,7 @@ export function buildSystemPrompt(
       parts.push(`\n当前工作目录: \`${cwd}\` —— 所有 bash/read/write/edit 都在该目录下进行。`);
     }
     parts.push(
-      `\n可用的工具：bash（执行 shell 命令）、read（读文件）、write（写文件）、edit（编辑文件）、ls/grep/find（浏览与搜索）、arm_cli（执行 ARM CLI 查询资源）。`,
+      `\n可用的工具：bash（执行 shell 命令）、read（读文件）、write（写文件）、edit（编辑文件）、ls/grep/find（浏览与搜索）。`,
     );
   }
 

@@ -18,8 +18,3 @@ server:
 
 db:
   path: ./data/workstation.db
-
-armCliTool:
-  enabled: true
-  cliPath: arm
-  timeoutMs: 60000

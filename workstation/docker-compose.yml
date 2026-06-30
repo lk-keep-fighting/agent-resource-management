@@ -36,10 +36,6 @@ services:
       # 不设时从请求头自动检测（X-Forwarded-Proto + Host），反代场景可用
       # 本地开发：默认 http://localhost:4000
       WS_PUBLIC_ORIGIN: ${WS_PUBLIC_ORIGIN:-}
-      # ─── ARM CLI Tool ───
-      WS_ARM_CLI_ENABLED: ${WS_ARM_CLI_ENABLED:-true}
-      WS_ARM_CLI_PATH: ${WS_ARM_CLI_PATH:-arm}
-      WS_ARM_CLI_TIMEOUT_MS: ${WS_ARM_CLI_TIMEOUT_MS:-60000}
     volumes:
       - ws-data:/app/data
     healthcheck:

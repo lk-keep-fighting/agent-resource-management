@@ -5,7 +5,7 @@ import type { WsAssetShare } from "../../types.ts";
 interface AssetShareRow {
   id: string;
   from_run_id: string;
-  asset_type: "skill" | "knowledge" | "agent";
+  asset_type: "knowledge" | "agent";
   arm_asset_id: string | null;
   arm_asset_name: string | null;
   status: "pending" | "created" | "failed";
@@ -41,7 +41,7 @@ export const assetShareRepo = {
     return rows.map(rowToWs);
   },
 
-  create(input: { fromRunId: string; assetType: "skill" | "knowledge" | "agent" }): WsAssetShare {
+  create(input: { fromRunId: string; assetType: "knowledge" | "agent" }): WsAssetShare {
     const id = uuidv4();
     getDb()
       .prepare(

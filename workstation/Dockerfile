@@ -7,7 +7,7 @@
 # ──────────────────────────────────────────────────────────
 
 # 允许通过 --build-arg WS_BASE_IMAGE=xxx 覆盖 base 镜像（本地开发用）
-ARG WS_BASE_IMAGE=nexus.aimstek.cn/arm:ws-base-0646e10
+ARG WS_BASE_IMAGE=nexus.aimstek.cn/arm:ws-base-1c4448f
 
 # ───── Stage 1: prepare ─────
 FROM nexus.aimstek.cn/xuanwu-factory/common/bun:1.2 AS prepare
@@ -51,10 +51,7 @@ ENV NODE_ENV=production \
     WS_DB_PATH=/app/data/workstation.db \
     WS_LLM_PROVIDER=openai \
     WS_LLM_BASE_URL=https://open.bigmodel.cn/api/coding/paas/v4 \
-    WS_LLM_MODEL=glm-4.5 \
-    WS_ARM_CLI_ENABLED=true \
-    WS_ARM_CLI_PATH=arm \
-    WS_ARM_CLI_TIMEOUT_MS=60000
+    WS_LLM_MODEL=glm-4.5
 
 EXPOSE 4000
 

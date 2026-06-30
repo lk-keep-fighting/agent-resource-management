@@ -47,7 +47,6 @@ import { workspaceRepo } from "../db/repos/workspace.repo.ts";
 import { arm } from "../arm-client/client.ts";
 import type { ArmAgentDetail, WsRun, WsMessage } from "../types.ts";
 import { buildSystemPrompt } from "./context-builder.ts";
-import { armCliTool } from "./tools/arm-cli.ts";
 import { buildSkillHintTool } from "./skill-tools.ts";
 import { registerRunner, unregisterRunner } from "./runner-registry.ts";
 
@@ -338,8 +337,6 @@ export async function executeRun(opts: RunOptions): Promise<ExecuteResult> {
     // pi-coding-agent 内置 7 件套：bash / read / write / edit / ls / grep / find
     const cwd = workspace?.cwd ?? workspaceCwdPath(run.workspaceId);
     tools.push(...buildTools(cwd));
-    // arm_cli 工具（与 bash 并存，用于查 ARM 资源）
-    tools.push(armCliTool as any);
     // 提示当前 WS 已绑定的 Skill 列表（仅 info 工具，无副作用）
     const skillSummaries = (agentDetail.skillBindings ?? []).map((b) => ({
       name: b.skillName ?? b.skillId,

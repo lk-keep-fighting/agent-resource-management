@@ -46,7 +46,6 @@ runsRoute.post("/workspaces/:workspaceId/runs", async (c) => {
     skillBindings: agentDetail.skillBindings ?? [],
     knowledgeBindings: agentDetail.knowledgeBindings ?? [],
     toolsSnapshot: [
-      { name: "arm_cli", description: "ARM CLI 命令执行" },
       ...((agentDetail.skillBindings ?? []).map((b) => ({
         name: `skill:${b.skillName ?? b.skillId}`,
         description: `已绑定 Skill v${b.version}`,

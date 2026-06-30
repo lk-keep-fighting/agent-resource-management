@@ -12,7 +12,6 @@
 - ✅ **Agent 员工选择** —— 列出 ARM 中所有 Agent，进入详情
 - ✅ **创建工作空间** —— 给某个 Agent 起名 + 写场景描述，进入隔离对话
 - ✅ **对话（SSE 流式）** —— 实时打字机效果、工具调用卡片、历史回放
-- ✅ **arm_cli Tool** —— Agent 可调用 ARM CLI 自助加载 Skill / 检索 Knowledge
 - ✅ **评分反馈** —— 👍/👎 / 1-5 星 / 评论 / 沉淀
 - ✅ **资产沉淀** —— 从 Run 提取 → 调用 ARM API 创建 Knowledge / Agent
 - ❌ 不做：鉴权 / 权限 / 协作成员 / 模板市场 / RAG 上传 / 飞书 IM
@@ -127,13 +126,7 @@ bun run typecheck
    → SSE 流式渲染 Agent 回答
    → 工具调用会显示 🔧 卡片
 
-[5] Agent 员工在对话中可以调用 ARM CLI：
-   - "帮我查一下 log-parser 这个 skill 的详情"
-     → Agent 自动调用 `arm_cli skill info log-parser`
-   - "把这次结果沉淀成 Knowledge"
-     → Agent 自动调用 `arm_cli skill upload ...`
-
-[6] Run 完成后评价：
+[5] Run 完成后评价：
    - 👍 有用 / 👎 没用
    - 1-5 星 + 评论
 
@@ -197,9 +190,7 @@ workstation/
     ├── execution/
     │   ├── agent-runner.ts     # Agent 生命周期封装
     │   ├── context-builder.ts  # 三层 Prompt 组装
-    │   ├── skill-tools.ts      # ARM Skill → Tool
-    │   └── tools/
-    │       └── arm-cli.ts      # arm_cli 作为 Tool ⭐
+    │   └── skill-tools.ts      # ARM Skill → Tool
     └── routes/
         ├── workspaces.ts
         ├── agents.ts
@@ -252,10 +243,10 @@ event: message.delta
 data: {"delta":"..."}
 
 event: tool.call.start
-data: {"toolName":"arm_cli", "args":{...}}
+data: {"toolName":"bash", "args":{...}}
 
 event: tool.call.end
-data: {"toolName":"arm_cli", "result":{...}}
+data: {"toolName":"bash", "result":{...}}
 
 event: message.done
 data: {"finishReason":"stop", "usage":{...}}
@@ -280,47 +271,25 @@ Layer 3: 运行时动态上下文            ← Skill/Knowledge 摘要
 
 ---
 
-## 10. arm_cli Tool 设计
+## 10. 常见问题
 
-Agent 员工具备"自我发现 / 自我加载"能力：
-
-```
-User: 帮我用 log-parser 分析这段日志
-  ↓
-Agent 思考：需要先了解 log-parser 是啥
-  ↓
-Agent 调用 tool: arm_cli { subcommand: "skill info log-parser" }
-  ↓
-执行: arm skill info log-parser
-  ↓
-返回 Skill 详情
-  ↓
-Agent 继续基于详情分析日志
-```
-
-实现见 `src/execution/tools/arm-cli.ts`。
-
----
-
-## 11. 常见问题
-
-### 11.1 启动报错 `better-sqlite3 is not yet supported`
+### 10.1 启动报错 `better-sqlite3 is not yet supported`
 
 我们改用了 `bun:sqlite`，请确认：
 1. 使用 Bun 1.3+（不要用 Node）
 2. `package.json` 中已无 `better-sqlite3` 依赖
 
-### 11.2 `/api/ws/agents` 返回 502 ARM 不可达
+### 10.2 `/api/ws/agents` 返回 502 ARM 不可达
 
 ARM backend 没起来，或 `config.yaml` 的 `arm.baseUrl` 配错。
 
 可临时用 `bun run scripts/mock-arm.ts 3000` 启动 mock。
 
-### 11.3 LLM 调用失败
+### 10.3 LLM 调用失败
 
 确认 `WS_LLM_API_KEY` 已设置，且 `WS_LLM_BASE_URL` 指向正确的 OpenAI 兼容 endpoint。
 
-### 11.4 TypeScript 类型错误
+### 10.4 TypeScript 类型错误
 
 ```bash
 bun run typecheck
@@ -330,7 +299,7 @@ bun run typecheck
 
 ---
 
-## 12. 后续迭代
+## 11. 后续迭代
 
 - [ ] 文件上传 + RAG 检索
 - [ ] 多用户 / 鉴权

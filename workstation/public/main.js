@@ -952,13 +952,13 @@ async function renderNewWorkspace(agentId) {
     el("div", { class: "form-row" }, [
       el("label", { style: { display: "flex", alignItems: "center", gap: "8px" } }, [
         toolsCheckbox,
-        el("span", {}, "启用工具（bash / 读写文件 / arm_cli）"),
+        el("span", {}, "启用工具（bash / 读写文件）"),
         el("span", { class: "tag", style: { background: "#fff7e6", color: "#d46b08", marginLeft: "4px" } }, "默认 ✓"),
       ]),
       el("div", { class: "hint" }, [
         "Agent 可在隔离目录 (",
         el("code", {}, `data/workspaces/<id>`),
-        ") 中执行命令、读写文件、调用 arm_cli。",
+        ") 中执行命令、读写文件。",
         el("br"),
         "⚠️ 没有沙箱 —— 仅在可信 Agent 上启用。",
       ]),
@@ -1226,13 +1226,13 @@ function openNewWorkspaceModal(allAgents) {
       el("div", { class: "form-row" }, [
         el("label", { style: { display: "flex", alignItems: "center", gap: "8px" } }, [
           toolsCheckbox,
-          el("span", {}, "启用工具（bash / 读写文件 / arm_cli）"),
+          el("span", {}, "启用工具（bash / 读写文件）"),
           el("span", { class: "tag", style: { background: "#fff7e6", color: "#d46b08" } }, "默认 ✓"),
         ]),
         el("div", { class: "hint" }, [
           "Agent 可在隔离目录 (",
           el("code", {}, `data/workspaces/<id>`),
-          ") 中执行命令、读写文件、调用 arm_cli。",
+          ") 中执行命令、读写文件。",
           el("br"),
           "⚠️ 没有沙箱 —— 仅在可信 Agent 上启用。",
         ]),
@@ -1960,10 +1960,10 @@ async function renderWorkspaceSettings(workspaceId) {
   form.appendChild(el("div", { class: "form-row" }, [
     el("label", { style: { display: "flex", alignItems: "center", gap: "8px" } }, [
       el("input", { type: "checkbox", id: "ws-enable-tools", checked: ws.enableTools, style: { width: "auto" } }),
-      "启用工具（bash / 读写文件 / arm_cli）",
+      "启用工具（bash / 读写文件）",
     ]),
     el("div", { class: "hint" }, [
-      "开启后 Agent 可执行 shell、读写文件、调用 arm_cli。",
+      "开启后 Agent 可执行 shell、读写文件。",
       el("br"),
       "⚠️ 没有沙箱。Agent 在隔离目录 ",
       el("code", {}, ws.cwd ?? `data/workspaces/${ws.id}`),
@@ -2056,7 +2056,7 @@ async function renderContribute(runId) {
     form.innerHTML = "";
     form.appendChild(el("div", { class: "form-row" }, [
       el("label", {}, "沉淀为"),
-      el("div", { style: { display: "flex", gap: "16px" } }, ["skill", "knowledge", "agent"].map((t) =>
+      el("div", { style: { display: "flex", gap: "16px" } }, ["knowledge", "agent"].map((t) =>
         el("label", {}, [
           el("input", { type: "radio", name: "asset-type", value: t, checked: assetType === t, onchange: () => { assetType = t; refreshPreview(); }, style: { width: "auto", marginRight: "4px" } }),
           t,
@@ -2078,11 +2078,6 @@ async function renderContribute(runId) {
         el("label", {}, "内容（默认从 Run 提取）"),
         el("textarea", { id: "asset-content", rows: 12 }, extracted?.knowledgeDefault ?? ""),
       ]));
-    } else if (assetType === "skill") {
-      form.appendChild(el("div", { class: "form-row" }, [
-        el("div", { class: "hint" }, "Skill 上传需要 ZIP 文件 + SKILL.md，请使用 ARM CLI：arm skill upload <path>"),
-        el("pre", { class: "muted", style: { background: "#fafbfc", padding: "8px", borderRadius: "6px", maxHeight: "200px", overflow: "auto" } }, extracted?.skillDefault || "(未从 Run 提取到代码块)"),
-      ]));
     } else if (assetType === "agent") {
       form.appendChild(el("div", { class: "form-row" }, [
         el("label", {}, "Prompt（默认 = Agent.prompt + Workspace.context）"),
@@ -2092,27 +2087,25 @@ async function renderContribute(runId) {
 
     form.appendChild(el("div", { style: { display: "flex", gap: "8px" } }, [
       el("button", { onclick: () => navigate(`/runs/${runId}`) }, "取消"),
-      assetType === "skill"
-        ? el("button", { class: "primary", onclick: () => alert("Skill 请用 CLI 上传：arm skill upload <path>") }, "查看 CLI 命令")
-        : el("button", { class: "primary", onclick: async () => {
-            const name = $("#asset-name").value.trim();
-            if (!name) return alert("请填写名称");
-            try {
-              const res = await api(`/runs/${runId}/contribute`, {
-                method: "POST",
-                body: {
-                  assetType,
-                  name,
-                  description: $("#asset-desc").value.trim(),
-                  content: $("#asset-content")?.value,
-                },
-              });
-              alert("已发布到 ARM: " + (res.armAssetName ?? res.status));
-              navigate(`/runs/${runId}`);
-            } catch (e) {
-              alert("沉淀失败: " + e.message);
-            }
-          } }, "发布到 ARM"),
+      el("button", { class: "primary", onclick: async () => {
+        const name = $("#asset-name").value.trim();
+        if (!name) return alert("请填写名称");
+        try {
+          const res = await api(`/runs/${runId}/contribute`, {
+            method: "POST",
+            body: {
+              assetType,
+              name,
+              description: $("#asset-desc").value.trim(),
+              content: $("#asset-content")?.value,
+            },
+          });
+          alert("已发布到 ARM: " + (res.armAssetName ?? res.status));
+          navigate(`/runs/${runId}`);
+        } catch (e) {
+          alert("沉淀失败: " + e.message);
+        }
+      } }, "发布到 ARM"),
     ]));
   };
   refreshPreview();
@@ -2142,8 +2135,8 @@ async function renderSettings() {
     grid.appendChild(el("div", {}, cfg.arm.baseUrl));
     grid.appendChild(el("div", { class: "k" }, "Server"));
     grid.appendChild(el("div", {}, `${cfg.server.host}:${cfg.server.port}`));
-    grid.appendChild(el("div", { class: "k" }, "arm_cli Tool"));
-    grid.appendChild(el("div", {}, `${cfg.armCliTool.enabled ? "✅ 启用" : "❌ 停用"} · ${cfg.armCliTool.cliPath}`));
+    grid.appendChild(el("div", { class: "k" }, "Tools"));
+    grid.appendChild(el("div", {}, "bash / 读写文件 / 搜索"));
   }
   container.appendChild(grid);
   container.appendChild(el("div", { class: "divider" }));

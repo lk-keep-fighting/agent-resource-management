@@ -24,11 +24,6 @@ export interface AppConfig {
   db: {
     path: string;
   };
-  armCliTool: {
-    enabled: boolean;
-    cliPath: string;
-    timeoutMs: number;
-  };
 }
 
 function loadConfigFile(): Partial<AppConfig> {
@@ -84,11 +79,6 @@ export const config: AppConfig = {
   },
   db: {
     path: (env("WS_DB_PATH") as string) ?? file.db?.path ?? "./data/workstation.db",
-  },
-  armCliTool: {
-    enabled: bool("WS_ARM_CLI_ENABLED", file.armCliTool?.enabled ?? true),
-    cliPath: (env("WS_ARM_CLI_PATH") as string) ?? file.armCliTool?.cliPath ?? "arm",
-    timeoutMs: num("WS_ARM_CLI_TIMEOUT_MS", file.armCliTool?.timeoutMs ?? 60_000),
   },
 };
 

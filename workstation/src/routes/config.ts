@@ -5,7 +5,7 @@ import { ok } from "../utils/response.ts";
 
 export const configRoute = new Hono();
 
-const SAFE_KEYS = ["arm_base_url", "default_model", "arm_cli_enabled"];
+const SAFE_KEYS = ["arm_base_url", "default_model"];
 
 configRoute.get("/", (c) => {
   const stored = configRepo.all();
@@ -20,11 +20,6 @@ configRoute.get("/", (c) => {
       baseUrl: appConfig.arm.baseUrl,
     },
     server: appConfig.server,
-    armCliTool: {
-      enabled: appConfig.armCliTool.enabled,
-      cliPath: appConfig.armCliTool.cliPath,
-      timeoutMs: appConfig.armCliTool.timeoutMs,
-    },
   };
   return c.json(ok(merged));
 });
