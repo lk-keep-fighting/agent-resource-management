@@ -65,3 +65,34 @@ describe("prepareEssentialKnowledges", () => {
     expect(r.files.length).toBe(0);
   });
 });
+
+import { resolvePinnedExperience } from "./knowledge-env.ts";
+
+describe("resolvePinnedExperience", () => {
+  const fakeArm = (db: Record<string, any>) => ({
+    getKnowledgeById: async (id: string) => db[id] ?? null,
+  });
+
+  it("取全文并保留 name，去重，缺失进 errors", async () => {
+    const r = await resolvePinnedExperience(
+      ["k1", "k1", "k2", "kMissing"],
+      fakeArm({
+        k1: { id: "k1", name: "经验一", content: "c1" },
+        k2: { id: "k2", name: "经验二", content: "c2" },
+      }) as any,
+    );
+    expect(r.items).toEqual([
+      { name: "经验一", content: "c1" },
+      { name: "经验二", content: "c2" },
+    ]);
+    expect(r.errors).toEqual(["kMissing"]);
+  });
+
+  it("content 缺失时当作空串，name 缺失回退为 id", async () => {
+    const r = await resolvePinnedExperience(
+      ["k1"],
+      fakeArm({ k1: { id: "k1" } }) as any,
+    );
+    expect(r.items).toEqual([{ name: "k1", content: "" }]);
+  });
+});

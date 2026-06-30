@@ -69,3 +69,36 @@ export async function prepareEssentialKnowledges(
   }
   return { files, inline, errors };
 }
+
+export interface PinnedItem {
+  name: string;
+  content: string;
+}
+export interface PinnedResult {
+  items: PinnedItem[];
+  errors: string[];
+}
+
+/**
+ * 解析用户本轮引用的经验：按 id 取全文，去重；取不到的进 errors。
+ * 引用即用即弃（≤5 条/轮），不复用 essential 缓存。
+ */
+export async function resolvePinnedExperience(
+  ids: string[],
+  armClient: ArmClient,
+): Promise<PinnedResult> {
+  const items: PinnedItem[] = [];
+  const errors: string[] = [];
+  const seen = new Set<string>();
+  for (const id of ids) {
+    if (!id || seen.has(id)) continue;
+    seen.add(id);
+    const k = await armClient.getKnowledgeById(id);
+    if (!k) {
+      errors.push(id);
+      continue;
+    }
+    items.push({ name: k.name ?? id, content: k.content ?? "" });
+  }
+  return { items, errors };
+}
