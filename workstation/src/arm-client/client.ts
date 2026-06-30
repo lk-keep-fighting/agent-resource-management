@@ -317,16 +317,6 @@ export class ArmClient {
 
   // ──────────────── Knowledges ────────────────
 
-  async listKnowledges(params: { keyword?: string; page?: number; pageSize?: number } = {}): Promise<any | null> {
-    const sp = new URLSearchParams();
-    if (params.keyword) sp.set("keyword", params.keyword);
-    if (params.page) sp.set("page", String(params.page));
-    if (params.pageSize) sp.set("pageSize", String(params.pageSize));
-    const qs = sp.toString();
-    const res = await this.request<any>(`/knowledges${qs ? `?${qs}` : ""}`);
-    return res.ok ? res.data : null;
-  }
-
   async getKnowledge(name: string): Promise<any | null> {
     const res = await this.request<any>(`/knowledges/${encodeURIComponent(name)}`);
     return res.ok ? res.data : null;
