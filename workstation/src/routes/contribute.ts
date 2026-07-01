@@ -3,7 +3,7 @@ import { runRepo } from "../db/repos/run.repo.ts";
 import { messageRepo } from "../db/repos/message.repo.ts";
 import { workspaceRepo } from "../db/repos/workspace.repo.ts";
 import { assetShareRepo } from "../db/repos/asset-share.repo.ts";
-import { arm } from "../arm-client/client.ts";
+import { armForContext } from "../arm-client/client.ts";
 import { ok, fail } from "../utils/response.ts";
 
 export const contributeRoute = new Hono();
@@ -41,25 +41,23 @@ contributeRoute.post("/runs/:runId/contribute", async (c) => {
       const content =
         body.content ??
         extractKnowledgeContent(messageRepo.listByRun(runId));
-      const created = await arm().createKnowledge({
+      const created = await armForContext(c).createKnowledge({
         name: body.name,
         description: body.description ?? "",
         content,
       });
-      if (!created) throw new Error("ARM 创建 Knowledge 失败");
       assetShareRepo.markCreated(share.id, created.id, created.name);
       return c.json(ok({ ...share, armAsset: created }));
     }
 
     if (body.assetType === "agent") {
       const workspace = workspaceRepo.get(run.workspaceId);
-      const created = await arm().createAgent({
+      const created = await armForContext(c).createAgent({
         name: body.name,
         description: body.description ?? "",
         prompt: [workspace?.context, run.systemPrompt].filter(Boolean).join("\n\n"),
         status: "active",
       });
-      if (!created) throw new Error("ARM 创建 Agent 失败");
       assetShareRepo.markCreated(share.id, created.id, created.name);
       return c.json(ok({ ...share, armAsset: created }));
     }
@@ -67,7 +65,8 @@ contributeRoute.post("/runs/:runId/contribute", async (c) => {
     return c.json(fail("未知 assetType 或暂不支持"), 400);
   } catch (e: any) {
     assetShareRepo.markFailed(share.id, e?.message ?? String(e));
-    return c.json(fail(`沉淀失败: ${e?.message ?? String(e)}`), 500);
+    // 不再加 "沉淀失败:" 前缀 —— 前端 catch 已统一加前缀，避免出现 "沉淀失败: 沉淀失败: ..."
+    return c.json(fail(e?.message ?? String(e)), 500);
   }
 });
 

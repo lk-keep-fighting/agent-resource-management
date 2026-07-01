@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { runRepo } from "../db/repos/run.repo.ts";
-import { arm } from "../arm-client/client.ts";
+import { armForContext } from "../arm-client/client.ts";
 import { ok, fail } from "../utils/response.ts";
 
 export const miscRoute = new Hono();
@@ -12,7 +12,7 @@ export const miscRoute = new Hono();
 miscRoute.get("/my-agents", async (c) => {
   const createdBy = c.req.query("createdBy");
   if (!createdBy) return c.json(fail("createdBy 必填"), 400);
-  const data = await arm().getMyAgents(createdBy);
+  const data = await armForContext(c).getMyAgents(createdBy);
   if (!data) return c.json(fail("ARM 不可达"), 502);
   return c.json(ok(data));
 });
@@ -25,7 +25,7 @@ miscRoute.get("/notifications", async (c) => {
   if (!userId) return c.json(fail("userId 必填"), 400);
   const unreadOnly = c.req.query("unreadOnly") === "true";
   const limit = c.req.query("limit") ? Number(c.req.query("limit")) : 50;
-  const data = await arm().getNotifications(userId, { unreadOnly, limit });
+  const data = await armForContext(c).getNotifications(userId, { unreadOnly, limit });
   if (!data) return c.json(fail("ARM 不可达"), 502);
   return c.json(ok(data));
 });
@@ -37,7 +37,7 @@ miscRoute.get("/notifications", async (c) => {
 miscRoute.get("/notifications/unread", async (c) => {
   const userId = c.req.query("userId");
   if (!userId) return c.json(fail("userId 必填"), 400);
-  const data = await arm().getNotifications(userId, { unreadOnly: true, limit: 1 });
+  const data = await armForContext(c).getNotifications(userId, { unreadOnly: true, limit: 1 });
   return c.json(ok({ count: data?.unreadCount ?? 0 }));
 });
 
@@ -46,7 +46,7 @@ miscRoute.get("/notifications/unread", async (c) => {
  */
 miscRoute.post("/notifications/:id/read", async (c) => {
   const id = c.req.param("id");
-  await arm().markNotificationRead(id);
+  await armForContext(c).markNotificationRead(id);
   return c.json(ok({ id, isRead: true }));
 });
 
@@ -57,7 +57,7 @@ miscRoute.post("/notifications/:id/read", async (c) => {
 miscRoute.post("/notifications/read-all", async (c) => {
   const body = (await c.req.json().catch(() => ({}))) as { userId?: string };
   if (!body.userId) return c.json(fail("userId 必填"), 400);
-  const r = await arm().markAllNotificationsRead(body.userId);
+  const r = await armForContext(c).markAllNotificationsRead(body.userId);
   return c.json(ok(r ?? { markedCount: 0 }));
 });
 
@@ -66,7 +66,7 @@ miscRoute.post("/notifications/read-all", async (c) => {
  * 透传 skill 详情（含 feedbackSummary）
  */
 miscRoute.get("/skills/:name", async (c) => {
-  const data = await arm().getSkill(c.req.param("name"));
+  const data = await armForContext(c).getSkill(c.req.param("name"));
   if (!data) return c.json(fail("Skill 不存在"), 404);
   return c.json(ok(data));
 });
@@ -75,7 +75,7 @@ miscRoute.get("/skills/:name", async (c) => {
  * GET /api/ws/skills/:id/feedback
  */
 miscRoute.get("/skills/:id/feedback", async (c) => {
-  const data = await arm().getSkillFeedbacks(c.req.param("id"));
+  const data = await armForContext(c).getSkillFeedbacks(c.req.param("id"));
   if (!data) return c.json(fail("ARM 不可达"), 502);
   return c.json(ok(data));
 });
@@ -86,7 +86,7 @@ miscRoute.get("/skills/:id/feedback", async (c) => {
 miscRoute.post("/skills/:id/feedback", async (c) => {
   const id = c.req.param("id");
   const body = (await c.req.json().catch(() => ({}))) as any;
-  const created = await arm().createSkillFeedback(id, body);
+  const created = await armForContext(c).createSkillFeedback(id, body);
   if (!created) return c.json(fail("提交失败"), 502);
   return c.json(ok(created), 201);
 });
@@ -95,7 +95,7 @@ miscRoute.post("/skills/:id/feedback", async (c) => {
  * GET /api/ws/knowledges/:id
  */
 miscRoute.get("/knowledges/:id", async (c) => {
-  const data = await arm().getKnowledgeById(c.req.param("id"));
+  const data = await armForContext(c).getKnowledgeById(c.req.param("id"));
   if (!data) return c.json(fail("Knowledge 不存在"), 404);
   return c.json(ok(data));
 });
@@ -104,7 +104,7 @@ miscRoute.get("/knowledges/:id", async (c) => {
  * GET /api/ws/knowledges/:id/feedback
  */
 miscRoute.get("/knowledges/:id/feedback", async (c) => {
-  const data = await arm().getKnowledgeFeedbacks(c.req.param("id"));
+  const data = await armForContext(c).getKnowledgeFeedbacks(c.req.param("id"));
   if (!data) return c.json(fail("ARM 不可达"), 502);
   return c.json(ok(data));
 });
@@ -115,7 +115,7 @@ miscRoute.get("/knowledges/:id/feedback", async (c) => {
 miscRoute.post("/knowledges/:id/feedback", async (c) => {
   const id = c.req.param("id");
   const body = (await c.req.json().catch(() => ({}))) as any;
-  const created = await arm().createKnowledgeFeedback(id, body);
+  const created = await armForContext(c).createKnowledgeFeedback(id, body);
   if (!created) return c.json(fail("提交失败"), 502);
   return c.json(ok(created), 201);
 });
@@ -126,7 +126,7 @@ miscRoute.post("/knowledges/:id/feedback", async (c) => {
 miscRoute.put("/agents/:id", async (c) => {
   const id = c.req.param("id");
   const body = (await c.req.json().catch(() => ({}))) as any;
-  const updated = await arm().updateAgent(id, body);
+  const updated = await armForContext(c).updateAgent(id, body);
   if (!updated) return c.json(fail("更新失败"), 502);
   return c.json(ok(updated));
 });
@@ -138,7 +138,7 @@ miscRoute.put("/agents/:id", async (c) => {
 miscRoute.get("/agents/:id/feedback", async (c) => {
   const id = c.req.param("id");
   const limit = Math.min(Number(c.req.query("limit") ?? "50"), 200);
-  const data = await arm().getAgentFeedbacks(id, limit);
+  const data = await armForContext(c).getAgentFeedbacks(id, limit);
   if (!data) return c.json(fail("ARM 不可达"), 502);
   return c.json(ok(data));
 });

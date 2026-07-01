@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import { arm } from "../arm-client/client.ts";
+import { armForContext } from "../arm-client/client.ts";
 import { ok, fail } from "../utils/response.ts";
 import { workspaceRepo } from "../db/repos/workspace.repo.ts";
 
@@ -9,7 +9,7 @@ agentsRoute.get("/", async (c) => {
   const keyword = c.req.query("keyword");
   const page = Number(c.req.query("page") ?? "1");
   const pageSize = Number(c.req.query("pageSize") ?? "50");
-  const data = await arm().listAgents({ keyword, page, pageSize });
+  const data = await armForContext(c).listAgents({ keyword, page, pageSize });
   if (!data) return c.json(fail("ARM 不可达"), 502);
 
   // 给每个 Agent 加上：我的 workspace 数 + ARM 的 feedbackSummary
@@ -17,7 +17,7 @@ agentsRoute.get("/", async (c) => {
   const agentIds = data.agents.map((a) => a.id);
   const [workspaceCounts, summaryMap] = await Promise.all([
     Promise.resolve(workspaceRepo.countByAgentIds(agentIds)),
-    arm().batchAgentSummary(agentIds),
+    armForContext(c).batchAgentSummary(agentIds),
   ]);
   const agents = data.agents.map((a) => ({
     ...a,
@@ -28,7 +28,7 @@ agentsRoute.get("/", async (c) => {
 });
 
 agentsRoute.get("/:id", async (c) => {
-  const agent = await arm().getAgent(c.req.param("id"));
+  const agent = await armForContext(c).getAgent(c.req.param("id"));
   if (!agent) return c.json(fail("Agent 不存在"), 404);
   const myWorkspaces = workspaceRepo.listByAgent(agent.id);
   return c.json(

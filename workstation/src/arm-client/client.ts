@@ -1,6 +1,14 @@
+import type { Context } from "hono";
 import { config } from "../config.ts";
 import type { ApiResponse, ArmAgent, ArmAgentDetail } from "../types.ts";
 import { normalizeAvatar } from "../utils/avatar.ts";
+
+type WsContextEnv = { Variables: { token?: string } };
+
+/** 供 handler 取 token：c.var.token 由 requireAuth 在 c.set('token', ...) 后注入 */
+export function tokenFromContext(c: Context): string | undefined {
+  return (c as Context<WsContextEnv>).get("token") ?? undefined;
+}
 
 /** 把 ARM 返回的 avatar 字段预处理成可直接渲染的字符串（data URI / emoji / URL） */
 function withAvatar<T extends { avatar?: string }>(a: T): T & { avatarDisplay: string; avatarKind: string } {
@@ -10,15 +18,11 @@ function withAvatar<T extends { avatar?: string }>(a: T): T & { avatarDisplay: s
 
 export class ArmClient {
   private baseUrl: string;
-  private apiKey: string;
+  private apiKey?: string;
 
   constructor(baseUrl?: string, apiKey?: string) {
     this.baseUrl = (baseUrl ?? config.arm.baseUrl).replace(/\/+$/, "");
     this.apiKey = apiKey ?? config.arm.apiKey;
-  }
-
-  setApiKey(key: string) {
-    this.apiKey = key;
   }
 
   async login(apiKey: string): Promise<{ user: { id: string; name: string; email: string; role: string }; token: string } | null> {
@@ -118,12 +122,13 @@ export class ArmClient {
     description?: string;
     prompt: string;
     status?: string;
-  }): Promise<ArmAgent | null> {
+  }): Promise<ArmAgent> {
     const res = await this.request<ArmAgent>(`/agents`, {
       method: "POST",
       body: JSON.stringify(payload),
     });
-    if (!res.ok || !res.data) return null;
+    if (!res.ok) throw new Error(res.msg || "ARM 创建 Agent 失败");
+    if (!res.data) throw new Error("ARM 创建 Agent 返回空数据");
     return res.data;
   }
 
@@ -336,12 +341,14 @@ export class ArmClient {
     return res.ok ? res.data : null;
   }
 
-  async createKnowledge(payload: { name: string; description?: string; content: string }): Promise<any | null> {
+  async createKnowledge(payload: { name: string; description?: string; content: string }): Promise<any> {
     const res = await this.request<any>(`/knowledges`, {
       method: "POST",
       body: JSON.stringify(payload),
     });
-    return res.ok ? res.data : null;
+    if (!res.ok) throw new Error(res.msg || "ARM 创建 Knowledge 失败");
+    if (!res.data) throw new Error("ARM 创建 Knowledge 返回空数据");
+    return res.data;
   }
 
   /**
@@ -375,16 +382,14 @@ export class ArmClient {
   }
 }
 
-// 模块级：当前请求的 token（由 middleware 注入）
-let _currentToken: string | null = null;
-export function setArmToken(token: string | null) {
-  _currentToken = token;
-}
-
-let _arm: ArmClient | null = null;
-export function arm(): ArmClient {
-  // 每次按当前 token 返回 client（无 token 时用配置默认）
-  if (_currentToken) return new ArmClient(undefined, _currentToken);
-  if (!_arm) _arm = new ArmClient();
-  return _arm;
+/**
+ * 在 handler 内构造一个使用当前请求 token 的 ArmClient。
+ * requireAuth 之前应该已经把 'token' set 到 c.var 上。
+ *
+ * 接受任意 Hono Context：sub-router（agentsRoute 等）实例化时是 BlankEnv，
+ * 父 router 的 Variables 不会自动传播；运行时 token 由 requireAuth 注入。
+ */
+export function armForContext(c: Context): ArmClient {
+  const tok = (c as Context<WsContextEnv>).get("token");
+  return new ArmClient(config.arm.baseUrl, tok);
 }

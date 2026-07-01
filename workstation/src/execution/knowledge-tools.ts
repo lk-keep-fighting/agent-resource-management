@@ -1,12 +1,12 @@
 import { Type } from "typebox";
 import type { AgentTool } from "@earendil-works/pi-agent-core";
-import { arm } from "../arm-client/client.ts";
+import type { ArmClient } from "../arm-client/client.ts";
 
 /**
  * 工作经验检索工具：按关键词检索全局知识库（ARM GET /knowledges?search=）。
  * 返回匹配条目的标题/描述/id，供 Agent 排障时定位历史经验。
  */
-export function buildKnowledgeSearchTool(): AgentTool<any> {
+export function buildKnowledgeSearchTool(armClient: ArmClient): AgentTool<any> {
   return {
     name: "knowledge_search",
     label: "检索工作经验知识库",
@@ -17,7 +17,7 @@ export function buildKnowledgeSearchTool(): AgentTool<any> {
     }),
     execute: async (_toolCallId: string, params: unknown) => {
       const query = (params as { query?: string } | null | undefined)?.query ?? "";
-      const res = await arm().searchKnowledges({ keyword: query, pageSize: 10 });
+      const res = await armClient.searchKnowledges({ keyword: query, pageSize: 10 });
       const items = (res?.knowledges ?? []) as Array<{ id: string; name: string; description?: string }>;
       const text =
         items.length === 0

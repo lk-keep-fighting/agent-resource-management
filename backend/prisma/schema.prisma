@@ -8,49 +8,74 @@ datasource db {
 }
 
 model User {
-  id            String   @id @default(uuid())
-  ssoUserId     String   @unique @map("sso_user_id")
-  feishuUnionId String?  @unique @map("feishu_union_id")
-  name          String?
-  email         String?  @unique
-  passwordHash  String?  @map("password_hash")
-  apiKeyHash       String?  @unique @map("api_key_hash")
-  encryptedApiKey  String?  @map("encrypted_api_key")
-  role          String   @default("USER")
-  avatarUrl     String?  @map("avatar_url")
-  createdAt     DateTime @default(now()) @map("created_at")
+  id        String   @id @default(uuid())
+  name      String?
+  email     String?  @unique
+  role      String   @default("USER")
+  createdAt DateTime @default(now()) @map("created_at")
 
-  skills Skill[]
-  agents Agent[]
+  identities UserIdentity[]
+  tokens     UserToken[]
+
+  skills     Skill[]
+  agents     Agent[]
   knowledges Knowledge[]
 
-  @@index([email], name: "idx_email")
-  @@index([apiKeyHash], name: "idx_api_key_hash")
-  @@index([ssoUserId], name: "idx_sso_user_id")
   @@map("users")
 }
 
+model UserIdentity {
+  id             String   @id @default(uuid())
+  userId         String   @map("user_id")
+  provider       String // 'feishu' | 'email'
+  providerUserId String   @map("provider_user_id") // feishu=unionId; email=email
+  metadata       Json?
+  linkedAt       DateTime @default(now()) @map("linked_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerUserId])
+  @@index([userId])
+  @@map("user_identities")
+}
+
+model UserToken {
+  id         String    @id @default(uuid())
+  userId     String    @map("user_id")
+  name       String
+  tokenHash  String    @unique @map("token_hash") // sha256(arm_pat_xxx)
+  expiresAt  DateTime? @map("expires_at")
+  lastUsedAt DateTime? @map("last_used_at")
+  createdAt  DateTime  @default(now()) @map("created_at")
+  revokedAt  DateTime? @map("revoked_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("user_tokens")
+}
+
 model Skill {
-  id            String   @id @default(uuid())
-  name          String   @unique
-  description   String   @db.VarChar(1024)
+  id            String      @id @default(uuid())
+  name          String      @unique
+  description   String      @db.VarChar(1024)
   license       String?
   compatibility String?
   metadata      Json?
-  allowedTools  Json?    @map("allowed_tools")
-  fileSize      BigInt   @map("file_size")
-  fileHash      String   @map("file_hash")
-  content       String?  @db.Text
-  publishedAt   DateTime @map("published_at")
-  publishedBy   String   @map("published_by")
-  updatedAt     DateTime @updatedAt @map("updated_at")
-  downloadCount Int      @default(0) @map("download_count")
+  allowedTools  Json?       @map("allowed_tools")
+  fileSize      BigInt      @map("file_size")
+  fileHash      String      @map("file_hash")
+  content       String?     @db.Text
+  publishedAt   DateTime    @map("published_at")
+  publishedBy   String      @map("published_by")
+  updatedAt     DateTime    @updatedAt @map("updated_at")
+  downloadCount Int         @default(0) @map("download_count")
   status        SkillStatus @default(active)
 
-  publisher User @relation(fields: [publishedBy], references: [id], onDelete: Cascade)
-  skillTags SkillTag[]
+  publisher          User                @relation(fields: [publishedBy], references: [id], onDelete: Cascade)
+  skillTags          SkillTag[]
   agentSkillBindings AgentSkillBinding[]
-  feedbacks SkillFeedback[]
+  feedbacks          SkillFeedback[]
 
   @@index([name], name: "idx_name")
   @@index([status], name: "idx_status")
@@ -88,21 +113,21 @@ enum SkillStatus {
 }
 
 model Agent {
-  id          String   @id @default(uuid())
-  name        String   @unique
-  description String   @db.VarChar(512)
-  prompt      String   @db.Text
+  id          String      @id @default(uuid())
+  name        String      @unique
+  description String      @db.VarChar(512)
+  prompt      String      @db.Text
   avatar      String?
-  version     String   @default("1.0.0") @map("version")
+  version     String      @default("1.0.0") @map("version")
   status      AgentStatus @default(active)
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
-  createdBy   String   @map("created_by")
+  createdAt   DateTime    @default(now()) @map("created_at")
+  updatedAt   DateTime    @updatedAt @map("updated_at")
+  createdBy   String      @map("created_by")
 
-  creator              User                   @relation(fields: [createdBy], references: [id], onDelete: Cascade)
-  skillBindings        AgentSkillBinding[]
-  knowledgeBindings    AgentKnowledgeBinding[]
-  feedbacks            AgentFeedback[]
+  creator           User                    @relation(fields: [createdBy], references: [id], onDelete: Cascade)
+  skillBindings     AgentSkillBinding[]
+  knowledgeBindings AgentKnowledgeBinding[]
+  feedbacks         AgentFeedback[]
 
   @@index([name], name: "idx_agent_name")
   @@index([createdBy], name: "idx_agent_created_by")
@@ -111,17 +136,17 @@ model Agent {
 }
 
 model AgentFeedback {
-  id          String   @id @default(uuid())
-  agentId     String   @map("agent_id")
-  agentVersion String? @map("agent_version")
-  rating      Int?
-  isHelpful   Boolean? @map("is_helpful")
-  comment     String?  @db.Text
-  tagsJson    Json?    @map("tags_json")
-  source      String?  @map("source")
-  externalRunId String? @unique @map("external_run_id")
-  feedbackTo  String?  @map("feedback_to")
-  createdAt   DateTime @default(now()) @map("created_at")
+  id            String   @id @default(uuid())
+  agentId       String   @map("agent_id")
+  agentVersion  String?  @map("agent_version")
+  rating        Int?
+  isHelpful     Boolean? @map("is_helpful")
+  comment       String?  @db.Text
+  tagsJson      Json?    @map("tags_json")
+  source        String?  @map("source")
+  externalRunId String?  @unique @map("external_run_id")
+  feedbackTo    String?  @map("feedback_to")
+  createdAt     DateTime @default(now()) @map("created_at")
 
   agent Agent @relation(fields: [agentId], references: [id], onDelete: Cascade)
 
@@ -137,20 +162,20 @@ enum AgentStatus {
 }
 
 model AgentSkillBinding {
-  id        String   @id @default(uuid())
+  id        String    @id @default(uuid())
   agentId   String
   skillId   String
   version   String
   config    Json?
   deletedAt DateTime? @map("deleted_at")
-  createdAt DateTime @default(now())
+  createdAt DateTime  @default(now())
 
   agent Agent @relation(fields: [agentId], references: [id], onDelete: Cascade)
   skill Skill @relation(fields: [skillId], references: [id], onDelete: Cascade)
 
+  @@unique([agentId, skillId, version], name: "uq_agent_skill_version")
   @@index([agentId], name: "idx_skill_binding_agent")
   @@index([skillId], name: "idx_skill_binding_skill")
-  @@unique([agentId, skillId, version], name: "uq_agent_skill_version")
   @@map("agent_skill_bindings")
 }
 
@@ -167,9 +192,9 @@ model AgentKnowledgeBinding {
   agent     Agent     @relation(fields: [agentId], references: [id], onDelete: Cascade)
   knowledge Knowledge @relation(fields: [knowledgeId], references: [id], onDelete: Cascade)
 
+  @@unique([agentId, knowledgeId, version], name: "uq_agent_knowledge_version")
   @@index([agentId], name: "idx_knowledge_binding_agent")
   @@index([knowledgeId], name: "idx_knowledge_binding_knowledge")
-  @@unique([agentId, knowledgeId, version], name: "uq_agent_knowledge_version")
   @@map("agent_knowledge_bindings")
 }
 
@@ -182,7 +207,7 @@ model Knowledge {
   updatedAt   DateTime @updatedAt @map("updated_at")
   createdBy   String   @map("created_by")
 
-  creator           User                     @relation(fields: [createdBy], references: [id], onDelete: Cascade)
+  creator           User                    @relation(fields: [createdBy], references: [id], onDelete: Cascade)
   knowledgeTags     KnowledgeTag[]
   knowledgeBindings AgentKnowledgeBinding[]
   feedbacks         KnowledgeFeedback[]
@@ -192,17 +217,17 @@ model Knowledge {
 }
 
 model SkillFeedback {
-  id              String   @id @default(uuid())
-  skillId         String   @map("skill_id")
-  skillVersion    String?  @map("skill_version")
-  rating          Int?
-  isHelpful       Boolean? @map("is_helpful")
-  comment         String?  @db.Text
-  tagsJson        Json?    @map("tags_json")
-  source          String?  @map("source")
-  externalRunId   String?  @unique @map("external_run_id")
-  feedbackTo      String?  @map("feedback_to")  // 反馈目标 user id（被通知的人）
-  createdAt       DateTime @default(now()) @map("created_at")
+  id            String   @id @default(uuid())
+  skillId       String   @map("skill_id")
+  skillVersion  String?  @map("skill_version")
+  rating        Int?
+  isHelpful     Boolean? @map("is_helpful")
+  comment       String?  @db.Text
+  tagsJson      Json?    @map("tags_json")
+  source        String?  @map("source")
+  externalRunId String?  @unique @map("external_run_id")
+  feedbackTo    String?  @map("feedback_to") // 反馈目标 user id（被通知的人）
+  createdAt     DateTime @default(now()) @map("created_at")
 
   skill Skill @relation(fields: [skillId], references: [id], onDelete: Cascade)
 
@@ -213,17 +238,17 @@ model SkillFeedback {
 }
 
 model KnowledgeFeedback {
-  id              String   @id @default(uuid())
-  knowledgeId     String   @map("knowledge_id")
-  knowledgeVersion String? @map("knowledge_version")
-  rating          Int?
-  isHelpful       Boolean? @map("is_helpful")
-  comment         String?  @db.Text
-  tagsJson        Json?    @map("tags_json")
-  source          String?  @map("source")
-  externalRunId   String?  @unique @map("external_run_id")
-  feedbackTo      String?  @map("feedback_to")
-  createdAt       DateTime @default(now()) @map("created_at")
+  id               String   @id @default(uuid())
+  knowledgeId      String   @map("knowledge_id")
+  knowledgeVersion String?  @map("knowledge_version")
+  rating           Int?
+  isHelpful        Boolean? @map("is_helpful")
+  comment          String?  @db.Text
+  tagsJson         Json?    @map("tags_json")
+  source           String?  @map("source")
+  externalRunId    String?  @unique @map("external_run_id")
+  feedbackTo       String?  @map("feedback_to")
+  createdAt        DateTime @default(now()) @map("created_at")
 
   knowledge Knowledge @relation(fields: [knowledgeId], references: [id], onDelete: Cascade)
 
@@ -234,17 +259,17 @@ model KnowledgeFeedback {
 }
 
 model Notification {
-  id          String   @id @default(uuid())
-  userId      String   @map("user_id")          // 接收人
-  type        String                              // agent_feedback | skill_feedback | knowledge_feedback
-  refId       String   @map("ref_id")           // 关联资源 id（agent/skill/knowledge）
-  refName     String?  @map("ref_name")
-  title       String
-  body        String?  @db.Text
-  metaJson    Json?    @map("meta_json")        // rating / comment 等
-  isRead      Boolean  @default(false) @map("is_read")
-  readAt      DateTime? @map("read_at")
-  createdAt   DateTime @default(now()) @map("created_at")
+  id        String    @id @default(uuid())
+  userId    String    @map("user_id") // 接收人
+  type      String // agent_feedback | skill_feedback | knowledge_feedback
+  refId     String    @map("ref_id") // 关联资源 id（agent/skill/knowledge）
+  refName   String?   @map("ref_name")
+  title     String
+  body      String?   @db.Text
+  metaJson  Json?     @map("meta_json") // rating / comment 等
+  isRead    Boolean   @default(false) @map("is_read")
+  readAt    DateTime? @map("read_at")
+  createdAt DateTime  @default(now()) @map("created_at")
 
   @@index([userId, isRead], name: "idx_notification_user_unread")
   @@index([userId, createdAt], name: "idx_notification_user_time")
@@ -256,36 +281,36 @@ model KnowledgeTag {
   tagId       String
 
   knowledge Knowledge @relation(fields: [knowledgeId], references: [id], onDelete: Cascade)
-  tag       Tag   @relation(fields: [tagId], references: [id], onDelete: Cascade)
+  tag       Tag       @relation(fields: [tagId], references: [id], onDelete: Cascade)
 
   @@id([knowledgeId, tagId])
   @@map("knowledge_tags")
 }
 
 model ExternalKnowledgeSource {
-  id          String   @id @default(uuid())
-  name        String   @unique
-  description String?  @db.VarChar(512)
-  status      String   @default("active")
-  
-  endpoint    String   @db.VarChar(1024)
-  authType    String   @default("none")
-  authHeader  String?  @map("auth_header")
-  authValue   String?  @map("auth_value")
-  
-  idField     String   @default("id")
-  titleField  String   @default("title")
+  id          String  @id @default(uuid())
+  name        String  @unique
+  description String? @db.VarChar(512)
+  status      String  @default("active")
+
+  endpoint   String  @db.VarChar(1024)
+  authType   String  @default("none")
+  authHeader String? @map("auth_header")
+  authValue  String? @map("auth_value")
+
+  idField      String  @default("id")
+  titleField   String  @default("title")
   contentField String  @default("content")
-  descField   String?  @map("desc_field")
+  descField    String? @map("desc_field")
   updatedField String? @map("updated_field")
-  contentType String   @default("markdown")
-  
-  method      String   @default("GET")
-  headers     Json?
-  
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
-  createdBy   String   @map("created_by")
+  contentType  String  @default("markdown")
+
+  method  String @default("GET")
+  headers Json?
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  createdBy String   @map("created_by")
 
   @@index([status], name: "idx_external_source_status")
   @@index([createdBy], name: "idx_external_source_created_by")

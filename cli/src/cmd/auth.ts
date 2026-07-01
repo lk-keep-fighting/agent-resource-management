@@ -52,20 +52,32 @@ export async function register(name?: string, email?: string, password?: string)
   }
 }
 
-export async function login(serverUrl: string, apiKey: string): Promise<void> {
+export async function login(): Promise<void> {
+  console.log('请在浏览器打开：' + (loadConfig()?.serverUrl || 'http://localhost:3000') + '/settings/tokens');
+  console.log('生成一个 PAT（建议命名包含机器名），复制粘贴到此处：');
+  const { readline } = await import('readline');
+  const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+  const token = await new Promise<string>((resolve) => rl.question('PAT> ', (a) => { rl.close(); resolve(a); }));
+  const trimmed = token.trim();
+  if (!trimmed.startsWith('arm_pat_')) {
+    error('格式错误：应以 arm_pat_ 开头');
+    process.exit(1);
+  }
+
+  const config = loadConfig() || { serverUrl: 'http://localhost:3000' };
+  config.serverUrl = config.serverUrl || 'http://localhost:3000';
+  config.token = trimmed;
+  saveConfig(config);
+
+  // 顺便用这个 token 拉一次用户信息
+  const client = new ApiClient(config.serverUrl, trimmed);
   try {
-    const client = new ApiClient(serverUrl);
-    const loginRes = await client.login(apiKey);
-
-    saveConfig({
-      serverUrl,
-      token: loginRes.token,
-      user: loginRes.user,
-    });
-
-    success(`登录成功! 欢迎, ${loginRes.user.name}`);
-  } catch (err) {
-    error(`登录失败: ${err instanceof Error ? err.message : '未知错误'}`);
+    const me = await client.me();
+    config.user = { id: me.id, name: me.name, email: me.email };
+    saveConfig(config);
+    success(`登录成功! 欢迎, ${me.name}`);
+  } catch (e) {
+    error(`Token 无效：${e instanceof Error ? e.message : e}`);
     process.exit(1);
   }
 }

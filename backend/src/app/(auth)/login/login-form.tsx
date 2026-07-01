@@ -1,86 +1,30 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { saveSession } from "@/lib/session";
-import { useSSO } from "xuanwu-sso-sdk";
 
-const ssoUrl = process.env.NEXT_PUBLIC_SSO_URL || "http://localhost:3000";
-
-export function SsoAndApiKeyForm() {
-  const [apiKey, setApiKey] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
-  const router = useRouter();
-  const { loginWithSSO } = useSSO(ssoUrl);
-
-  const handleSSOLogin = () => {
+/**
+ * Dashboard 登录组件。直接走飞书 OAuth（authorize URL 由服务端 /api/auth/login 构造）。
+ *
+ * 旧实现里残留的 API Key 表单已经在 auth-redesign 中删除（apiKey 模型已废），
+ * 这里只保留「用 ARM 登录」按钮触发飞书授权跳转。
+ */
+export function LoginForm() {
+  // 自动跳转：登录页加载后立刻开始飞书 OAuth 流程
+  useEffect(() => {
     const url = new URL(window.location.href);
-    const next = url.searchParams.get("next");
-    const redirectUri = next
-      ? `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`
-      : `${window.location.origin}/auth/callback`;
-    loginWithSSO(redirectUri);
-  };
-
-  const handleApiKeyLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    setError("");
-
-    try {
-      const res = await fetch("/api/v1/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ apiKey }),
-      });
-
-      const data = await res.json();
-      if (data.ok) {
-        saveSession({ token: data.data.token, user: data.data.user });
-        router.push("/skills");
-      } else {
-        setError(data.msg || "登录失败");
-      }
-    } catch {
-      setError("网络错误");
-    } finally {
-      setLoading(false);
-    }
-  };
+    const next = url.searchParams.get("next") || "/dashboard";
+    window.location.href = `/api/auth/login?next=${encodeURIComponent(next)}`;
+  }, []);
 
   return (
     <div className="space-y-4">
       <Button
-        onClick={handleSSOLogin}
-        className="w-full h-11 bg-gradient-to-r from-blue-600 to-purple-600 hover:opacity-90"
-        disabled={loading}
+        disabled
+        className="w-full h-11 bg-gradient-to-r from-blue-600 to-purple-600 opacity-90"
       >
-        {loading ? "跳转中..." : "单点登录 (SSO)"}
+        正在跳转到飞书登录…
       </Button>
-      <div className="relative">
-        <div className="absolute inset-0 flex items-center">
-          <span className="w-full border-t" />
-        </div>
-        <div className="relative flex justify-center text-xs uppercase">
-          <span className="bg-white px-2 text-muted-foreground">或</span>
-        </div>
-      </div>
-      <form onSubmit={handleApiKeyLogin} className="space-y-4">
-        <Input
-          type="password"
-          placeholder="输入 API Key"
-          value={apiKey}
-          onChange={(e) => setApiKey(e.target.value)}
-          className="h-11"
-        />
-        {error && <p className="text-sm text-red-500">{error}</p>}
-        <Button type="submit" className="w-full h-11" disabled={loading}>
-          {loading ? "登录中..." : "使用 API Key 登录"}
-        </Button>
-      </form>
     </div>
   );
 }

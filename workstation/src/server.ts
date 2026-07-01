@@ -3,7 +3,7 @@ import { serve } from "@hono/node-server";
 import { serveStatic } from "@hono/node-server/serve-static";
 import { config, ensureConfig } from "./config.ts";
 import { runMigrations } from "./db/migrate.ts";
-import { arm } from "./arm-client/client.ts";
+import { ArmClient } from "./arm-client/client.ts";
 import { workspacesRoute } from "./routes/workspaces.ts";
 import { agentsRoute } from "./routes/agents.ts";
 import { runsRoute } from "./routes/runs.ts";
@@ -12,6 +12,7 @@ import { contributeRoute } from "./routes/contribute.ts";
 import { configRoute } from "./routes/config.ts";
 import { miscRoute } from "./routes/misc.ts";
 import { authRoute } from "./routes/auth.ts";
+import { authSsoRoute } from "./routes/auth-sso.ts";
 import { requireAuth } from "./middleware/auth.ts";
 import { readFileSync } from "node:fs";
 import { resolve, dirname } from "node:path";
@@ -40,9 +41,15 @@ app.use("*", async (c, next) => {
   console.log(`[${c.req.method}] ${c.req.path} ${c.res.status} ${ms}ms`);
 });
 
+// ─────────── 透传当前登录用户的 ARM token ───────────
+// 旧实现：在 /api/ws/* 拦截请求并用 setArmToken() 注入到模块级 _currentToken。
+// 该机制并发不安全，已被 requireAuth 的 c.set('token', ...) + armForContext(c) 替代。
+// 此处保留 hook 点（如未来需要补充 WS-level 上下文，可在此加），不重复注入。
+// app.use("/api/ws/*", async (_c, next) => { await next(); });
+
 // ─────────── 健康检查 ───────────
 app.get("/health", async (c) => {
-  const armReachable = await arm().health().catch(() => false);
+  const armReachable = await new ArmClient().health().catch(() => false);
   return c.json({
     ok: true,
     data: {
@@ -94,18 +101,14 @@ app.get("/api/ws/config/sso", (c) => {
 
 // ─────────── API 路由 ───────────
 const api = new Hono();
-// 公开：auth/login + auth/me（验证 token）
-api.route("/auth", authRoute);
-// 其他全部要求鉴权
-api.use("/agents", requireAuth);
-api.use("/workspaces", requireAuth);
-api.use("/runs", requireAuth);
-api.use("/feedback", requireAuth);
-api.use("/contribute", requireAuth);
-api.use("/my-agents", requireAuth);
-api.use("/notifications", requireAuth);
-api.use("/skills", requireAuth);
-api.use("/knowledges", requireAuth);
+// 公开：auth/login + auth/me + auth/login-url + auth/callback
+// 把 authRoute 和 authSsoRoute 合并到 combinedAuth（Hono 不允许同 path 挂两次 .route）
+const combinedAuth = new Hono();
+combinedAuth.route("/", authRoute);
+combinedAuth.route("/", authSsoRoute);
+api.route("/auth", combinedAuth);
+// 其他全部要求鉴权（用通配符匹配子路径，避免 Hono 4.12 /runs vs /runs/* 坑）
+api.use("*", requireAuth);
 api.route("/agents", agentsRoute);
 api.route("/workspaces", workspacesRoute);
 // /api/ws/runs/* 和 /api/ws/workspaces/:id/runs

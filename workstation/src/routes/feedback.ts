@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { runRepo } from "../db/repos/run.repo.ts";
-import { arm } from "../arm-client/client.ts";
+import { armForContext } from "../arm-client/client.ts";
 import { ok, fail } from "../utils/response.ts";
 
 export const feedbackRoute = new Hono();
@@ -27,7 +27,7 @@ feedbackRoute.post("/runs/:id/feedback", async (c) => {
     return c.json(fail("rating 必须是 1-5"), 400);
   }
 
-  const created = await arm().createAgentFeedback(run.agentId, {
+  const created = await armForContext(c).createAgentFeedback(run.agentId, {
     rating: body.rating ?? null,
     isHelpful: body.isHelpful ?? null,
     comment: body.comment ?? null,

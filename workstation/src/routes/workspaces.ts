@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { workspaceRepo } from "../db/repos/workspace.repo.ts";
-import { arm } from "../arm-client/client.ts";
+import { armForContext } from "../arm-client/client.ts";
 import { workspaceCwdPath } from "../execution/built-in-tools.ts";
 import { ok, fail } from "../utils/response.ts";
 
@@ -40,7 +40,7 @@ workspacesRoute.post("/", async (c) => {
     return c.json(fail("agentId 和 name 必填"), 400);
   }
   const userId = c.get("userId" as never) as string | undefined;
-  const agent = await arm().getAgent(body.agentId);
+  const agent = await armForContext(c).getAgent(body.agentId);
   if (!agent) return c.json(fail("Agent 不存在或 ARM 不可达"), 404);
 
   const temp = workspaceRepo.create({

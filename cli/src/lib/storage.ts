@@ -1,4 +1,4 @@
-import { writeFileSync, readFileSync, existsSync, mkdirSync } from 'fs';
+import { writeFileSync, readFileSync, existsSync, mkdirSync, chmodSync } from 'fs';
 import { join } from 'path';
 
 const CONFIG_DIR = join(process.env.HOME || '/root', '.arm');
@@ -23,7 +23,8 @@ function ensureConfigDir() {
 
 export function saveConfig(config: Config): void {
   ensureConfigDir();
-  writeFileSync(CONFIG_FILE, JSON.stringify(config, null, 2));
+  writeFileSync(CONFIG_FILE, JSON.stringify(config, null, 2), { mode: 0o600 });
+  chmodSync(CONFIG_FILE, 0o600);
 }
 
 export function loadConfig(): Config | null {

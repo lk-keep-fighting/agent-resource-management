@@ -12,6 +12,7 @@ const baseNavItems = [
   { href: "/knowledges", label: "知识资源库", icon: BookOpen },
   { href: "/my", label: "我的资源", icon: User },
   { href: "/upload", label: "资源上传", icon: Upload },
+  { href: "/settings/tokens", label: "API Tokens", icon: Settings },
 ];
 
 const adminNavItems = [

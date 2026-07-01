@@ -44,7 +44,7 @@ import { messageRepo } from "../db/repos/message.repo.ts";
 import { eventRepo } from "../db/repos/event.repo.ts";
 import { runRepo } from "../db/repos/run.repo.ts";
 import { workspaceRepo } from "../db/repos/workspace.repo.ts";
-import { arm } from "../arm-client/client.ts";
+import type { ArmClient } from "../arm-client/client.ts";
 import type { ArmAgentDetail, WsRun, WsMessage } from "../types.ts";
 import { buildSystemPrompt } from "./context-builder.ts";
 import { buildSkillHintTool } from "./skill-tools.ts";
@@ -69,6 +69,8 @@ interface RunOptions {
    */
   historyMode: "continue" | "fresh";
   pinnedExperienceIds?: string[];
+  /** 由 route handler 通过 armForContext(c) 构造；execution 内部统一用这个实例 */
+  armClient: ArmClient;
 }
 
 interface ExecuteResult {
@@ -312,11 +314,11 @@ function buildMessageHistory(
  * 单次 Run 编排：拉 Agent、组装 prompt、建 Agent 实例、跑用户消息。
  */
 export async function executeRun(opts: RunOptions): Promise<ExecuteResult> {
-  const { run, userMessage, sender } = opts;
+  const { run, userMessage, sender, armClient } = opts;
 
   workspaceRepo.touch(run.workspaceId);
 
-  const agentDetail = await arm().getAgent(run.agentId);
+  const agentDetail = await armClient.getAgent(run.agentId);
   if (!agentDetail) {
     const msg = `无法加载 Agent ${run.agentId}`;
     runRepo.updateStatus(run.id, "failed");
@@ -339,7 +341,7 @@ export async function executeRun(opts: RunOptions): Promise<ExecuteResult> {
   let essentialInline: Awaited<ReturnType<typeof prepareEssentialKnowledges>>["inline"] | undefined;
   let essentialErrors: string[] | undefined;
   if (essentialBindings.length) {
-    const r = await prepareEssentialKnowledges(essentialBindings, cwd, enableTools, arm());
+    const r = await prepareEssentialKnowledges(essentialBindings, cwd, enableTools, armClient);
     essentialFiles = r.files.length ? r.files : undefined;
     essentialInline = r.inline.length ? r.inline : undefined;
     essentialErrors = r.errors.length ? r.errors : undefined;
@@ -348,7 +350,7 @@ export async function executeRun(opts: RunOptions): Promise<ExecuteResult> {
   let pinnedExperience: Array<{ name: string; content: string }> | undefined;
   let pinnedErrors: string[] | undefined;
   if (opts.pinnedExperienceIds?.length) {
-    const r = await resolvePinnedExperience(opts.pinnedExperienceIds, arm());
+    const r = await resolvePinnedExperience(opts.pinnedExperienceIds, armClient);
     pinnedExperience = r.items.length ? r.items : undefined;
     pinnedErrors = r.errors.length ? r.errors : undefined;
   }
@@ -373,7 +375,7 @@ export async function executeRun(opts: RunOptions): Promise<ExecuteResult> {
     const skillHint = buildSkillHintTool(skillSummaries);
     if (skillHint) tools.push(skillHint);
     // 工作经验检索工具（按需检索全局知识库，排障时使用）
-    tools.push(buildKnowledgeSearchTool());
+    tools.push(buildKnowledgeSearchTool(armClient));
   }
 
   let model: Model<"openai-completions">;

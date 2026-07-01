@@ -4,7 +4,7 @@ import { workspaceRepo } from "../db/repos/workspace.repo.ts";
 import { runRepo } from "../db/repos/run.repo.ts";
 import { messageRepo } from "../db/repos/message.repo.ts";
 import { eventRepo } from "../db/repos/event.repo.ts";
-import { arm } from "../arm-client/client.ts";
+import { armForContext } from "../arm-client/client.ts";
 import { executeRun } from "../execution/agent-runner.ts";
 import { buildSystemPrompt } from "../execution/context-builder.ts";
 import { workspaceCwdPath } from "../execution/built-in-tools.ts";
@@ -33,7 +33,7 @@ runsRoute.post("/workspaces/:workspaceId/runs", async (c) => {
     return c.json(fail("message 必填"), 400);
   }
 
-  const agentDetail = await arm().getAgent(workspace.agentId);
+  const agentDetail = await armForContext(c).getAgent(workspace.agentId);
   if (!agentDetail) return c.json(fail("ARM 不可达或 Agent 不存在"), 502);
 
   const systemPrompt = buildSystemPrompt(agentDetail, workspace.context, {
@@ -77,6 +77,7 @@ runsRoute.post("/workspaces/:workspaceId/runs", async (c) => {
       historyMode: "fresh",  // 新 run：注入 workspace 全部历史消息
       pinnedExperienceIds:
         Array.isArray(body.pinnedExperienceIds) ? body.pinnedExperienceIds : undefined,
+      armClient: armForContext(c),
     });
 
     send("run.done", { status: result.status, durationMs: result.durationMs });
@@ -116,6 +117,7 @@ runsRoute.post("/runs/:id/messages", async (c) => {
       historyMode: "continue",  // 续接该 run 已有消息
       pinnedExperienceIds:
         Array.isArray(body.pinnedExperienceIds) ? body.pinnedExperienceIds : undefined,
+      armClient: armForContext(c),
     });
     send("run.done", { status: result.status, durationMs: result.durationMs });
   });
@@ -287,19 +289,24 @@ runsRoute.post("/workspaces/:workspaceId/summarize", async (c) => {
 
   // 4. 创建 Knowledge
   const knowledgeName = body.name?.trim() || defaultName;
-  const knowledge = await arm().createKnowledge({
-    name: knowledgeName,
-    description: `从 Workspace "${workspace.name}" 对话历史自动总结（${turns.length} 条消息）`,
-    content: summaryMd,
-  });
+  let knowledge: any;
+  try {
+    knowledge = await armForContext(c).createKnowledge({
+      name: knowledgeName,
+      description: `从 Workspace "${workspace.name}" 对话历史自动总结（${turns.length} 条消息）`,
+      content: summaryMd,
+    });
+  } catch (e: any) {
+    return c.json(fail(`ARM 创建 Knowledge 失败: ${e?.message ?? String(e)}`), 502);
+  }
   if (!knowledge?.id) {
-    return c.json(fail("ARM 创建 Knowledge 失败"), 502);
+    return c.json(fail("ARM 创建 Knowledge 返回空数据"), 502);
   }
 
   // 5. 绑定到当前 agent（这样下次新开 workspace 时会自动加载）
   let binding: { id: string; version: string } | null = null;
   try {
-    binding = await arm().bindKnowledgeToAgent(workspace.agentId, {
+    binding = await armForContext(c).bindKnowledgeToAgent(workspace.agentId, {
       knowledgeId: knowledge.id,
     });
   } catch (e: any) {

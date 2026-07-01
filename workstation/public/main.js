@@ -30,30 +30,37 @@ function el(tag, props = {}, children = []) {
   return node;
 }
 
-/* ─────────── 鉴权：localStorage token + 全局头 ─────────── */
+/* ─────────── 鉴权：sessionStorage PAT + 全局头 ─────────── */
 
-const AUTH_KEY = "arm_ws_auth";
+const AUTH_KEY = "arm_pat";
+const AUTH_USER_KEY = "arm_user_id";
 
 function getAuth() {
-  try {
-    const s = localStorage.getItem(AUTH_KEY);
-    return s ? JSON.parse(s) : null;
-  } catch { return null; }
+  const token = sessionStorage.getItem(AUTH_KEY);
+  const userId = sessionStorage.getItem(AUTH_USER_KEY);
+  if (!token) return null;
+  return { token, user: { id: userId || "unknown", name: userId || "Guest" } };
 }
 function setAuth(auth) {
-  if (auth) localStorage.setItem(AUTH_KEY, JSON.stringify(auth));
-  else localStorage.removeItem(AUTH_KEY);
+  if (auth) {
+    sessionStorage.setItem(AUTH_KEY, auth.token);
+    if (auth.user?.id) sessionStorage.setItem(AUTH_USER_KEY, auth.user.id);
+  } else {
+    sessionStorage.removeItem(AUTH_KEY);
+    sessionStorage.removeItem(AUTH_USER_KEY);
+  }
 }
 function clearAuth() {
-  localStorage.removeItem(AUTH_KEY);
+  sessionStorage.removeItem(AUTH_KEY);
+  sessionStorage.removeItem(AUTH_USER_KEY);
 }
 
 function authHeaders() {
-  const a = getAuth();
-  if (!a?.token) return {};
+  const token = sessionStorage.getItem(AUTH_KEY);
+  if (!token) return {};
   return {
-    Authorization: `Bearer ${a.token}`,
-    "X-User-Id": a.user.id,
+    Authorization: `Bearer ${token}`,
+    "X-User-Id": sessionStorage.getItem(AUTH_USER_KEY) || "unknown",
   };
 }
 
@@ -404,118 +411,54 @@ async function renderLogin() {
       el("div", { style: { textAlign: "center", marginBottom: "20px" } }, [
         el("div", { style: { fontSize: "32px", marginBottom: "8px" } }, "🤖"),
         el("div", { style: { fontSize: "20px", fontWeight: 700 } }, "Agent Workstation"),
-        el("div", { class: "muted", style: { fontSize: "13px", marginTop: "4px" } }, "使用 ARM API Key 登录"),
-      ]),
-      el("div", { class: "form-row" }, [
-        el("label", {}, "API Key"),
-        el("input", { id: "login-key", type: "password", placeholder: "arm_xxxx_xxxxx", autocomplete: "off" }),
-      ]),
-      el("div", { class: "form-row" }, [
-        el("label", {}, "用户名（仅 mock 模式）"),
-        el("input", { id: "login-name", placeholder: "如不填会从 ARM 拉取" }),
+        el("div", { class: "muted", style: { fontSize: "13px", marginTop: "4px" } }, "使用 ARM 账号登录"),
       ]),
       el("div", { id: "login-error", class: "muted", style: { color: "#f53f3f", minHeight: "20px", fontSize: "12px", marginBottom: "8px" } }),
       el("button", {
         class: "primary",
         style: { width: "100%" },
         onclick: async () => {
-          const key = $("#login-key").value.trim();
-          const name = $("#login-name").value.trim();
-          if (!key) {
-            $("#login-error").textContent = "请输入 API Key";
-            return;
-          }
           try {
-            const res = await fetch("/api/ws/auth/login", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ apiKey: key }),
-            });
-            const j = await res.json();
-            if (!j.ok) throw new Error(j.msg);
-            const token = j.data.token;
-            const user = name ? { ...j.data.user, name } : j.data.user;
-            setAuth({ token, user });
-            navigate("/");
-          } catch (e) {
-            $("#login-error").textContent = "登录失败: " + e.message;
-          }
-        },
-      }, "用 API Key 登录"),
-      el("div", { style: { display: "flex", alignItems: "center", gap: "8px", margin: "12px 0", color: "#86909c", fontSize: "12px" } }, [
-        el("div", { style: { flex: 1, height: "1px", background: "#e5e6eb" } }),
-        el("div", {}, "或"),
-        el("div", { style: { flex: 1, height: "1px", background: "#e5e6eb" } }),
-      ]),
-      el("button", {
-        style: { width: "100%", padding: "8px", background: "#fff", border: "1px solid #165dff", color: "#165dff", borderRadius: "6px" },
-        onclick: async () => {
-          try {
-            const r = await fetch("/api/ws/config/sso");
+            const r = await fetch("/api/ws/auth/login-url");
             const j = await r.json();
-            if (!j.ok) throw new Error("无法获取 SSO 配置");
+            if (!j.ok) throw new Error("无法获取登录地址");
             window.location.href = j.data.loginUrl;
           } catch (e) {
-            $("#login-error").textContent = "SSO 启动失败: " + e.message;
+            $("#login-error").textContent = "登录启动失败: " + e.message;
           }
         },
-      }, "🔐 用 SSO 登录"),
-      el("div", { class: "muted", style: { fontSize: "11px", marginTop: "16px", lineHeight: 1.6 } }, [
-        el("div", {}, "🧪 Mock 模式可用的 Key："),
-        el("div", { style: { fontFamily: "ui-monospace, monospace", background: "#f7f8fa", padding: "4px 8px", borderRadius: "4px", marginTop: "4px" } },
-          "arm_alpha_2026  (Alice) / arm_beta_2026 (Bob)"),
-      ]),
+      }, "🔐 用 ARM 登录"),
     ]),
   ]);
   return wrap;
 }
 
 /**
- * SSO callback 路由 —— 从 URL hash 拿 token + user，存 localStorage，跳首页
+ * SSO callback 路由 —— 从 URL hash 拿 token，存 sessionStorage，跳首页
  */
-async function renderSSOCallback() {
+function renderSSOCallback() {
   const wrap = el("div", { class: "container", style: { maxWidth: "420px", marginTop: "60px" } });
-  // 解析 hash: #sso=<encoded JSON>
-  const hash = location.hash;
-  const m = hash.match(/#\/auth\/sso-callback\?error=(.+)/);
-  if (m) {
+  const hash = window.location.hash;
+  const m = hash.match(/#token=([^&]+)/);
+  if (!m) {
+    // 跳回登录
+    setTimeout(() => navigate("/login"), 100);
     wrap.appendChild(el("div", { class: "card", style: { padding: "32px", textAlign: "center" } }, [
-      el("div", { style: { color: "#f53f3f", marginBottom: "8px" } }, "❌ SSO 登录失败"),
-      el("div", { class: "muted", style: { fontSize: "12px" } }, decodeURIComponent(m[1])),
-      el("div", { style: { marginTop: "16px" } }, [
-        el("a", { href: "#/login", style: { color: "#165dff" } }, "返回登录"),
-      ]),
+      el("div", { style: { color: "#f53f3f" } }, "登录失败：未拿到 token"),
     ]));
     return wrap;
   }
-  const ssoMatch = hash.match(/#sso=([^&]+)/);
-  if (!ssoMatch) {
-    // 无 token，可能在等待
-    wrap.appendChild(el("div", { class: "card", style: { padding: "32px", textAlign: "center" } }, [
-      el("div", {}, "等待 SSO 回调..."),
-      el("div", { class: "muted", style: { fontSize: "12px", marginTop: "8px" } }, "如果没有自动跳转，"),
-      el("a", { href: "#/login", style: { color: "#165dff" } }, "点这里返回登录"),
-    ]));
-    return wrap;
-  }
-  try {
-    const payload = JSON.parse(decodeURIComponent(ssoMatch[1]));
-    if (!payload.token || !payload.user) throw new Error("payload 缺 token/user");
-    setAuth({ token: payload.token, user: payload.user });
-    // 清掉 hash 然后跳首页
-    setTimeout(() => navigate("/"), 100);
-    wrap.appendChild(el("div", { class: "card", style: { padding: "32px", textAlign: "center" } }, [
-      el("div", { style: { color: "#00b42a" } }, "✅ SSO 登录成功"),
-      el("div", { class: "muted", style: { fontSize: "13px", marginTop: "8px" } }, `欢迎 ${payload.user.name || payload.user.id}`),
-    ]));
-    return wrap;
-  } catch (e) {
-    wrap.appendChild(el("div", { class: "card", style: { padding: "32px", textAlign: "center" } }, [
-      el("div", { style: { color: "#f53f3f" } }, "❌ SSO 回调解析失败"),
-      el("div", { class: "muted", style: { fontSize: "11px", marginTop: "8px" } }, e.message),
-    ]));
-    return wrap;
-  }
+  const token = decodeURIComponent(m[1]);
+  // 暂时用 sessionStorage（关 tab 失效）；如需长期保存可换 localStorage 但 XSS 风险更高
+  sessionStorage.setItem("arm_pat", token);
+  setTimeout(() => {
+    window.location.hash = "";
+    navigate("/");
+  }, 50);
+  wrap.appendChild(el("div", { class: "card", style: { padding: "32px", textAlign: "center" } }, [
+    el("div", { style: { color: "#00b42a" } }, "登录成功，正在跳转..."),
+  ]));
+  return wrap;
 }
 
 

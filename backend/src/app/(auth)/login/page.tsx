@@ -1,9 +1,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { SsoAndApiKeyForm } from "./login-form";
-import { EmailPasswordForm } from "./email-password-form";
+import { LoginForm } from "./login-form";
 import { Brain } from "lucide-react";
 import Link from "next/link";
-import { LoginTabs } from "./login-tabs";
 
 interface LoginPageProps {
   searchParams: Promise<{ error?: string }>;
@@ -41,10 +39,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
               {errorMessage}
             </div>
           )}
-          <LoginTabs
-            ssoSlot={<SsoAndApiKeyForm />}
-            passwordSlot={<EmailPasswordForm />}
-          />
+          <LoginForm />
         </CardContent>
       </Card>
 
@@ -60,6 +55,7 @@ function getErrorMessage(error: string): string {
     no_token: '无法获取登录凭证，请重试',
     server_config_error: '服务器配置错误，请联系管理员',
     invalid_token: '登录凭证无效，请重新登录',
+    callback_failed: '飞书回调失败，请重试或联系管理员',
   };
   return errorMap[error] || `登录失败: ${error}`;
 }

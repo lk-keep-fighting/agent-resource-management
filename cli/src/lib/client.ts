@@ -17,6 +17,10 @@ export class ApiClient {
     this.token = null;
   }
 
+  getToken(): string | null {
+    return this.token;
+  }
+
   private async request<T>(
     path: string,
     options: RequestInit = {}

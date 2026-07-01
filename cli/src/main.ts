@@ -3,6 +3,7 @@ import { listSkills, searchSkills, infoSkill, downloadSkill, uploadSkill, mySkil
 import { listAgents, searchAgents, infoAgent, downloadAgent, createAgent, updateAgent, deleteAgent, bindSkill, unbindSkill, bindKnowledge, unbindKnowledge, createAgentFromFolder, syncAgent } from './cmd/agent';
 import { listKnowledge, searchKnowledge, infoKnowledge, downloadKnowledge, uploadKnowledge, myKnowledge, deleteKnowledge } from './cmd/knowledge';
 import { showServer, setServer } from './cmd/server';
+import { listTokens, createToken, revokeToken } from './cmd/token';
 import { getOutputMode, setOutputMode } from './lib/output';
 
 import { readFileSync } from 'fs';
@@ -38,11 +39,7 @@ async function main() {
       break;
 
     case 'login':
-      if (!args[1] || !args[2]) {
-        console.error('用法: arm login <server-url> <api-key>');
-        process.exit(1);
-      }
-      await login(args[1], args[2]);
+      await login();
       break;
 
     case 'logout':
@@ -110,7 +107,7 @@ async function main() {
         default:
           console.log(`
 可用命令:
-  arm login <server-url> <api-key>   登录
+  arm login                            登录（粘贴 PAT）
   arm logout                          登出
   arm skill ls                        列出所有 Skill
   arm skill search <keyword>          搜索 Skill
@@ -185,6 +182,27 @@ async function main() {
 
     case 'me':
       await getCurrentUser();
+      break;
+
+    case 'token':
+      if (subCommand === 'list') {
+        await listTokens();
+      } else if (subCommand === 'create') {
+        if (!args[2]) {
+          console.error('用法: arm token create <name> [expiresAt]');
+          process.exit(1);
+        }
+        await createToken(args[2], args[3]);
+      } else if (subCommand === 'revoke') {
+        if (!args[2]) {
+          console.error('用法: arm token revoke <id>');
+          process.exit(1);
+        }
+        await revokeToken(args[2]);
+      } else {
+        console.error('用法: arm token list|create <name> [expiresAt]|revoke <id>');
+        process.exit(1);
+      }
       break;
 
     case 'output':
@@ -448,7 +466,7 @@ Agent Resource Management (arm)
 
 用法:
   arm register [--name=<name>] [--email=<email>] [--password=<password>]  注册 (交互式或参数)
-  arm login <server-url> <api-key>   登录
+  arm login                            登录（粘贴 PAT）
   arm logout                          登出
   arm output [json|text]              设置/查看输出模式 (默认json)
   arm skill ls                        列出所有 Skill
